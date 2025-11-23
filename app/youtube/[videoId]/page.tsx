@@ -20,8 +20,6 @@ import { useRouter } from "next/navigation"
 import type { WorkflowStep } from "@/lib/workflow-db"
 
 interface WorkflowStatus {
-
-interface WorkflowStatus {
   isProcessing: boolean
   currentStep: number
   totalSteps: number
