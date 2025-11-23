@@ -2,6 +2,7 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Youtube, Upload } from "lucide-react"
+import { ProcessedVideosList } from "@/components/processed-videos-list"
 
 export default function Home() {
   return (
@@ -12,7 +13,7 @@ export default function Home() {
           <p className="text-muted-foreground text-lg">Import content from YouTube or upload your own materials</p>
         </div>
 
-        <div className="grid md:grid-cols-2 gap-6">
+        <div className="grid md:grid-cols-2 gap-6 mb-12">
           <Link href="/youtube" className="block group">
             <Card className="border-2 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 h-full">
               <CardHeader className="pb-4">
@@ -51,6 +52,8 @@ export default function Home() {
             </Card>
           </Link>
         </div>
+
+        <ProcessedVideosList />
       </div>
     </div>
   )
