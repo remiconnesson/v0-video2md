@@ -17,8 +17,11 @@ export interface WorkflowData {
     title: string
     description: string
     duration: string
-    thumbnail: string
-    markdownContent: string
+    publishedAt: string
+    channelTitle: string
+    thumbnailUrl: string
+    transcriptLength: number
+    markdownUrl?: string
   }
 }
 
@@ -108,8 +111,11 @@ function initializeSampleVideos() {
       title: "Rick Astley - Never Gonna Give You Up (Official Music Video)",
       description: "The official video for Rick Astley's iconic hit song.",
       duration: "3:33",
-      thumbnail: "https://i.ytimg.com/vi/dQw4w9WgXcQ/maxresdefault.jpg",
-      markdownContent: "# Rick Astley - Never Gonna Give You Up\n\n## Overview\nIconic 80s pop song...",
+      publishedAt: "October 25, 2009",
+      channelTitle: "Rick Astley",
+      thumbnailUrl: "https://i.ytimg.com/vi/dQw4w9WgXcQ/maxresdefault.jpg",
+      transcriptLength: 450,
+      markdownUrl: "/downloads/dQw4w9WgXcQ.md",
     },
   }
 
@@ -134,8 +140,11 @@ function initializeSampleVideos() {
       title: "Me at the zoo",
       description: "The first video ever uploaded to YouTube.",
       duration: "0:19",
-      thumbnail: "https://i.ytimg.com/vi/jNQXAC9IVRw/maxresdefault.jpg",
-      markdownContent: "# Me at the zoo\n\n## Historical Context\nThe first YouTube video...",
+      publishedAt: "April 23, 2005",
+      channelTitle: "jawed",
+      thumbnailUrl: "https://i.ytimg.com/vi/jNQXAC9IVRw/maxresdefault.jpg",
+      transcriptLength: 45,
+      markdownUrl: "/downloads/jNQXAC9IVRw.md",
     },
   }
 

@@ -47,12 +47,14 @@ async function simulateWorkflowProcessing(videoId: string) {
     updateWorkflowStep(videoId, i)
   }
 
-  // Complete workflow with mock data
   completeWorkflow(videoId, {
     title: "Sample Video Title - " + videoId,
     description: "This is a mock description for the processed video.",
     duration: "15:30",
-    thumbnail: `/placeholder.svg?height=360&width=640&query=video-thumbnail-${videoId}`,
-    markdownContent: `# Video Transcript\n\nThis is the generated markdown content for video ${videoId}.\n\n## Main Points\n\n- Point 1: Introduction\n- Point 2: Main content\n- Point 3: Conclusion\n\n## Detailed Transcript\n\nLorem ipsum dolor sit amet, consectetur adipiscing elit...`,
+    publishedAt: new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }),
+    channelTitle: "Sample Channel",
+    thumbnailUrl: `https://i.ytimg.com/vi/${videoId}/maxresdefault.jpg`,
+    transcriptLength: 2500,
+    markdownUrl: `/downloads/${videoId}.md`,
   })
 }
