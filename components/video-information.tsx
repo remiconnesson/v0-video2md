@@ -1,42 +1,52 @@
-"use client"
+"use client";
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Youtube, Download, FileText, Clock, Calendar } from "lucide-react"
+import { Calendar, Clock, Download, FileText, Youtube } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 
 interface VideoData {
-  title: string
-  description: string
-  duration: string
-  publishedAt: string
-  channelTitle: string
-  thumbnailUrl: string
-  transcriptLength: number
-  markdownUrl?: string
+  title: string;
+  description: string;
+  duration: string;
+  publishedAt: string;
+  channelTitle: string;
+  thumbnailUrl: string;
+  transcriptLength: number;
+  markdownUrl?: string;
 }
 
 interface VideoInformationProps {
-  videoId: string
-  data: VideoData
+  videoId: string;
+  data: VideoData;
 }
 
 export function VideoInformation({ videoId, data }: VideoInformationProps) {
   const handleDownloadMarkdown = () => {
     // TODO: Implement markdown download
-    console.log("Downloading markdown for video:", videoId)
-  }
+    console.log("Downloading markdown for video:", videoId);
+  };
 
   const handleDownloadTranscript = () => {
     // TODO: Implement transcript download
-    console.log("Downloading transcript for video:", videoId)
-  }
+    console.log("Downloading transcript for video:", videoId);
+  };
 
   return (
     <div className="space-y-6">
       <div className="text-center">
-        <h1 className="text-4xl font-bold tracking-tight mb-3 text-balance">Video Processed</h1>
-        <p className="text-muted-foreground text-lg">Your video content is ready to use</p>
+        <h1 className="text-4xl font-bold tracking-tight mb-3 text-balance">
+          Video Processed
+        </h1>
+        <p className="text-muted-foreground text-lg">
+          Your video content is ready to use
+        </p>
       </div>
 
       <Card className="border-2 shadow-lg">
@@ -47,7 +57,9 @@ export function VideoInformation({ videoId, data }: VideoInformationProps) {
                 <Youtube className="h-5 w-5 text-red-600" />
                 {data.title}
               </CardTitle>
-              <CardDescription className="line-clamp-2">{data.description}</CardDescription>
+              <CardDescription className="line-clamp-2">
+                {data.description}
+              </CardDescription>
             </div>
             <Badge variant="secondary" className="flex-shrink-0">
               Completed
@@ -97,8 +109,12 @@ export function VideoInformation({ videoId, data }: VideoInformationProps) {
             <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
               <FileText className="h-5 w-5 text-muted-foreground flex-shrink-0" />
               <div>
-                <p className="text-xs text-muted-foreground">Transcript Length</p>
-                <p className="text-sm font-medium">{data.transcriptLength.toLocaleString()} words</p>
+                <p className="text-xs text-muted-foreground">
+                  Transcript Length
+                </p>
+                <p className="text-sm font-medium">
+                  {data.transcriptLength.toLocaleString()} words
+                </p>
               </div>
             </div>
           </div>
@@ -111,7 +127,11 @@ export function VideoInformation({ videoId, data }: VideoInformationProps) {
                 <Download className="h-4 w-4" />
                 Download Markdown
               </Button>
-              <Button onClick={handleDownloadTranscript} variant="outline" className="gap-2 h-12 bg-transparent">
+              <Button
+                onClick={handleDownloadTranscript}
+                variant="outline"
+                className="gap-2 h-12 bg-transparent"
+              >
                 <Download className="h-4 w-4" />
                 Download Transcript
               </Button>
@@ -126,5 +146,5 @@ export function VideoInformation({ videoId, data }: VideoInformationProps) {
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }

@@ -1,38 +1,41 @@
 // Mock in-memory database for workflow status
 export interface WorkflowStep {
-  name: string
-  completed: boolean
+  name: string;
+  completed: boolean;
 }
 
 export interface WorkflowData {
-  videoId: string
-  isProcessing: boolean
-  currentStep: number
-  totalSteps: number
-  steps: WorkflowStep[]
-  extractSlides: boolean
-  createdAt: Date
-  completedAt?: Date
+  videoId: string;
+  isProcessing: boolean;
+  currentStep: number;
+  totalSteps: number;
+  steps: WorkflowStep[];
+  extractSlides: boolean;
+  createdAt: Date;
+  completedAt?: Date;
   videoData?: {
-    title: string
-    description: string
-    duration: string
-    publishedAt: string
-    channelTitle: string
-    thumbnailUrl: string
-    transcriptLength: number
-    markdownUrl?: string
-  }
+    title: string;
+    description: string;
+    duration: string;
+    publishedAt: string;
+    channelTitle: string;
+    thumbnailUrl: string;
+    transcriptLength: number;
+    markdownUrl?: string;
+  };
 }
 
 // In-memory storage (replace with real database in production)
-const workflows = new Map<string, WorkflowData>()
+const workflows = new Map<string, WorkflowData>();
 
 export function getWorkflow(videoId: string): WorkflowData | null {
-  return workflows.get(videoId) || null
+  return workflows.get(videoId) || null;
 }
 
-export function createWorkflow(videoId: string, extractSlides: boolean): WorkflowData {
+export function createWorkflow(
+  videoId: string,
+  extractSlides: boolean,
+): WorkflowData {
   const steps: WorkflowStep[] = extractSlides
     ? [
         { name: "Fetching video", completed: false },
@@ -47,7 +50,7 @@ export function createWorkflow(videoId: string, extractSlides: boolean): Workflo
         { name: "Downloading transcript", completed: false },
         { name: "Processing content", completed: false },
         { name: "Generating markdown", completed: false },
-      ]
+      ];
 
   const workflow: WorkflowData = {
     videoId,
@@ -57,38 +60,43 @@ export function createWorkflow(videoId: string, extractSlides: boolean): Workflo
     steps,
     extractSlides,
     createdAt: new Date(),
-  }
+  };
 
-  workflows.set(videoId, workflow)
-  return workflow
+  workflows.set(videoId, workflow);
+  return workflow;
 }
 
 export function updateWorkflowStep(videoId: string, stepIndex: number) {
-  const workflow = workflows.get(videoId)
-  if (!workflow) return
+  const workflow = workflows.get(videoId);
+  if (!workflow) return;
 
-  workflow.steps[stepIndex].completed = true
-  workflow.currentStep = stepIndex + 1
-  workflows.set(videoId, workflow)
+  workflow.steps[stepIndex].completed = true;
+  workflow.currentStep = stepIndex + 1;
+  workflows.set(videoId, workflow);
 }
 
-export function completeWorkflow(videoId: string, videoData: WorkflowData["videoData"]) {
-  const workflow = workflows.get(videoId)
-  if (!workflow) return
+export function completeWorkflow(
+  videoId: string,
+  videoData: WorkflowData["videoData"],
+) {
+  const workflow = workflows.get(videoId);
+  if (!workflow) return;
 
-  workflow.isProcessing = false
-  workflow.completedAt = new Date()
-  workflow.videoData = videoData
-  workflows.set(videoId, workflow)
+  workflow.isProcessing = false;
+  workflow.completedAt = new Date();
+  workflow.videoData = videoData;
+  workflows.set(videoId, workflow);
 }
 
 export function getAllCompletedWorkflows(): WorkflowData[] {
-  const completed = Array.from(workflows.values()).filter((workflow) => !workflow.isProcessing && workflow.videoData)
+  const completed = Array.from(workflows.values()).filter(
+    (workflow) => !workflow.isProcessing && workflow.videoData,
+  );
   return completed.sort((a, b) => {
-    const dateA = a.completedAt?.getTime() || 0
-    const dateB = b.completedAt?.getTime() || 0
-    return dateB - dateA
-  })
+    const dateA = a.completedAt?.getTime() || 0;
+    const dateB = b.completedAt?.getTime() || 0;
+    return dateB - dateA;
+  });
 }
 
 function initializeSampleVideos() {
@@ -117,7 +125,7 @@ function initializeSampleVideos() {
       transcriptLength: 450,
       markdownUrl: "/downloads/dQw4w9WgXcQ.md",
     },
-  }
+  };
 
   // Sample video 2
   const video2: WorkflowData = {
@@ -146,11 +154,11 @@ function initializeSampleVideos() {
       transcriptLength: 45,
       markdownUrl: "/downloads/jNQXAC9IVRw.md",
     },
-  }
+  };
 
-  workflows.set(video1.videoId, video1)
-  workflows.set(video2.videoId, video2)
+  workflows.set(video1.videoId, video1);
+  workflows.set(video2.videoId, video2);
 }
 
 // Initialize sample videos
-initializeSampleVideos()
+initializeSampleVideos();

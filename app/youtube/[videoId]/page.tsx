@@ -1,95 +1,83 @@
-"use client"
+"use client";
 
-import { VideoWorkflowProgress } from "@/components/video-workflow-progress"
-import { VideoInformation } from "@/components/video-information"
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
-import { ArrowLeft } from "lucide-react"
-import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
-
-"use client"
-
-import { VideoWorkflowProgress } from "@/components/video-workflow-progress"
-import { VideoInformation } from "@/components/video-information"
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
-import { ArrowLeft } from "lucide-react"
-import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
-import type { WorkflowStep } from "@/lib/workflow-db"
+import { ArrowLeft } from "lucide-react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { VideoInformation } from "@/components/video-information";
+import { VideoWorkflowProgress } from "@/components/video-workflow-progress";
+import type { WorkflowStep } from "@/lib/workflow-db";
 
 interface WorkflowStatus {
-  isProcessing: boolean
-  currentStep: number
-  totalSteps: number
-  steps: WorkflowStep[]
+  isProcessing: boolean;
+  currentStep: number;
+  totalSteps: number;
+  steps: WorkflowStep[];
   videoData?: {
-    title: string
-    description: string
-    duration: string
-    publishedAt: string
-    channelTitle: string
-    thumbnailUrl: string
-    transcriptLength: number
-    markdownUrl?: string
-  }
+    title: string;
+    description: string;
+    duration: string;
+    publishedAt: string;
+    channelTitle: string;
+    thumbnailUrl: string;
+    transcriptLength: number;
+    markdownUrl?: string;
+  };
 }
 
-export default function VideoPage({
-  params,
-}: {
-  params: { videoId: string }
-}) {
-  const [workflowStatus, setWorkflowStatus] = useState<WorkflowStatus | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const router = useRouter()
+export default function VideoPage({ params }: { params: { videoId: string } }) {
+  const [workflowStatus, setWorkflowStatus] = useState<WorkflowStatus | null>(
+    null,
+  );
+  const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
 
   useEffect(() => {
-    let intervalId: NodeJS.Timeout
-    let hasNavigated = false
+    let intervalId: NodeJS.Timeout;
+    let hasNavigated = false;
 
     const fetchStatus = async () => {
       try {
-        const response = await fetch(`/api/youtube/status/${params.videoId}`)
+        const response = await fetch(`/api/youtube/status/${params.videoId}`);
         if (response.ok) {
-          const data = await response.json()
-          setWorkflowStatus(data)
+          const data = await response.json();
+          setWorkflowStatus(data);
 
           if (!data.isProcessing && data.videoData && !hasNavigated) {
-            hasNavigated = true
-            clearInterval(intervalId)
+            hasNavigated = true;
+            clearInterval(intervalId);
             // Refresh the page to show the VideoInformation component
-            router.refresh()
+            router.refresh();
           }
 
           // Stop polling when processing is complete
           if (!data.isProcessing && intervalId) {
-            clearInterval(intervalId)
+            clearInterval(intervalId);
           }
         } else {
-          setError("Failed to fetch workflow status")
-          clearInterval(intervalId)
+          setError("Failed to fetch workflow status");
+          clearInterval(intervalId);
         }
       } catch (err) {
-        console.error("[v0] Error fetching status:", err)
-        setError("Failed to connect to server")
-        clearInterval(intervalId)
+        console.error("[v0] Error fetching status:", err);
+        setError("Failed to connect to server");
+        clearInterval(intervalId);
       }
-    }
+    };
 
     // Initial fetch
-    fetchStatus()
+    fetchStatus();
 
     // Poll every second
-    intervalId = setInterval(fetchStatus, 1000)
+    intervalId = setInterval(fetchStatus, 1000);
 
     return () => {
       if (intervalId) {
-        clearInterval(intervalId)
+        clearInterval(intervalId);
       }
-    }
-  }, [params.videoId, router])
+    };
+  }, [params.videoId, router]);
 
   if (error) {
     return (
@@ -107,7 +95,7 @@ export default function VideoPage({
           </div>
         </div>
       </div>
-    )
+    );
   }
 
   if (!workflowStatus) {
@@ -119,7 +107,7 @@ export default function VideoPage({
           </div>
         </div>
       </div>
-    )
+    );
   }
 
   return (
@@ -140,7 +128,10 @@ export default function VideoPage({
             steps={workflowStatus.steps}
           />
         ) : workflowStatus.videoData ? (
-          <VideoInformation videoId={params.videoId} data={workflowStatus.videoData} />
+          <VideoInformation
+            videoId={params.videoId}
+            data={workflowStatus.videoData}
+          />
         ) : (
           <VideoWorkflowProgress
             videoId={params.videoId}
@@ -151,5 +142,5 @@ export default function VideoPage({
         )}
       </div>
     </div>
-  )
+  );
 }

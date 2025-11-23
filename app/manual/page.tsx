@@ -1,7 +1,7 @@
-import { ManualMode } from "@/components/manual-mode"
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
-import { ArrowLeft } from "lucide-react"
+import { ArrowLeft } from "lucide-react";
+import Link from "next/link";
+import { ManualMode } from "@/components/manual-mode";
+import { Button } from "@/components/ui/button";
 
 export default function ManualPage() {
   return (
@@ -15,12 +15,16 @@ export default function ManualPage() {
         </Link>
 
         <div className="mb-8 text-center">
-          <h1 className="text-4xl font-bold tracking-tight mb-3 text-balance">Manual Upload</h1>
-          <p className="text-muted-foreground text-lg">Upload your video and transcript files with custom notes</p>
+          <h1 className="text-4xl font-bold tracking-tight mb-3 text-balance">
+            Manual Upload
+          </h1>
+          <p className="text-muted-foreground text-lg">
+            Upload your video and transcript files with custom notes
+          </p>
         </div>
 
         <ManualMode />
       </div>
     </div>
-  )
+  );
 }
