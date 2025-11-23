@@ -39,48 +39,55 @@ export default function VideoPage({
   const router = useRouter();
 
   useEffect(() => {
-    let intervalId: NodeJS.Timeout;
     let hasNavigated = false;
+    let isUnmounted = false;
+    let eventSource: EventSource | null = null;
 
-    const fetchStatus = async () => {
+    type StreamMessage =
+      | { type: "update"; payload: WorkflowStatus }
+      | { type: "error"; payload: { message: string } };
+
+    const handleMessage = (event: MessageEvent<string>) => {
       try {
-        const response = await fetch(`/api/youtube/status/${videoId}`);
-        if (response.ok) {
-          const data = await response.json();
-          setWorkflowStatus(data);
+        const message = JSON.parse(event.data) as StreamMessage;
 
-          if (!data.isProcessing && data.videoData && !hasNavigated) {
-            hasNavigated = true;
-            clearInterval(intervalId);
-            // Refresh the page to show the VideoInformation component
-            router.refresh();
-          }
+        if (message.type === "update") {
+          setError(null);
+          setWorkflowStatus(message.payload);
 
-          // Stop polling when processing is complete
-          if (!data.isProcessing && intervalId) {
-            clearInterval(intervalId);
+          if (!message.payload.isProcessing) {
+            if (message.payload.videoData && !hasNavigated) {
+              hasNavigated = true;
+              router.refresh();
+            }
+
+            eventSource?.close();
           }
-        } else {
-          setError("Failed to fetch workflow status");
-          clearInterval(intervalId);
+        } else if (message.type === "error") {
+          setError(message.payload.message);
+          setWorkflowStatus(null);
+          eventSource?.close();
         }
       } catch (err) {
-        console.error("[v0] Error fetching status:", err);
-        setError("Failed to connect to server");
-        clearInterval(intervalId);
+        console.error("[v0] Error parsing SSE message:", err);
+        setError("Received malformed update from server");
+        eventSource?.close();
       }
     };
 
-    // Initial fetch
-    fetchStatus();
-
-    // Poll every second
-    intervalId = setInterval(fetchStatus, 1000);
+    eventSource = new EventSource(`/api/youtube/progress/${videoId}`);
+    eventSource.onmessage = handleMessage;
+    eventSource.onerror = (error) => {
+      console.error("[v0] SSE error:", error);
+      if (!isUnmounted) {
+        setError("Failed to connect to server");
+      }
+      eventSource?.close();
+    };
 
     return () => {
-      if (intervalId) {
-        clearInterval(intervalId);
-      }
+      isUnmounted = true;
+      eventSource?.close();
     };
   }, [videoId, router]);
 

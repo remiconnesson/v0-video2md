@@ -1,3 +1,5 @@
+import { EventEmitter } from "events";
+
 // Mock in-memory database for workflow status
 export interface WorkflowStep {
   name: string;
@@ -27,6 +29,25 @@ export interface WorkflowData {
 
 // In-memory storage (replace with real database in production)
 const workflows = new Map<string, WorkflowData>();
+const workflowEvents = new EventEmitter();
+
+workflowEvents.setMaxListeners(0);
+
+const emitWorkflowUpdate = (videoId: string) => {
+  const workflow = workflows.get(videoId) || null;
+  workflowEvents.emit(videoId, workflow);
+};
+
+export function subscribeToWorkflow(
+  videoId: string,
+  handler: (workflow: WorkflowData | null) => void,
+): () => void {
+  workflowEvents.on(videoId, handler);
+
+  return () => {
+    workflowEvents.off(videoId, handler);
+  };
+}
 
 export function getWorkflow(videoId: string): WorkflowData | null {
   return workflows.get(videoId) || null;
@@ -63,6 +84,7 @@ export function createWorkflow(
   };
 
   workflows.set(videoId, workflow);
+  emitWorkflowUpdate(videoId);
   return workflow;
 }
 
@@ -73,6 +95,7 @@ export function updateWorkflowStep(videoId: string, stepIndex: number) {
   workflow.steps[stepIndex].completed = true;
   workflow.currentStep = stepIndex + 1;
   workflows.set(videoId, workflow);
+  emitWorkflowUpdate(videoId);
 }
 
 export function completeWorkflow(
@@ -86,6 +109,7 @@ export function completeWorkflow(
   workflow.completedAt = new Date();
   workflow.videoData = videoData;
   workflows.set(videoId, workflow);
+  emitWorkflowUpdate(videoId);
 }
 
 export function getAllCompletedWorkflows(): WorkflowData[] {

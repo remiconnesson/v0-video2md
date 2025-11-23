@@ -1,7 +1,29 @@
 import type { NextRequest } from "next/server";
-import { getWorkflow } from "@/lib/workflow-db";
+import { getWorkflow, subscribeToWorkflow } from "@/lib/workflow-db";
+import type { WorkflowData } from "@/lib/workflow-db";
 
 export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
+
+type WorkflowSnapshot = {
+  isProcessing: boolean;
+  currentStep: number;
+  totalSteps: number;
+  steps: WorkflowData["steps"];
+  videoData: WorkflowData["videoData"];
+};
+
+type WorkflowStreamMessage =
+  | {
+      type: "update";
+      payload: WorkflowSnapshot;
+    }
+  | {
+      type: "error";
+      payload: {
+        message: string;
+      };
+    };
 
 export async function GET(
   request: NextRequest,
@@ -13,49 +35,89 @@ export async function GET(
     return new Response("Video ID is required", { status: 400 });
   }
 
-  // Create a streaming response
   const encoder = new TextEncoder();
 
   const stream = new ReadableStream({
-    async start(controller) {
-      // Poll for updates and stream them to the client
-      const intervalId = setInterval(() => {
-        const workflow = getWorkflow(videoId);
+    start(controller) {
+      let closed = false;
+      let unsubscribe: (() => void) | null = null;
+      let keepAliveId: ReturnType<typeof setInterval> | null = null;
 
-        if (!workflow) {
-          controller.enqueue(
-            encoder.encode(
-              `data: ${JSON.stringify({ error: "Workflow not found" })}\n\n`,
-            ),
-          );
-          clearInterval(intervalId);
+      const sendMessage = (message: WorkflowStreamMessage) => {
+        if (closed) {
+          return;
+        }
+        controller.enqueue(
+          encoder.encode(`data: ${JSON.stringify(message)}\n\n`),
+        );
+      };
+
+      const cleanup = () => {
+        if (closed) {
+          return;
+        }
+        closed = true;
+
+        if (keepAliveId) {
+          clearInterval(keepAliveId);
+          keepAliveId = null;
+        }
+
+        if (unsubscribe) {
+          unsubscribe();
+          unsubscribe = null;
+        }
+
+        try {
           controller.close();
+        } catch {
+          // Stream already closed
+        }
+      };
+
+      const handleUpdate = (workflow: WorkflowData | null) => {
+        if (!workflow) {
+          sendMessage({
+            type: "error",
+            payload: { message: "Workflow not found" },
+          });
+          cleanup();
           return;
         }
 
-        // Send current workflow state
-        const data = {
-          isProcessing: workflow.isProcessing,
-          currentStep: workflow.currentStep,
-          totalSteps: workflow.totalSteps,
-          steps: workflow.steps,
-          videoData: workflow.videoData,
-        };
+        sendMessage({
+          type: "update",
+          payload: {
+            isProcessing: workflow.isProcessing,
+            currentStep: workflow.currentStep,
+            totalSteps: workflow.totalSteps,
+            steps: workflow.steps,
+            videoData: workflow.videoData,
+          },
+        });
 
-        controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
-
-        // If workflow is complete, close the stream
         if (!workflow.isProcessing) {
-          clearInterval(intervalId);
-          controller.close();
+          cleanup();
         }
-      }, 1000); // Poll every second
+      };
 
-      // Cleanup on client disconnect
-      request.signal.addEventListener("abort", () => {
-        clearInterval(intervalId);
-        controller.close();
-      });
+      unsubscribe = subscribeToWorkflow(videoId, handleUpdate);
+
+      keepAliveId = setInterval(() => {
+        if (!closed) {
+          controller.enqueue(encoder.encode(": keep-alive\n\n"));
+        }
+      }, 15000);
+
+      const currentWorkflow = getWorkflow(videoId);
+
+      if (currentWorkflow) {
+        handleUpdate(currentWorkflow);
+      } else {
+        handleUpdate(null);
+      }
+
+      request.signal.addEventListener("abort", cleanup);
     },
   });
 
