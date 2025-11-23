@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -13,6 +14,7 @@ export function YoutubeMode() {
   const [isProcessing, setIsProcessing] = useState(false)
   const [videoId, setVideoId] = useState<string | null>(null)
   const { toast } = useToast()
+  const router = useRouter()
 
   const extractVideoId = (url: string): string | null => {
     const patterns = [
@@ -45,14 +47,17 @@ export function YoutubeMode() {
 
     setIsProcessing(true)
 
-    // Simulate processing
+    // TODO: Replace with actual API call to start processing
+    // Simulate API call
     setTimeout(() => {
       setIsProcessing(false)
       toast({
         title: "Processing started",
         description: "Your video is being processed and will be added to the knowledge base.",
       })
-    }, 2000)
+
+      router.push(`/youtube/${videoId}`)
+    }, 1500)
   }
 
   return (

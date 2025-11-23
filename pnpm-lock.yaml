@@ -11,6 +11,9 @@ importers:
       '@radix-ui/react-label':
         specifier: latest
         version: 2.1.8(@types/react-dom@19.0.0)(@types/react@19.0.0)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
+      '@radix-ui/react-slot':
+        specifier: latest
+        version: 1.2.4(@types/react@19.0.0)(react@19.2.0)
       '@radix-ui/react-tabs':
         specifier: latest
         version: 1.1.13(@types/react-dom@19.0.0)(@types/react@19.0.0)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
