@@ -2,7 +2,9 @@ import type { NextRequest } from "next/server";
 import { getWorkflow, subscribeToWorkflow } from "@/lib/workflow-db";
 import type { WorkflowData } from "@/lib/workflow-db";
 
+// Force dynamic execution so each request gets a fresh SSE stream.
 export const dynamic = "force-dynamic";
+// Target the Node.js runtime because the handler depends on EventEmitter.
 export const runtime = "nodejs";
 
 type WorkflowSnapshot = {
