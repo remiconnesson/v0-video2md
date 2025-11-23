@@ -14,7 +14,6 @@ import { useToast } from "@/hooks/use-toast"
 export function ManualMode() {
   const [videoFile, setVideoFile] = useState<File | null>(null)
   const [transcriptFile, setTranscriptFile] = useState<File | null>(null)
-  const [transcriptText, setTranscriptText] = useState("")
   const [title, setTitle] = useState("")
   const [notes, setNotes] = useState("")
   const [isProcessing, setIsProcessing] = useState(false)
@@ -69,16 +68,10 @@ export function ManualMode() {
     }
 
     setTranscriptFile(file)
-
-    const reader = new FileReader()
-    reader.onload = (e) => {
-      setTranscriptText(e.target?.result as string)
-    }
-    reader.readAsText(file)
   }
 
   const handleProcess = async () => {
-    if (!videoFile && !transcriptText) {
+    if (!videoFile && !transcriptFile) {
       toast({
         title: "Missing content",
         description: "Please provide either a video file or a transcript",
@@ -121,7 +114,6 @@ export function ManualMode() {
       // Reset form
       setVideoFile(null)
       setTranscriptFile(null)
-      setTranscriptText("")
       setTitle("")
       setNotes("")
     }, 2500)
@@ -172,10 +164,10 @@ export function ManualMode() {
           </div>
         </div>
 
-        {/* Transcript Upload/Paste */}
+        {/* Transcript Upload */}
         <div className="space-y-2">
           <Label htmlFor="transcript-upload">Transcript</Label>
-          <div className="border-2 border-dashed rounded-lg p-6 bg-muted/30">
+          <div className="border-2 border-dashed rounded-lg p-8 text-center hover:border-primary/50 transition-colors bg-muted/30">
             <input
               id="transcript-upload"
               type="file"
@@ -185,44 +177,25 @@ export function ManualMode() {
               className="hidden"
             />
             {transcriptFile ? (
-              <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <FileText className="h-6 w-6 text-primary" />
+                  <FileText className="h-8 w-8 text-primary" />
                   <div className="text-left">
                     <p className="font-medium text-sm">{transcriptFile.name}</p>
                     <p className="text-xs text-muted-foreground">{formatFileSize(transcriptFile.size)}</p>
                   </div>
                 </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => {
-                    setTranscriptFile(null)
-                    setTranscriptText("")
-                  }}
-                  disabled={isProcessing}
-                >
+                <Button variant="ghost" size="icon" onClick={() => setTranscriptFile(null)} disabled={isProcessing}>
                   <X className="h-4 w-4" />
                 </Button>
               </div>
             ) : (
-              <label htmlFor="transcript-upload" className="cursor-pointer block text-center mb-4">
-                <FileText className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
-                <p className="text-sm font-medium mb-1">Upload transcript file</p>
+              <label htmlFor="transcript-upload" className="cursor-pointer">
+                <FileText className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
+                <p className="text-sm font-medium mb-1">Click to upload or drag and drop</p>
                 <p className="text-xs text-muted-foreground">TXT or JSON format</p>
               </label>
             )}
-
-            <div className="relative">
-              <Textarea
-                id="transcript-text"
-                placeholder="Or paste your transcript text here..."
-                value={transcriptText}
-                onChange={(e) => setTranscriptText(e.target.value)}
-                disabled={isProcessing}
-                className="min-h-32 resize-none bg-background"
-              />
-            </div>
           </div>
         </div>
 
