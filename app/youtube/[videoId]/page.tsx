@@ -6,6 +6,7 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { ArrowLeft } from "lucide-react"
 import { useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
 
 interface WorkflowStep {
   name: string
@@ -33,9 +34,11 @@ export default function VideoPage({
 }) {
   const [workflowStatus, setWorkflowStatus] = useState<WorkflowStatus | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const router = useRouter()
 
   useEffect(() => {
     let intervalId: NodeJS.Timeout
+    let hasNavigated = false
 
     const fetchStatus = async () => {
       try {
@@ -43,6 +46,13 @@ export default function VideoPage({
         if (response.ok) {
           const data = await response.json()
           setWorkflowStatus(data)
+
+          if (!data.isProcessing && data.videoData && !hasNavigated) {
+            hasNavigated = true
+            clearInterval(intervalId)
+            // Refresh the page to show the VideoInformation component
+            router.refresh()
+          }
 
           // Stop polling when processing is complete
           if (!data.isProcessing && intervalId) {
@@ -70,7 +80,7 @@ export default function VideoPage({
         clearInterval(intervalId)
       }
     }
-  }, [params.videoId])
+  }, [params.videoId, router])
 
   if (error) {
     return (

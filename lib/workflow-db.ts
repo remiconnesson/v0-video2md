@@ -78,3 +78,70 @@ export function completeWorkflow(videoId: string, videoData: WorkflowData["video
   workflow.videoData = videoData
   workflows.set(videoId, workflow)
 }
+
+export function getAllCompletedWorkflows(): WorkflowData[] {
+  const completed = Array.from(workflows.values()).filter((workflow) => !workflow.isProcessing && workflow.videoData)
+  return completed.sort((a, b) => {
+    const dateA = a.completedAt?.getTime() || 0
+    const dateB = b.completedAt?.getTime() || 0
+    return dateB - dateA
+  })
+}
+
+function initializeSampleVideos() {
+  // Sample video 1
+  const video1: WorkflowData = {
+    videoId: "dQw4w9WgXcQ",
+    isProcessing: false,
+    currentStep: 4,
+    totalSteps: 4,
+    steps: [
+      { name: "Fetching video metadata", completed: true },
+      { name: "Downloading transcript", completed: true },
+      { name: "Processing content", completed: true },
+      { name: "Generating markdown", completed: true },
+    ],
+    extractSlides: false,
+    createdAt: new Date(Date.now() - 86400000), // 1 day ago
+    completedAt: new Date(Date.now() - 86340000),
+    videoData: {
+      title: "Rick Astley - Never Gonna Give You Up (Official Music Video)",
+      description: "The official video for Rick Astley's iconic hit song.",
+      duration: "3:33",
+      thumbnail: "https://i.ytimg.com/vi/dQw4w9WgXcQ/maxresdefault.jpg",
+      markdownContent: "# Rick Astley - Never Gonna Give You Up\n\n## Overview\nIconic 80s pop song...",
+    },
+  }
+
+  // Sample video 2
+  const video2: WorkflowData = {
+    videoId: "jNQXAC9IVRw",
+    isProcessing: false,
+    currentStep: 6,
+    totalSteps: 6,
+    steps: [
+      { name: "Fetching video", completed: true },
+      { name: "Downloading Transcript", completed: true },
+      { name: "Downloading video", completed: true },
+      { name: "Extract slides", completed: true },
+      { name: "Processing Content", completed: true },
+      { name: "Generating markdown", completed: true },
+    ],
+    extractSlides: true,
+    createdAt: new Date(Date.now() - 172800000), // 2 days ago
+    completedAt: new Date(Date.now() - 172740000),
+    videoData: {
+      title: "Me at the zoo",
+      description: "The first video ever uploaded to YouTube.",
+      duration: "0:19",
+      thumbnail: "https://i.ytimg.com/vi/jNQXAC9IVRw/maxresdefault.jpg",
+      markdownContent: "# Me at the zoo\n\n## Historical Context\nThe first YouTube video...",
+    },
+  }
+
+  workflows.set(video1.videoId, video1)
+  workflows.set(video2.videoId, video2)
+}
+
+// Initialize sample videos
+initializeSampleVideos()
