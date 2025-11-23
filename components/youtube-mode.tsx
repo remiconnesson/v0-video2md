@@ -6,13 +6,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
-import { Youtube, Loader2 } from "lucide-react"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Youtube, Loader2, Info } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 
 export function YoutubeMode() {
   const [url, setUrl] = useState("")
   const [isProcessing, setIsProcessing] = useState(false)
   const [videoId, setVideoId] = useState<string | null>(null)
+  const [extractSlides, setExtractSlides] = useState(false)
   const { toast } = useToast()
   const router = useRouter()
 
@@ -53,7 +55,9 @@ export function YoutubeMode() {
       setIsProcessing(false)
       toast({
         title: "Processing started",
-        description: "Your video is being processed and will be added to the knowledge base.",
+        description: extractSlides
+          ? "Your video is being processed with slide extraction. This will take longer."
+          : "Your video is being processed and will be added to the knowledge base.",
       })
 
       router.push(`/youtube/${videoId}`)
@@ -84,19 +88,23 @@ export function YoutubeMode() {
           <p className="text-sm text-muted-foreground">Supports standard YouTube URLs and youtu.be short links</p>
         </div>
 
-        {videoId && (
-          <div className="rounded-lg overflow-hidden border-2 bg-muted/30">
-            <div className="aspect-video w-full">
-              <iframe
-                src={`https://www.youtube.com/embed/${videoId}`}
-                title="YouTube video preview"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-                className="w-full h-full"
-              />
-            </div>
+        <div className="flex items-start space-x-3 rounded-lg border p-4 bg-muted/30">
+          <Checkbox
+            id="extract-slides"
+            checked={extractSlides}
+            onCheckedChange={(checked) => setExtractSlides(checked as boolean)}
+            disabled={isProcessing}
+          />
+          <div className="flex-1 space-y-1">
+            <Label htmlFor="extract-slides" className="text-sm font-medium leading-none cursor-pointer">
+              Extract slides from video
+            </Label>
+            <p className="text-sm text-muted-foreground flex items-start gap-1.5">
+              <Info className="h-4 w-4 mt-0.5 flex-shrink-0" />
+              <span>Requires downloading the video. Slide extraction will take significantly longer to process.</span>
+            </p>
           </div>
-        )}
+        </div>
 
         <Button
           onClick={handleProcess}
@@ -113,6 +121,20 @@ export function YoutubeMode() {
             "Process Video"
           )}
         </Button>
+
+        {videoId && (
+          <div className="rounded-lg overflow-hidden border-2 bg-muted/30">
+            <div className="aspect-video w-full">
+              <iframe
+                src={`https://www.youtube.com/embed/${videoId}`}
+                title="YouTube video preview"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+                className="w-full h-full"
+              />
+            </div>
+          </div>
+        )}
       </CardContent>
     </Card>
   )

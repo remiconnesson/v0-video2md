@@ -54,19 +54,6 @@ export function VideoWorkflowProgress({ videoId, currentStep, totalSteps, steps 
             <Progress value={progress} className="h-3" />
           </div>
 
-          {/* Video Preview */}
-          <div className="rounded-lg overflow-hidden border-2 bg-muted/30">
-            <div className="aspect-video w-full">
-              <iframe
-                src={`https://www.youtube.com/embed/${videoId}`}
-                title="YouTube video preview"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-                className="w-full h-full"
-              />
-            </div>
-          </div>
-
           {/* Step-by-Step Progress */}
           <div className="space-y-1">
             <h3 className="font-semibold mb-3">Processing Steps</h3>
@@ -101,6 +88,19 @@ export function VideoWorkflowProgress({ videoId, currentStep, totalSteps, steps 
                   </div>
                 )
               })}
+            </div>
+          </div>
+
+          {/* Video Preview */}
+          <div className="rounded-lg overflow-hidden border-2 bg-muted/30">
+            <div className="aspect-video w-full">
+              <iframe
+                src={`https://www.youtube.com/embed/${videoId}`}
+                title="YouTube video preview"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+                className="w-full h-full"
+              />
             </div>
           </div>
 
