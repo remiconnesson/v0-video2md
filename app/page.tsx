@@ -1,42 +1,56 @@
-"use client"
-
-import { useState } from "react"
-import { YoutubeMode } from "@/components/youtube-mode"
-import { ManualMode } from "@/components/manual-mode"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import Link from "next/link"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Youtube, Upload } from "lucide-react"
 
 export default function Home() {
-  const [activeTab, setActiveTab] = useState("youtube")
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
       <div className="container mx-auto px-4 py-12 max-w-4xl">
-        <div className="mb-8 text-center">
+        <div className="mb-12 text-center">
           <h1 className="text-4xl font-bold tracking-tight mb-3 text-balance">Knowledge Base Ingestion</h1>
           <p className="text-muted-foreground text-lg">Import content from YouTube or upload your own materials</p>
         </div>
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-2 mb-8 h-12">
-            <TabsTrigger value="youtube" className="gap-2 text-base">
-              <Youtube className="h-4 w-4" />
-              YouTube Mode
-            </TabsTrigger>
-            <TabsTrigger value="manual" className="gap-2 text-base">
-              <Upload className="h-4 w-4" />
-              Manual Upload
-            </TabsTrigger>
-          </TabsList>
+        <div className="grid md:grid-cols-2 gap-6">
+          <Link href="/youtube" className="block group">
+            <Card className="border-2 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 h-full">
+              <CardHeader className="pb-4">
+                <div className="mb-4 p-4 rounded-full bg-gradient-to-br from-red-500/10 to-red-600/10 w-fit">
+                  <Youtube className="h-8 w-8 text-red-600" />
+                </div>
+                <CardTitle className="text-2xl">YouTube Mode</CardTitle>
+                <CardDescription className="text-base">
+                  Extract and process content directly from YouTube videos
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button variant="outline" className="w-full h-11 text-base group-hover:bg-accent bg-transparent">
+                  Get Started
+                </Button>
+              </CardContent>
+            </Card>
+          </Link>
 
-          <TabsContent value="youtube" className="mt-0">
-            <YoutubeMode />
-          </TabsContent>
-
-          <TabsContent value="manual" className="mt-0">
-            <ManualMode />
-          </TabsContent>
-        </Tabs>
+          <Link href="/manual" className="block group">
+            <Card className="border-2 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 h-full">
+              <CardHeader className="pb-4">
+                <div className="mb-4 p-4 rounded-full bg-gradient-to-br from-blue-500/10 to-blue-600/10 w-fit">
+                  <Upload className="h-8 w-8 text-blue-600" />
+                </div>
+                <CardTitle className="text-2xl">Manual Upload</CardTitle>
+                <CardDescription className="text-base">
+                  Upload your own video and transcript files with custom notes
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button variant="outline" className="w-full h-11 text-base group-hover:bg-accent bg-transparent">
+                  Get Started
+                </Button>
+              </CardContent>
+            </Card>
+          </Link>
+        </div>
       </div>
     </div>
   )
