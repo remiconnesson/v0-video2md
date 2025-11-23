@@ -3,7 +3,7 @@
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { use, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { VideoInformation } from "@/components/video-information";
 import { VideoWorkflowProgress } from "@/components/video-workflow-progress";
@@ -26,7 +26,12 @@ interface WorkflowStatus {
   };
 }
 
-export default function VideoPage({ params }: { params: { videoId: string } }) {
+export default function VideoPage({
+  params,
+}: {
+  params: Promise<{ videoId: string }>;
+}) {
+  const { videoId } = use(params);
   const [workflowStatus, setWorkflowStatus] = useState<WorkflowStatus | null>(
     null,
   );
@@ -39,7 +44,7 @@ export default function VideoPage({ params }: { params: { videoId: string } }) {
 
     const fetchStatus = async () => {
       try {
-        const response = await fetch(`/api/youtube/status/${params.videoId}`);
+        const response = await fetch(`/api/youtube/status/${videoId}`);
         if (response.ok) {
           const data = await response.json();
           setWorkflowStatus(data);
@@ -77,7 +82,7 @@ export default function VideoPage({ params }: { params: { videoId: string } }) {
         clearInterval(intervalId);
       }
     };
-  }, [params.videoId, router]);
+  }, [videoId, router]);
 
   if (error) {
     return (
@@ -122,19 +127,16 @@ export default function VideoPage({ params }: { params: { videoId: string } }) {
 
         {workflowStatus.isProcessing ? (
           <VideoWorkflowProgress
-            videoId={params.videoId}
+            videoId={videoId}
             currentStep={workflowStatus.currentStep}
             totalSteps={workflowStatus.totalSteps}
             steps={workflowStatus.steps}
           />
         ) : workflowStatus.videoData ? (
-          <VideoInformation
-            videoId={params.videoId}
-            data={workflowStatus.videoData}
-          />
+          <VideoInformation videoId={videoId} data={workflowStatus.videoData} />
         ) : (
           <VideoWorkflowProgress
-            videoId={params.videoId}
+            videoId={videoId}
             currentStep={0}
             totalSteps={workflowStatus.totalSteps}
             steps={workflowStatus.steps}
