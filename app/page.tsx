@@ -1,16 +1,26 @@
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Youtube, Upload } from "lucide-react"
-import { ProcessedVideosList } from "@/components/processed-videos-list"
+import { Upload, Youtube } from "lucide-react";
+import Link from "next/link";
+import { ProcessedVideosList } from "@/components/processed-videos-list";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 
 export default function Home() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
       <div className="container mx-auto px-4 py-12 max-w-4xl">
         <div className="mb-12 text-center">
-          <h1 className="text-4xl font-bold tracking-tight mb-3 text-balance">Knowledge Base Ingestion</h1>
-          <p className="text-muted-foreground text-lg">Import content from YouTube or upload your own materials</p>
+          <h1 className="text-4xl font-bold tracking-tight mb-3 text-balance">
+            Knowledge Base Ingestion
+          </h1>
+          <p className="text-muted-foreground text-lg">
+            Import content from YouTube or upload your own materials
+          </p>
         </div>
 
         <div className="grid md:grid-cols-2 gap-6 mb-12">
@@ -26,7 +36,10 @@ export default function Home() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <Button variant="outline" className="w-full h-11 text-base group-hover:bg-accent bg-transparent">
+                <Button
+                  variant="outline"
+                  className="w-full h-11 text-base group-hover:bg-accent bg-transparent"
+                >
                   Get Started
                 </Button>
               </CardContent>
@@ -45,7 +58,10 @@ export default function Home() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <Button variant="outline" className="w-full h-11 text-base group-hover:bg-accent bg-transparent">
+                <Button
+                  variant="outline"
+                  className="w-full h-11 text-base group-hover:bg-accent bg-transparent"
+                >
                   Get Started
                 </Button>
               </CardContent>
@@ -56,5 +72,5 @@ export default function Home() {
         <ProcessedVideosList />
       </div>
     </div>
-  )
+  );
 }

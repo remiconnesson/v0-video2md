@@ -1,7 +1,7 @@
-import { YoutubeMode } from "@/components/youtube-mode"
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
-import { ArrowLeft } from "lucide-react"
+import { ArrowLeft } from "lucide-react";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { YoutubeMode } from "@/components/youtube-mode";
 
 export default function YouTubePage() {
   return (
@@ -15,12 +15,16 @@ export default function YouTubePage() {
         </Link>
 
         <div className="mb-8 text-center">
-          <h1 className="text-4xl font-bold tracking-tight mb-3 text-balance">YouTube Mode</h1>
-          <p className="text-muted-foreground text-lg">Extract and process content from YouTube videos</p>
+          <h1 className="text-4xl font-bold tracking-tight mb-3 text-balance">
+            YouTube Mode
+          </h1>
+          <p className="text-muted-foreground text-lg">
+            Extract and process content from YouTube videos
+          </p>
         </div>
 
         <YoutubeMode />
       </div>
     </div>
-  )
+  );
 }
