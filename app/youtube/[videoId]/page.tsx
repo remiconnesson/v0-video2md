@@ -35,56 +35,42 @@ export default function VideoPage({
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    const eventSource = new EventSource(`/api/youtube/progress/${params.videoId}`)
+    let intervalId: NodeJS.Timeout
 
-    eventSource.onmessage = (event) => {
+    const fetchStatus = async () => {
       try {
-        const data = JSON.parse(event.data)
+        const response = await fetch(`/api/youtube/status/${params.videoId}`)
+        if (response.ok) {
+          const data = await response.json()
+          setWorkflowStatus(data)
 
-        if (data.error) {
-          setError(data.error)
-          eventSource.close()
-          return
-        }
-
-        setWorkflowStatus(data)
-
-        // Close connection when processing is complete
-        if (!data.isProcessing) {
-          eventSource.close()
+          // Stop polling when processing is complete
+          if (!data.isProcessing && intervalId) {
+            clearInterval(intervalId)
+          }
+        } else {
+          setError("Failed to fetch workflow status")
+          clearInterval(intervalId)
         }
       } catch (err) {
-        console.error("[v0] Error parsing SSE data:", err)
+        console.error("[v0] Error fetching status:", err)
+        setError("Failed to connect to server")
+        clearInterval(intervalId)
       }
     }
 
-    eventSource.onerror = () => {
-      console.error("[v0] SSE connection error")
-      eventSource.close()
-
-      // Fallback to polling if SSE fails
-      fetchStatus()
-    }
-
-    // Fallback: Initial fetch in case SSE hasn't started yet
+    // Initial fetch
     fetchStatus()
 
+    // Poll every second
+    intervalId = setInterval(fetchStatus, 1000)
+
     return () => {
-      eventSource.close()
+      if (intervalId) {
+        clearInterval(intervalId)
+      }
     }
   }, [params.videoId])
-
-  const fetchStatus = async () => {
-    try {
-      const response = await fetch(`/api/youtube/status/${params.videoId}`)
-      if (response.ok) {
-        const data = await response.json()
-        setWorkflowStatus(data)
-      }
-    } catch (err) {
-      console.error("[v0] Error fetching status:", err)
-    }
-  }
 
   if (error) {
     return (
