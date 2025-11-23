@@ -49,10 +49,24 @@ export function YoutubeMode() {
 
     setIsProcessing(true)
 
-    // TODO: Replace with actual API call to start processing
-    // Simulate API call
-    setTimeout(() => {
-      setIsProcessing(false)
+    try {
+      const response = await fetch("/api/youtube/process", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          videoId,
+          extractSlides,
+        }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to process video")
+      }
+
       toast({
         title: "Processing started",
         description: extractSlides
@@ -61,7 +75,15 @@ export function YoutubeMode() {
       })
 
       router.push(`/youtube/${videoId}`)
-    }, 1500)
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to process video",
+        variant: "destructive",
+      })
+    } finally {
+      setIsProcessing(false)
+    }
   }
 
   return (

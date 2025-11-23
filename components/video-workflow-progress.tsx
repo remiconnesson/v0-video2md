@@ -45,6 +45,19 @@ export function VideoWorkflowProgress({ videoId, currentStep, totalSteps, steps 
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
+          {/* Video Preview */}
+          <div className="rounded-lg overflow-hidden border-2 bg-muted/30">
+            <div className="aspect-video w-full">
+              <iframe
+                src={`https://www.youtube.com/embed/${videoId}`}
+                title="YouTube video preview"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+                className="w-full h-full"
+              />
+            </div>
+          </div>
+
           {/* Overall Progress */}
           <div className="space-y-2">
             <div className="flex items-center justify-between text-sm">
@@ -88,19 +101,6 @@ export function VideoWorkflowProgress({ videoId, currentStep, totalSteps, steps 
                   </div>
                 )
               })}
-            </div>
-          </div>
-
-          {/* Video Preview */}
-          <div className="rounded-lg overflow-hidden border-2 bg-muted/30">
-            <div className="aspect-video w-full">
-              <iframe
-                src={`https://www.youtube.com/embed/${videoId}`}
-                title="YouTube video preview"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-                className="w-full h-full"
-              />
             </div>
           </div>
 

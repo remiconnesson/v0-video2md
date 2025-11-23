@@ -1,31 +1,121 @@
+"use client"
+
 import { VideoWorkflowProgress } from "@/components/video-workflow-progress"
 import { VideoInformation } from "@/components/video-information"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { ArrowLeft } from "lucide-react"
+import { useEffect, useState } from "react"
 
-export default async function VideoPage({
+interface WorkflowStep {
+  name: string
+  completed: boolean
+}
+
+interface WorkflowStatus {
+  isProcessing: boolean
+  currentStep: number
+  totalSteps: number
+  steps: WorkflowStep[]
+  videoData?: {
+    title: string
+    description: string
+    duration: string
+    thumbnail: string
+    markdownContent: string
+  }
+}
+
+export default function VideoPage({
   params,
 }: {
-  params: Promise<{ videoId: string }>
+  params: { videoId: string }
 }) {
-  const { videoId } = await params
+  const [workflowStatus, setWorkflowStatus] = useState<WorkflowStatus | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
-  // TODO: Replace with actual API call to check workflow status
-  const mockWorkflowStatus = {
-    isProcessing: true,
-    currentStep: 2,
-    totalSteps: 4,
-    steps: [
-      { name: "Fetching video metadata", completed: true },
-      { name: "Downloading transcript", completed: true },
-      { name: "Processing content", completed: false },
-      { name: "Generating markdown", completed: false },
-    ],
+  useEffect(() => {
+    const eventSource = new EventSource(`/api/youtube/progress/${params.videoId}`)
+
+    eventSource.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data)
+
+        if (data.error) {
+          setError(data.error)
+          eventSource.close()
+          return
+        }
+
+        setWorkflowStatus(data)
+
+        // Close connection when processing is complete
+        if (!data.isProcessing) {
+          eventSource.close()
+        }
+      } catch (err) {
+        console.error("[v0] Error parsing SSE data:", err)
+      }
+    }
+
+    eventSource.onerror = () => {
+      console.error("[v0] SSE connection error")
+      eventSource.close()
+
+      // Fallback to polling if SSE fails
+      fetchStatus()
+    }
+
+    // Fallback: Initial fetch in case SSE hasn't started yet
+    fetchStatus()
+
+    return () => {
+      eventSource.close()
+    }
+  }, [params.videoId])
+
+  const fetchStatus = async () => {
+    try {
+      const response = await fetch(`/api/youtube/status/${params.videoId}`)
+      if (response.ok) {
+        const data = await response.json()
+        setWorkflowStatus(data)
+      }
+    } catch (err) {
+      console.error("[v0] Error fetching status:", err)
+    }
   }
 
-  // TODO: Replace with actual API call to fetch video data
-  const mockVideoData = null // Set to null when processing, or object when ready
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
+        <div className="container mx-auto px-4 py-12 max-w-4xl">
+          <Link href="/youtube">
+            <Button variant="ghost" className="mb-6 gap-2">
+              <ArrowLeft className="h-4 w-4" />
+              Back to YouTube Mode
+            </Button>
+          </Link>
+          <div className="text-center space-y-4">
+            <h1 className="text-2xl font-bold text-destructive">Error</h1>
+            <p className="text-muted-foreground">{error}</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (!workflowStatus) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
+        <div className="container mx-auto px-4 py-12 max-w-4xl">
+          <div className="text-center">
+            <p className="text-muted-foreground">Loading workflow status...</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
@@ -37,21 +127,21 @@ export default async function VideoPage({
           </Button>
         </Link>
 
-        {mockWorkflowStatus.isProcessing ? (
+        {workflowStatus.isProcessing ? (
           <VideoWorkflowProgress
-            videoId={videoId}
-            currentStep={mockWorkflowStatus.currentStep}
-            totalSteps={mockWorkflowStatus.totalSteps}
-            steps={mockWorkflowStatus.steps}
+            videoId={params.videoId}
+            currentStep={workflowStatus.currentStep}
+            totalSteps={workflowStatus.totalSteps}
+            steps={workflowStatus.steps}
           />
-        ) : mockVideoData ? (
-          <VideoInformation videoId={videoId} data={mockVideoData} />
+        ) : workflowStatus.videoData ? (
+          <VideoInformation videoId={params.videoId} data={workflowStatus.videoData} />
         ) : (
           <VideoWorkflowProgress
-            videoId={videoId}
+            videoId={params.videoId}
             currentStep={0}
-            totalSteps={mockWorkflowStatus.totalSteps}
-            steps={mockWorkflowStatus.steps}
+            totalSteps={workflowStatus.totalSteps}
+            steps={workflowStatus.steps}
           />
         )}
       </div>
