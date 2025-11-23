@@ -22,8 +22,11 @@ interface WorkflowStatus {
     title: string
     description: string
     duration: string
-    thumbnail: string
-    markdownContent: string
+    publishedAt: string
+    channelTitle: string
+    thumbnailUrl: string
+    transcriptLength: number
+    markdownUrl?: string
   }
 }
 
