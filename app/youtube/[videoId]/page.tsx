@@ -8,10 +8,18 @@ import { ArrowLeft } from "lucide-react"
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 
-interface WorkflowStep {
-  name: string
-  completed: boolean
-}
+"use client"
+
+import { VideoWorkflowProgress } from "@/components/video-workflow-progress"
+import { VideoInformation } from "@/components/video-information"
+import Link from "next/link"
+import { Button } from "@/components/ui/button"
+import { ArrowLeft } from "lucide-react"
+import { useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
+import type { WorkflowStep } from "@/lib/workflow-db"
+
+interface WorkflowStatus {
 
 interface WorkflowStatus {
   isProcessing: boolean
