@@ -1,6 +1,9 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+/* Added streamdown source for markdown styling */
+@source "../node_modules/streamdown/dist/index.js";
+
 @custom-variant dark (&:is(.dark *));
 
 :root {
