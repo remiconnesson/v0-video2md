@@ -1,6 +1,8 @@
+import { StackProvider, StackTheme } from "@stackframe/stack";
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import type React from "react";
+import { stackClientApp } from "../stack/client";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 
@@ -31,8 +33,12 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        {children}
-        <Toaster />
+        <StackProvider app={stackClientApp}>
+          <StackTheme>
+            {children}
+            <Toaster />
+          </StackTheme>
+        </StackProvider>
       </body>
     </html>
   );
