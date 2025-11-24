@@ -1,95 +1,91 @@
-"use client";
+"use client"
 
-import { ArrowLeft } from "lucide-react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { use, useEffect, useState } from "react";
-import { Button } from "@/components/ui/button";
-import { VideoInformation } from "@/components/video-information";
-import { VideoWorkflowProgress } from "@/components/video-workflow-progress";
-import type { WorkflowStep } from "@/lib/workflow-db";
+import { ArrowLeft } from "lucide-react"
+import Link from "next/link"
+import { useRouter } from "next/navigation"
+import { useEffect, useState } from "react"
+import { Button } from "@/components/ui/button"
+import { VideoInformation } from "@/components/video-information"
+import { VideoWorkflowProgress } from "@/components/video-workflow-progress"
+import type { WorkflowStep } from "@/lib/workflow-db"
 
 interface WorkflowStatus {
-  isProcessing: boolean;
-  currentStep: number;
-  totalSteps: number;
-  steps: WorkflowStep[];
+  isProcessing: boolean
+  currentStep: number
+  totalSteps: number
+  steps: WorkflowStep[]
   videoData?: {
-    title: string;
-    description: string;
-    duration: string;
-    publishedAt: string;
-    channelTitle: string;
-    thumbnailUrl: string;
-    transcriptLength: number;
-    markdownUrl?: string;
-  };
+    title: string
+    description: string
+    duration: string
+    publishedAt: string
+    channelTitle: string
+    thumbnailUrl: string
+    transcriptLength: number
+    markdownUrl?: string
+  }
 }
 
 export default function VideoPage({
   params,
 }: {
-  params: Promise<{ videoId: string }>;
+  params: { videoId: string }
 }) {
-  const { videoId } = use(params);
-  const [workflowStatus, setWorkflowStatus] = useState<WorkflowStatus | null>(
-    null,
-  );
-  const [error, setError] = useState<string | null>(null);
-  const router = useRouter();
+  const { videoId } = params
+  const [workflowStatus, setWorkflowStatus] = useState<WorkflowStatus | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const router = useRouter()
 
   useEffect(() => {
-    let hasNavigated = false;
-    let isUnmounted = false;
-    let eventSource: EventSource | null = null;
+    let hasNavigated = false
+    let isUnmounted = false
+    let eventSource: EventSource | null = null
 
-    type StreamMessage =
-      | { type: "update"; payload: WorkflowStatus }
-      | { type: "error"; payload: { message: string } };
+    type StreamMessage = { type: "update"; payload: WorkflowStatus } | { type: "error"; payload: { message: string } }
 
     const handleMessage = (event: MessageEvent<string>) => {
       try {
-        const message = JSON.parse(event.data) as StreamMessage;
+        const message = JSON.parse(event.data) as StreamMessage
 
         if (message.type === "update") {
-          setError(null);
-          setWorkflowStatus(message.payload);
+          setError(null)
+          setWorkflowStatus(message.payload)
 
           if (!message.payload.isProcessing) {
             if (message.payload.videoData && !hasNavigated) {
-              hasNavigated = true;
-              router.refresh();
+              hasNavigated = true
+              router.refresh()
             }
 
-            eventSource?.close();
+            eventSource?.close()
           }
         } else if (message.type === "error") {
-          setError(message.payload.message);
-          setWorkflowStatus(null);
-          eventSource?.close();
+          setError(message.payload.message)
+          setWorkflowStatus(null)
+          eventSource?.close()
         }
       } catch (err) {
-        console.error("[v0] Error parsing SSE message:", err);
-        setError("Received malformed update from server");
-        eventSource?.close();
+        console.error("[v0] Error parsing SSE message:", err)
+        setError("Received malformed update from server")
+        eventSource?.close()
       }
-    };
+    }
 
-    eventSource = new EventSource(`/api/youtube/progress/${videoId}`);
-    eventSource.onmessage = handleMessage;
+    eventSource = new EventSource(`/api/youtube/progress/${videoId}`)
+    eventSource.onmessage = handleMessage
     eventSource.onerror = (error) => {
-      console.error("[v0] SSE error:", error);
+      console.error("[v0] SSE error:", error)
       if (!isUnmounted) {
-        setError("Failed to connect to server");
+        setError("Failed to connect to server")
       }
-      eventSource?.close();
-    };
+      eventSource?.close()
+    }
 
     return () => {
-      isUnmounted = true;
-      eventSource?.close();
-    };
-  }, [videoId, router]);
+      isUnmounted = true
+      eventSource?.close()
+    }
+  }, [videoId, router])
 
   if (error) {
     return (
@@ -107,7 +103,7 @@ export default function VideoPage({
           </div>
         </div>
       </div>
-    );
+    )
   }
 
   if (!workflowStatus) {
@@ -119,7 +115,7 @@ export default function VideoPage({
           </div>
         </div>
       </div>
-    );
+    )
   }
 
   return (
@@ -151,5 +147,5 @@ export default function VideoPage({
         )}
       </div>
     </div>
-  );
+  )
 }
