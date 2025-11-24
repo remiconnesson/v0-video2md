@@ -188,7 +188,7 @@ For more information, visit the original video on YouTube or download the full t
         </CardHeader>
         <CardContent>
           <div className="prose prose-sm dark:prose-invert max-w-none">
-            <Streamdown>{mockMarkdownSummary}</Streamdown>
+            <Streamdown parseIncompleteMarkdown={false}>{mockMarkdownSummary}</Streamdown>
           </div>
         </CardContent>
       </Card>
