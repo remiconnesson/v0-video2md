@@ -67,6 +67,7 @@
     "server-only": "latest",
     "sql.js": "latest",
     "sqlite3": "latest",
+    "streamdown": "latest",
     "tailwind-merge": "^2.5.5",
     "tailwindcss-animate": "^1.0.7",
     "vite": "latest",
