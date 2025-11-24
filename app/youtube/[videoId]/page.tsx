@@ -40,10 +40,13 @@ export default function VideoPage({
     let hasNavigated = false
     let isUnmounted = false
     let eventSource: EventSource | null = null
+    let hasReceivedMessage = false
 
     type StreamMessage = { type: "update"; payload: WorkflowStatus } | { type: "error"; payload: { message: string } }
 
     const handleMessage = (event: MessageEvent<string>) => {
+      hasReceivedMessage = true
+
       try {
         const message = JSON.parse(event.data) as StreamMessage
 
@@ -74,9 +77,8 @@ export default function VideoPage({
     eventSource = new EventSource(`/api/youtube/progress/${videoId}`)
     eventSource.onmessage = handleMessage
     eventSource.onerror = (error) => {
-      console.error("[v0] SSE error:", error)
-      if (!isUnmounted) {
-        setError("Failed to connect to server")
+      if (!hasReceivedMessage && !isUnmounted) {
+        console.log("[v0] Connection closed or workflow not found")
       }
       eventSource?.close()
     }
