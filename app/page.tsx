@@ -1,29 +1,19 @@
-import { Upload, Youtube } from "lucide-react";
-import Link from "next/link";
-import { ProcessedVideosList } from "@/components/processed-videos-list";
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Youtube } from "lucide-react"
+import Link from "next/link"
+import { ProcessedVideosList } from "@/components/processed-videos-list"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 
 export default function Home() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
       <div className="container mx-auto px-4 py-12 max-w-4xl">
         <div className="mb-12 text-center">
-          <h1 className="text-4xl font-bold tracking-tight mb-3 text-balance">
-            Knowledge Base Ingestion
-          </h1>
-          <p className="text-muted-foreground text-lg">
-            Import content from YouTube or upload your own materials
-          </p>
+          <h1 className="text-4xl font-bold tracking-tight mb-3 text-balance">Knowledge Base Ingestion</h1>
+          <p className="text-muted-foreground text-lg">Import content from YouTube videos</p>
         </div>
 
-        <div className="grid md:grid-cols-2 gap-6 mb-12">
+        <div className="mb-12 max-w-md mx-auto">
           <Link href="/youtube" className="block group">
             <Card className="border-2 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 h-full">
               <CardHeader className="pb-4">
@@ -36,32 +26,7 @@ export default function Home() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <Button
-                  variant="outline"
-                  className="w-full h-11 text-base group-hover:bg-accent bg-transparent"
-                >
-                  Get Started
-                </Button>
-              </CardContent>
-            </Card>
-          </Link>
-
-          <Link href="/manual" className="block group">
-            <Card className="border-2 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 h-full">
-              <CardHeader className="pb-4">
-                <div className="mb-4 p-4 rounded-full bg-gradient-to-br from-blue-500/10 to-blue-600/10 w-fit">
-                  <Upload className="h-8 w-8 text-blue-600" />
-                </div>
-                <CardTitle className="text-2xl">Manual Upload</CardTitle>
-                <CardDescription className="text-base">
-                  Upload your own video and transcript files with custom notes
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Button
-                  variant="outline"
-                  className="w-full h-11 text-base group-hover:bg-accent bg-transparent"
-                >
+                <Button variant="outline" className="w-full h-11 text-base group-hover:bg-accent bg-transparent">
                   Get Started
                 </Button>
               </CardContent>
@@ -72,5 +37,5 @@ export default function Home() {
         <ProcessedVideosList />
       </div>
     </div>
-  );
+  )
 }
