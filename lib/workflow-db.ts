@@ -1,4 +1,4 @@
-import { EventEmitter } from "events";
+import { EventEmitter } from "node:events";
 
 // Mock in-memory database for workflow status
 export interface WorkflowStep {
