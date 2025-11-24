@@ -38,7 +38,6 @@
     "@types/debug": "latest",
     "@types/pg": "latest",
     "@types/sql.js": "latest",
-    "@upstash/redis": "latest",
     "@vercel/postgres": "latest",
     "@vitest/browser-playwright": "latest",
     "@vitest/browser-preview": "latest",
