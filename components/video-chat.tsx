@@ -65,6 +65,7 @@ export function VideoChat({ youtubeId }: { youtubeId: string }) {
   const [video, setVideo] = useState<Video | null>(null)
   const [previousChats, setPreviousChats] = useState<Chat[]>([])
   const [isLoadingVideo, setIsLoadingVideo] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [currentChatId, setCurrentChatId] = useState<string | undefined>()
   const [input, setInput] = useState("")
 
@@ -78,23 +79,32 @@ export function VideoChat({ youtubeId }: { youtubeId: string }) {
   useEffect(() => {
     const fetchData = async () => {
       setIsLoadingVideo(true)
+      setError(null)
       try {
         const [videoRes, chatsRes] = await Promise.all([
           fetch(`/api/video/${youtubeId}`),
           fetch(`/api/video/${youtubeId}/chats`),
         ])
 
-        if (videoRes.ok) {
-          const videoData = await videoRes.json()
-          setVideo(videoData.video)
+        if (!videoRes.ok) {
+          setError(`Failed to load video: ${videoRes.statusText || "Unknown error"}`)
+          return
         }
 
-        if (chatsRes.ok) {
-          const chatsData = await chatsRes.json()
-          setPreviousChats(chatsData.chats)
+        const videoData = await videoRes.json()
+        setVideo(videoData.video)
+
+        if (!chatsRes.ok) {
+          setError(`Failed to load previous chats: ${chatsRes.statusText || "Unknown error"}`)
+          return
         }
+
+        const chatsData = await chatsRes.json()
+        setPreviousChats(chatsData.chats)
       } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : "Failed to fetch data"
         console.error("[v0] Error fetching data:", error)
+        setError(errorMessage)
       } finally {
         setIsLoadingVideo(false)
       }
@@ -117,6 +127,17 @@ export function VideoChat({ youtubeId }: { youtubeId: string }) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Card className="border-destructive bg-destructive/50 p-6 max-w-md">
+          <p className="text-sm font-medium text-destructive-foreground">{error}</p>
+          <p className="text-xs text-destructive-foreground/80 mt-2">Please try refreshing the page.</p>
+        </Card>
       </div>
     )
   }
