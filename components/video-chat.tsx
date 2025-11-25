@@ -125,8 +125,8 @@ export function VideoChat({ youtubeId }: { youtubeId: string }) {
   return (
     <div className="space-y-4">
       {video && (
-        <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold">{video.title}</h1>
+        <div className="flex items-center justify-between pb-4 border-b">
+          <h1 className="text-2xl font-bold">{video.title}</h1>
           <Button variant="outline" asChild>
             <a
               href={`https://www.youtube.com/watch?v=${youtubeId}`}
@@ -141,14 +141,13 @@ export function VideoChat({ youtubeId }: { youtubeId: string }) {
         </div>
       )}
 
-      <div className="grid lg:grid-cols-[1fr_400px] gap-6 h-[calc(100vh-180px)]">
-        <div className="space-y-4">
-          <Card className="p-6 h-full">
-            <ScrollArea className="h-full">
-              <Streamdown>{mockSummary}</Streamdown>
-            </ScrollArea>
-          </Card>
-        </div>
+      <div className="grid lg:grid-cols-[1fr_400px] gap-6 h-[calc(100vh-220px)]">
+        {/* Left side - Summary */}
+        <Card className="p-6 h-full overflow-hidden">
+          <ScrollArea className="h-full">
+            <Streamdown>{mockSummary}</Streamdown>
+          </ScrollArea>
+        </Card>
 
         {/* Right side - Chat interface */}
         <div className="flex flex-col gap-4 h-full">
