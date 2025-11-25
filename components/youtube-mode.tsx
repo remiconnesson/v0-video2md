@@ -14,14 +14,12 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useToast } from "@/hooks/use-toast";
 
 export function YoutubeMode() {
   const [url, setUrl] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [videoId, setVideoId] = useState<string | null>(null);
   const [extractSlides, setExtractSlides] = useState(false);
-  const { toast } = useToast();
   const router = useRouter();
 
   const extractVideoId = (url: string): string | null => {
@@ -45,11 +43,6 @@ export function YoutubeMode() {
 
   const handleProcess = async () => {
     if (!videoId) {
-      toast({
-        title: "Invalid URL",
-        description: "Please enter a valid YouTube URL",
-        variant: "destructive",
-      });
       return;
     }
 
@@ -73,21 +66,9 @@ export function YoutubeMode() {
         throw new Error(data.error || "Failed to process video");
       }
 
-      toast({
-        title: "Processing started",
-        description: extractSlides
-          ? "Your video is being processed with slide extraction. This will take longer."
-          : "Your video is being processed and will be added to the knowledge base.",
-      });
-
       router.push(`/youtube/${videoId}`);
     } catch (error) {
-      toast({
-        title: "Error",
-        description:
-          error instanceof Error ? error.message : "Failed to process video",
-        variant: "destructive",
-      });
+      console.error(error);
     } finally {
       setIsProcessing(false);
     }
