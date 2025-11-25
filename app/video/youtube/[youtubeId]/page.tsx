@@ -1,14 +1,14 @@
-import { VideoChat } from "@/components/video-chat"
-import { Button } from "@/components/ui/button"
-import { ArrowLeft } from "lucide-react"
-import Link from "next/link"
+import { ArrowLeft } from "lucide-react";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { VideoChat } from "@/components/video-chat";
 
 export default async function VideoPage({
   params,
 }: {
-  params: Promise<{ youtubeId: string }>
+  params: Promise<{ youtubeId: string }>;
 }) {
-  const { youtubeId } = await params
+  const { youtubeId } = await params;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
@@ -23,5 +23,5 @@ export default async function VideoPage({
         <VideoChat youtubeId={youtubeId} />
       </div>
     </div>
-  )
+  );
 }

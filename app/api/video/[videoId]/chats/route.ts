@@ -1,5 +1,8 @@
-export async function GET(req: Request, { params }: { params: Promise<{ videoId: string }> }) {
-  const { videoId } = await params
+export async function GET(
+  req: Request,
+  { params }: { params: Promise<{ videoId: string }> },
+) {
+  const { videoId } = await params;
 
   // Mock previous chats data
   const mockChats = [
@@ -24,7 +27,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ videoId:
       updated_at: new Date(Date.now() - 259200000).toISOString(),
       message_count: 8,
     },
-  ]
+  ];
 
-  return Response.json({ chats: mockChats })
+  return Response.json({ chats: mockChats });
 }

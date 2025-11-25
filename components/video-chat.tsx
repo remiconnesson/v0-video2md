@@ -1,29 +1,28 @@
-"use client"
+"use client";
 
-import type React from "react"
-
-import { useChat } from "@ai-sdk/react"
-import { useEffect, useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Card } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { Loader2, Send, MessageSquare, ExternalLink } from "lucide-react"
-import { cn } from "@/lib/utils"
-import { Streamdown } from "streamdown"
+import { useChat } from "@ai-sdk/react";
+import { ExternalLink, Loader2, MessageSquare, Send } from "lucide-react";
+import type React from "react";
+import { useEffect, useState } from "react";
+import { Streamdown } from "streamdown";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { cn } from "@/lib/utils";
 
 interface Chat {
-  id: string
-  title: string
-  created_at: string
-  message_count: number
+  id: string;
+  title: string;
+  created_at: string;
+  message_count: number;
 }
 
 interface Video {
-  youtube_id: string
-  title: string
-  description: string
-  transcript: string
+  youtube_id: string;
+  title: string;
+  description: string;
+  transcript: string;
 }
 
 const mockSummary = `# Video Summary
@@ -59,17 +58,17 @@ function example() {
 ---
 
 **Duration:** 15:30 | **Views:** 1.2M | **Published:** 2 days ago
-`
+`;
 
 export function VideoChat({ youtubeId }: { youtubeId: string }) {
-  const [video, setVideo] = useState<Video | null>(null)
-  const [previousChats, setPreviousChats] = useState<Chat[]>([])
-  const [isLoadingVideo, setIsLoadingVideo] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [currentChatId, setCurrentChatId] = useState<string | undefined>()
-  const [input, setInput] = useState("")
+  const [video, setVideo] = useState<Video | null>(null);
+  const [previousChats, setPreviousChats] = useState<Chat[]>([]);
+  const [isLoadingVideo, setIsLoadingVideo] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [currentChatId, setCurrentChatId] = useState<string | undefined>();
+  const [input, setInput] = useState("");
 
-  const chatSessionId = currentChatId ?? `${youtubeId}-new`
+  const chatSessionId = currentChatId ?? `${youtubeId}-new`;
 
   const { messages, sendMessage, status } = useChat({
     id: chatSessionId,
@@ -77,73 +76,82 @@ export function VideoChat({ youtubeId }: { youtubeId: string }) {
     body: {
       chatId: currentChatId,
     },
-  })
+  });
 
   useEffect(() => {
     const fetchData = async () => {
-      setIsLoadingVideo(true)
-      setError(null)
+      setIsLoadingVideo(true);
+      setError(null);
       try {
-        setCurrentChatId(undefined)
+        setCurrentChatId(undefined);
         const [videoRes, chatsRes] = await Promise.all([
           fetch(`/api/video/${youtubeId}`),
           fetch(`/api/video/${youtubeId}/chats`),
-        ])
+        ]);
 
         if (!videoRes.ok) {
-          setError(`Failed to load video: ${videoRes.statusText || "Unknown error"}`)
-          return
+          setError(
+            `Failed to load video: ${videoRes.statusText || "Unknown error"}`,
+          );
+          return;
         }
 
-        const videoData = await videoRes.json()
-        setVideo(videoData.video)
+        const videoData = await videoRes.json();
+        setVideo(videoData.video);
 
         if (!chatsRes.ok) {
-          setError(`Failed to load previous chats: ${chatsRes.statusText || "Unknown error"}`)
-          return
+          setError(
+            `Failed to load previous chats: ${chatsRes.statusText || "Unknown error"}`,
+          );
+          return;
         }
 
-        const chatsData = await chatsRes.json()
-        setPreviousChats(chatsData.chats)
+        const chatsData = await chatsRes.json();
+        setPreviousChats(chatsData.chats);
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : "Failed to fetch data"
-        console.error("[v0] Error fetching data:", error)
-        setError(errorMessage)
+        const errorMessage =
+          error instanceof Error ? error.message : "Failed to fetch data";
+        console.error("[v0] Error fetching data:", error);
+        setError(errorMessage);
       } finally {
-        setIsLoadingVideo(false)
+        setIsLoadingVideo(false);
       }
-    }
+    };
 
-    fetchData()
-  }, [youtubeId])
+    fetchData();
+  }, [youtubeId]);
 
   const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!input.trim()) return
+    e.preventDefault();
+    if (!input.trim()) return;
 
     sendMessage({
       text: input,
-    })
-    setInput("")
-  }
+    });
+    setInput("");
+  };
 
   if (isLoadingVideo) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
-    )
+    );
   }
 
   if (error) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <Card className="border-destructive bg-destructive/50 p-6 max-w-md">
-          <p className="text-sm font-medium text-destructive-foreground">{error}</p>
-          <p className="text-xs text-destructive-foreground/80 mt-2">Please try refreshing the page.</p>
+          <p className="text-sm font-medium text-destructive-foreground">
+            {error}
+          </p>
+          <p className="text-xs text-destructive-foreground/80 mt-2">
+            Please try refreshing the page.
+          </p>
         </Card>
       </div>
-    )
+    );
   }
 
   return (
@@ -183,7 +191,9 @@ export function VideoChat({ youtubeId }: { youtubeId: string }) {
               <div className="space-y-4">
                 {messages.length === 0 && (
                   <div className="text-center text-muted-foreground py-8">
-                    <p className="text-sm">Start a conversation about this video</p>
+                    <p className="text-sm">
+                      Start a conversation about this video
+                    </p>
                   </div>
                 )}
 
@@ -191,23 +201,32 @@ export function VideoChat({ youtubeId }: { youtubeId: string }) {
                   const text = message.parts
                     .filter((part) => part.type === "text")
                     .map((part) => (part as any).text)
-                    .join("")
+                    .join("");
 
                   return (
                     <div
                       key={message.id}
-                      className={cn("flex", message.role === "user" ? "justify-end" : "justify-start")}
+                      className={cn(
+                        "flex",
+                        message.role === "user"
+                          ? "justify-end"
+                          : "justify-start",
+                      )}
                     >
                       <div
                         className={cn(
                           "rounded-lg px-4 py-2 max-w-[85%]",
-                          message.role === "user" ? "bg-primary text-primary-foreground" : "bg-muted",
+                          message.role === "user"
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-muted",
                         )}
                       >
-                        <p className="text-sm leading-relaxed whitespace-pre-wrap">{text}</p>
+                        <p className="text-sm leading-relaxed whitespace-pre-wrap">
+                          {text}
+                        </p>
                       </div>
                     </div>
-                  )
+                  );
                 })}
 
                 {status === "streaming" && (
@@ -228,7 +247,11 @@ export function VideoChat({ youtubeId }: { youtubeId: string }) {
                 disabled={status === "streaming"}
                 className="flex-1"
               />
-              <Button type="submit" size="icon" disabled={!input.trim() || status === "streaming"}>
+              <Button
+                type="submit"
+                size="icon"
+                disabled={!input.trim() || status === "streaming"}
+              >
                 <Send className="h-4 w-4" />
               </Button>
             </form>
@@ -248,9 +271,12 @@ export function VideoChat({ youtubeId }: { youtubeId: string }) {
                         currentChatId === chat.id && "bg-accent",
                       )}
                     >
-                      <p className="text-sm font-medium truncate">{chat.title}</p>
+                      <p className="text-sm font-medium truncate">
+                        {chat.title}
+                      </p>
                       <p className="text-xs text-muted-foreground">
-                        {chat.message_count} messages • {new Date(chat.created_at).toLocaleDateString()}
+                        {chat.message_count} messages •{" "}
+                        {new Date(chat.created_at).toLocaleDateString()}
                       </p>
                     </button>
                   ))}
@@ -261,5 +287,5 @@ export function VideoChat({ youtubeId }: { youtubeId: string }) {
         </div>
       </div>
     </div>
-  )
+  );
 }
