@@ -209,7 +209,9 @@ export function VideoChat({ youtubeId }: { youtubeId: string }) {
                 {messages.map((message) => {
                   const text = message.parts
                     .filter((part) => part.type === "text")
-                    .map((part) => (part as { type: "text"; text: string }).text)
+                    .map(
+                      (part) => (part as { type: "text"; text: string }).text,
+                    )
                     .join("");
 
                   return (
