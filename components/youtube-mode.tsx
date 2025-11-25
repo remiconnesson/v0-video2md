@@ -113,16 +113,18 @@ export function YoutubeMode() {
             disabled={isProcessing}
             className="h-12"
           />
-          {isValidating && (
-            <p className="text-sm text-muted-foreground flex items-center gap-2">
-              <Loader2 className="h-3 w-3 animate-spin" />
-              Validating...
-            </p>
-          )}
-          {!isValidating && validationError && <p className="text-sm text-destructive">{validationError}</p>}
-          {!isValidating && videoId && (
-            <p className="text-sm text-green-600 dark:text-green-400">✓ Valid YouTube video detected</p>
-          )}
+          <div className="h-5">
+            {isValidating && (
+              <p className="text-sm text-muted-foreground flex items-center gap-2">
+                <Loader2 className="h-3 w-3 animate-spin" />
+                Validating...
+              </p>
+            )}
+            {!isValidating && validationError && <p className="text-sm text-destructive">{validationError}</p>}
+            {!isValidating && videoId && (
+              <p className="text-sm text-green-600 dark:text-green-400">✓ Valid YouTube video detected</p>
+            )}
+          </div>
           <p className="text-sm text-muted-foreground">
             Paste any YouTube URL (youtube.com, youtu.be, shorts) or an 11-character video ID
           </p>
