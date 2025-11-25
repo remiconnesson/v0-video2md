@@ -66,30 +66,11 @@ export function YoutubeMode() {
 
     setIsProcessing(true)
 
-    try {
-      const response = await fetch("/api/youtube/process", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          videoId,
-          extractSlides,
-        }),
-      })
+    // Simulate processing delay
+    await new Promise((resolve) => setTimeout(resolve, 1000))
 
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.error || "Failed to process video")
-      }
-
-      router.push(`/video/youtube/${videoId}`)
-    } catch (error) {
-      console.error(error)
-    } finally {
-      setIsProcessing(false)
-    }
+    router.push(`/video/youtube/${videoId}`)
+    setIsProcessing(false)
   }
 
   return (

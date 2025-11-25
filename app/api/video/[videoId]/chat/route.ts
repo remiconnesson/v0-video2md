@@ -1,9 +1,16 @@
 import { consumeStream, convertToModelMessages, streamText, type UIMessage } from "ai"
-import { neon } from "@neondatabase/serverless"
 
 export const maxDuration = 30
 
-const sql = neon(process.env.DATABASE_URL!)
+// Mock video data
+const MOCK_VIDEO_DATA = {
+  dQw4w9WgXcQ: {
+    title: "Sample YouTube Video",
+    description: "This is a sample video description for testing purposes.",
+    transcript:
+      "This is a mock transcript of the video. It contains sample text that would normally be extracted from a real YouTube video. The speaker discusses various topics and provides insights on the subject matter.",
+  },
+}
 
 export async function POST(req: Request, { params }: { params: Promise<{ videoId: string }> }) {
   const { videoId } = await params
@@ -11,19 +18,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ videoId
   const messages: UIMessage[] = body.messages
   const chatId: string | undefined = body.chatId
 
-  // Fetch video context from database
-  const videoData = await sql`
-    SELECT transcript, title, description 
-    FROM videos 
-    WHERE youtube_id = ${videoId}
-    LIMIT 1
-  `
-
-  if (videoData.length === 0) {
-    return Response.json({ error: "Video not found" }, { status: 404 })
+  // Get mock video data
+  const video = MOCK_VIDEO_DATA[videoId as keyof typeof MOCK_VIDEO_DATA] || {
+    title: "Unknown Video",
+    description: "No description available",
+    transcript: "No transcript available for this video.",
   }
-
-  const video = videoData[0]
 
   // Add system message with video context
   const systemMessage: UIMessage = {
@@ -34,7 +34,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ videoId
         type: "text",
         text: `You are a helpful assistant discussing a YouTube video titled "${video.title}". 
         
-Video description: ${video.description || "No description available"}
+Video description: ${video.description}
 
 Here is the full transcript:
 ${video.transcript}
@@ -53,71 +53,14 @@ Answer questions about this video based on the transcript provided. Be helpful a
     abortSignal: req.signal,
   })
 
-  // Save chat and messages after streaming completes
-  const stream = result.toUIMessageStream()
-
   return result.toUIMessageStreamResponse({
     onFinish: async ({ text, isAborted }) => {
       if (isAborted) {
         console.log("[v0] Chat aborted")
         return
       }
-
-      // Get user ID (you'll need to implement authentication)
-      // For now, using a placeholder
-      const userId = "anonymous"
-
-      try {
-        // Create or update chat
-        let activeChatId = chatId
-        if (!activeChatId) {
-          const newChat = await sql`
-            INSERT INTO chats (id, video_id, user_id, title)
-            VALUES (
-              ${crypto.randomUUID()},
-              ${videoId},
-              ${userId},
-              ${messages[0]?.parts?.[0]?.type === "text" ? messages[0].parts[0].text.slice(0, 100) : "New chat"}
-            )
-            RETURNING id
-          `
-          activeChatId = newChat[0].id
-        }
-
-        // Save user message
-        const lastUserMessage = messages[messages.length - 1]
-        if (lastUserMessage && lastUserMessage.role === "user") {
-          const userText = lastUserMessage.parts
-            .filter((part) => part.type === "text")
-            .map((part) => (part as any).text)
-            .join("")
-
-          await sql`
-            INSERT INTO messages (id, chat_id, role, content)
-            VALUES (
-              ${crypto.randomUUID()},
-              ${activeChatId},
-              'user',
-              ${userText}
-            )
-          `
-        }
-
-        // Save assistant response
-        await sql`
-          INSERT INTO messages (id, chat_id, role, content)
-          VALUES (
-            ${crypto.randomUUID()},
-            ${activeChatId},
-            'assistant',
-            ${text}
-          )
-        `
-
-        console.log("[v0] Chat saved successfully")
-      } catch (error) {
-        console.error("[v0] Error saving chat:", error)
-      }
+      // In mock mode, we're not persisting messages
+      console.log("[v0] Chat completed (mock mode, not persisted)")
     },
     consumeSseStream: consumeStream,
   })
