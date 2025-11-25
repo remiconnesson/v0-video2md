@@ -14,14 +14,14 @@
  */
 export function extractYoutubeVideoId(input: string): string | null {
   if (!input || typeof input !== "string") {
-    return null
+    return null;
   }
 
-  const trimmedInput = input.trim()
+  const trimmedInput = input.trim();
 
   // Check if it's already a valid video ID (11 characters, alphanumeric, dash, underscore)
   if (/^[a-zA-Z0-9_-]{11}$/.test(trimmedInput)) {
-    return trimmedInput
+    return trimmedInput;
   }
 
   // Patterns for various YouTube URL formats
@@ -38,16 +38,16 @@ export function extractYoutubeVideoId(input: string): string | null {
     /(?:m\.youtube\.com\/watch\?v=)([a-zA-Z0-9_-]{11})/,
     // Shorts URL
     /(?:youtube\.com\/shorts\/)([a-zA-Z0-9_-]{11})/,
-  ]
+  ];
 
   for (const pattern of patterns) {
-    const match = trimmedInput.match(pattern)
-    if (match && match[1]) {
-      return match[1]
+    const match = trimmedInput.match(pattern);
+    if (match?.[1]) {
+      return match[1];
     }
   }
 
-  return null
+  return null;
 }
 
 /**
@@ -57,9 +57,9 @@ export function extractYoutubeVideoId(input: string): string | null {
 export async function resolveShortUrl(url: string): Promise<string | null> {
   try {
     // First try to extract ID directly
-    const directId = extractYoutubeVideoId(url)
+    const directId = extractYoutubeVideoId(url);
     if (directId) {
-      return directId
+      return directId;
     }
 
     // If it's a short URL that we couldn't parse, try to resolve it
@@ -67,74 +67,82 @@ export async function resolveShortUrl(url: string): Promise<string | null> {
       const response = await fetch(url, {
         method: "HEAD",
         redirect: "follow",
-      })
+      });
 
-      const finalUrl = response.url
-      return extractYoutubeVideoId(finalUrl)
+      const finalUrl = response.url;
+      return extractYoutubeVideoId(finalUrl);
     }
 
-    return null
+    return null;
   } catch (error) {
-    console.error("Error resolving short URL:", error)
-    return null
+    console.error("Error resolving short URL:", error);
+    return null;
   }
 }
 
 /**
  * Validates if a YouTube video ID is valid by checking if the video exists
  */
-export async function validateYoutubeVideoId(videoId: string): Promise<boolean> {
+export async function validateYoutubeVideoId(
+  videoId: string,
+): Promise<boolean> {
   if (!videoId || !/^[a-zA-Z0-9_-]{11}$/.test(videoId)) {
-    return false
+    return false;
   }
 
   try {
     // Check if video exists using oembed endpoint (no API key required)
     const response = await fetch(
       `https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`,
-    )
+    );
 
-    return response.ok
+    return response.ok;
   } catch (error) {
-    console.error("Error validating YouTube video ID:", error)
-    return false
+    console.error("Error validating YouTube video ID:", error);
+    return false;
   }
 }
 
 /**
  * Complete URL processing: extract ID, resolve if needed, and validate
  */
-export async function processYoutubeInput(input: string): Promise<{ videoId: string | null; error?: string }> {
+export async function processYoutubeInput(
+  input: string,
+): Promise<{ videoId: string | null; error?: string }> {
   if (!input || typeof input !== "string") {
-    return { videoId: null, error: "Invalid input" }
+    return { videoId: null, error: "Invalid input" };
   }
 
-  const trimmedInput = input.trim()
+  const trimmedInput = input.trim();
 
   // Try direct extraction first
-  let videoId = extractYoutubeVideoId(trimmedInput)
+  let videoId = extractYoutubeVideoId(trimmedInput);
 
   // If we couldn't extract directly and it looks like a URL, try resolving
-  if (!videoId && (trimmedInput.startsWith("http") || trimmedInput.includes("youtu"))) {
-    videoId = await resolveShortUrl(trimmedInput)
+  if (
+    !videoId &&
+    (trimmedInput.startsWith("http") || trimmedInput.includes("youtu"))
+  ) {
+    videoId = await resolveShortUrl(trimmedInput);
   }
 
   if (!videoId) {
     return {
       videoId: null,
-      error: "Could not extract video ID from input. Please provide a valid YouTube URL or video ID.",
-    }
+      error:
+        "Could not extract video ID from input. Please provide a valid YouTube URL or video ID.",
+    };
   }
 
   // Validate the video ID
-  const isValid = await validateYoutubeVideoId(videoId)
+  const isValid = await validateYoutubeVideoId(videoId);
 
   if (!isValid) {
     return {
       videoId: null,
       error: "Video not found. Please check the URL or video ID and try again.",
-    }
+    };
   }
 
-  return { videoId }
+  return { videoId };
 }
