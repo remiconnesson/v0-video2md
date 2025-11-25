@@ -80,6 +80,7 @@ const ChartStyle = ({ id, config }: { id: string; config: ChartConfig }) => {
 
   return (
     <style
+      // biome-ignore lint/security/noDangerouslySetInnerHtml: Needed for dynamic chart theming
       dangerouslySetInnerHTML={{
         __html: Object.entries(THEMES)
           .map(
@@ -125,6 +126,10 @@ function ChartTooltipContent({
     indicator?: "line" | "dot" | "dashed";
     nameKey?: string;
     labelKey?: string;
+    // biome-ignore lint/suspicious/noExplicitAny: Payload type is unknown
+    payload?: any[]; // eslint-disable-line @typescript-eslint/no-explicit-any
+    // biome-ignore lint/suspicious/noExplicitAny: Label type is unknown
+    label?: any; // eslint-disable-line @typescript-eslint/no-explicit-any
   }) {
   const { config } = useChart();
 
@@ -179,7 +184,8 @@ function ChartTooltipContent({
     >
       {!nestLabel ? tooltipLabel : null}
       <div className="grid gap-1.5">
-        {payload.map((item, index) => {
+        {/* biome-ignore lint/suspicious/noExplicitAny: Payload item type is unknown */}
+        {payload.map((item: any, index: number) => {
           const key = `${nameKey || item.name || item.dataKey || "value"}`;
           const itemConfig = getPayloadConfigFromPayload(config, item, key);
           const indicatorColor = color || item.payload.fill || item.color;
@@ -256,11 +262,13 @@ function ChartLegendContent({
   payload,
   verticalAlign = "bottom",
   nameKey,
-}: React.ComponentProps<"div"> &
-  Pick<RechartsPrimitive.LegendProps, "payload" | "verticalAlign"> & {
-    hideIcon?: boolean;
-    nameKey?: string;
-  }) {
+}: React.ComponentProps<"div"> & {
+  // biome-ignore lint/suspicious/noExplicitAny: Payload type is unknown
+  payload?: any[];
+  verticalAlign?: "top" | "middle" | "bottom";
+  hideIcon?: boolean;
+  nameKey?: string;
+}) {
   const { config } = useChart();
 
   if (!payload?.length) {
@@ -275,7 +283,8 @@ function ChartLegendContent({
         className,
       )}
     >
-      {payload.map((item) => {
+      {/* biome-ignore lint/suspicious/noExplicitAny: Payload item type is unknown */}
+      {payload.map((item: any) => {
         const key = `${nameKey || item.dataKey || "value"}`;
         const itemConfig = getPayloadConfigFromPayload(config, item, key);
 

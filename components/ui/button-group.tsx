@@ -26,6 +26,7 @@ function ButtonGroup({
   ...props
 }: React.ComponentProps<"div"> & VariantProps<typeof buttonGroupVariants>) {
   return (
+    // biome-ignore lint/a11y/useSemanticElements: Using div with role=group to avoid fieldset styling issues
     <div
       role="group"
       data-slot="button-group"
