@@ -175,6 +175,17 @@ export function YoutubeMode() {
             </div>
           </div>
         )}
+
+        {!videoId && (
+          <div className="rounded-lg overflow-hidden border-2 bg-muted/30">
+            <div className="aspect-video w-full flex items-center justify-center">
+              <div className="flex flex-col items-center gap-3 text-muted-foreground">
+                <Youtube className="h-12 w-12 opacity-20" />
+                <p className="text-sm">Video preview will appear here</p>
+              </div>
+            </div>
+          </div>
+        )}
       </CardContent>
     </Card>
   )
