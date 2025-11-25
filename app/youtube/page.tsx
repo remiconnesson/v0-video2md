@@ -30,13 +30,17 @@ export default function YouTubePage() {
             <h2 className="text-lg font-semibold mb-2">How it works</h2>
             <p className="text-muted-foreground mb-4">
               We run a background workflow to scrape and normalize transcripts
-              without blocking your request. You&apos;ll get a run ID immediately
-              after submitting a video ID.
+              without blocking your request. You&apos;ll get a run ID
+              immediately after submitting a video ID.
             </p>
             <ol className="space-y-2 text-sm text-muted-foreground list-decimal list-inside">
               <li>Fetch metadata and transcript from Apify.</li>
-              <li>Normalize the response into channel, video, and transcript data.</li>
-              <li>UPSERT data into the database (Channel → Video → Transcript).</li>
+              <li>
+                Normalize the response into channel, video, and transcript data.
+              </li>
+              <li>
+                UPSERT data into the database (Channel → Video → Transcript).
+              </li>
             </ol>
           </div>
         </div>

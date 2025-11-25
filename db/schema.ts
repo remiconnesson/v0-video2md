@@ -30,7 +30,7 @@ export const videos = pgTable(
         onUpdate: "cascade",
       }),
   },
-  (table) => [index("videos_channel_id_idx").on(table.channelId)]
+  (table) => [index("videos_channel_id_idx").on(table.channelId)],
 );
 
 export const scrapTranscriptV1 = pgTable(
@@ -53,5 +53,5 @@ export const scrapTranscriptV1 = pgTable(
     transcript: jsonb("transcript"),
     createdAt: timestamp("created_at").defaultNow(),
   },
-  (table) => [unique("unique_video_transcript").on(table.videoId)]
+  (table) => [unique("unique_video_transcript").on(table.videoId)],
 );

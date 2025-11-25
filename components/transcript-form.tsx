@@ -13,7 +13,9 @@ export function TranscriptFetcher() {
   return (
     <Card className="border-2 shadow-lg">
       <CardHeader>
-        <CardTitle className="text-xl font-semibold">Fetch YouTube Transcript</CardTitle>
+        <CardTitle className="text-xl font-semibold">
+          Fetch YouTube Transcript
+        </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         <form action={action} className="space-y-4">
@@ -28,11 +30,7 @@ export function TranscriptFetcher() {
             />
           </div>
 
-          <Button
-            type="submit"
-            disabled={isPending}
-            className="w-full"
-          >
+          <Button type="submit" disabled={isPending} className="w-full">
             {isPending ? "Starting Workflow..." : "Fetch Transcript"}
           </Button>
         </form>
@@ -47,7 +45,9 @@ export function TranscriptFetcher() {
           <div className="rounded-md bg-green-50 px-3 py-2 text-sm text-green-700 space-y-1">
             <p className="font-semibold">✅ Workflow Started!</p>
             <p className="text-xs font-mono">Run ID: {state.runId}</p>
-            <p className="text-xs">The transcript will appear in the database shortly.</p>
+            <p className="text-xs">
+              The transcript will appear in the database shortly.
+            </p>
           </div>
         )}
       </CardContent>
