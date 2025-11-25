@@ -11,7 +11,10 @@ const schema = z.object({
     .regex(/^[a-zA-Z0-9_-]{11}$/, "Invalid YouTube Video ID"),
 });
 
-export async function triggerTranscript(prevState: unknown, formData: FormData) {
+export async function triggerTranscript(
+  _prevState: unknown,
+  formData: FormData,
+) {
   const videoId = (formData.get("videoId") as string | null) || "";
   const parsed = schema.safeParse({ videoId });
 
@@ -23,7 +26,9 @@ export async function triggerTranscript(prevState: unknown, formData: FormData) 
   }
 
   try {
-    const run = await start(fetchAndStoreTranscriptWorkflow, [parsed.data.videoId]);
+    const run = await start(fetchAndStoreTranscriptWorkflow, [
+      parsed.data.videoId,
+    ]);
 
     return {
       success: true,

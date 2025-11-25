@@ -76,7 +76,7 @@ async function stepFetchFromApify(videoId: string) {
   });
 
   const { items } = await client.dataset(run.defaultDatasetId).listItems();
-  return (items[0] as TranscriptResult | undefined) ?? null;
+  return (items[0] as unknown as TranscriptResult | undefined) ?? null;
 }
 
 async function stepSaveToDb(data: TranscriptResult) {
