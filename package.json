@@ -51,6 +51,7 @@
     "@vitest/browser-preview": "latest",
     "@vitest/browser-webdriverio": "latest",
     "@vitest/ui": "latest",
+    "apify-client": "^2.20.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
@@ -75,7 +76,8 @@
     "tailwindcss-animate": "^1.0.7",
     "vaul": "^1.1.2",
     "vite": "latest",
-    "workflow": "latest"
+    "workflow": "latest",
+    "zod": "^4.1.13"
   },
   "devDependencies": {
     "@biomejs/biome": "2.2.0",
