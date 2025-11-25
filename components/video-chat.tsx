@@ -66,16 +66,15 @@ export function VideoChat({ youtubeId }: { youtubeId: string }) {
   const [previousChats, setPreviousChats] = useState<Chat[]>([])
   const [isLoadingVideo, setIsLoadingVideo] = useState(true)
   const [currentChatId, setCurrentChatId] = useState<string | undefined>()
+  const [input, setInput] = useState("")
 
-  const { messages, sendMessage, status, input, setInput } = useChat({
+  const { messages, sendMessage, status } = useChat({
     api: `/api/video/${youtubeId}/chat`,
     body: {
       chatId: currentChatId,
     },
-    initialInput: "",
   })
 
-  // Fetch video data and previous chats
   useEffect(() => {
     const fetchData = async () => {
       setIsLoadingVideo(true)
@@ -106,7 +105,7 @@ export function VideoChat({ youtubeId }: { youtubeId: string }) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!input || !input.trim()) return
+    if (!input.trim()) return
 
     sendMessage({
       text: input,
@@ -142,16 +141,13 @@ export function VideoChat({ youtubeId }: { youtubeId: string }) {
       )}
 
       <div className="grid lg:grid-cols-[1fr_400px] gap-6 h-[calc(100vh-220px)]">
-        {/* Left side - Summary */}
         <Card className="p-6 h-full overflow-hidden">
           <ScrollArea className="h-full">
             <Streamdown>{mockSummary}</Streamdown>
           </ScrollArea>
         </Card>
 
-        {/* Right side - Chat interface */}
         <div className="flex flex-col gap-4 h-full">
-          {/* Chat messages */}
           <Card className="flex-1 flex flex-col p-4">
             <div className="flex items-center gap-2 mb-4 pb-3 border-b">
               <MessageSquare className="h-5 w-5" />
@@ -199,22 +195,20 @@ export function VideoChat({ youtubeId }: { youtubeId: string }) {
               </div>
             </ScrollArea>
 
-            {/* Chat input */}
             <form onSubmit={handleSubmit} className="mt-4 flex gap-2">
               <Input
-                value={input || ""}
+                value={input}
                 onChange={(e) => setInput(e.target.value)}
                 placeholder="Ask a question about this video..."
                 disabled={status === "streaming"}
                 className="flex-1"
               />
-              <Button type="submit" size="icon" disabled={!input || !input.trim() || status === "streaming"}>
+              <Button type="submit" size="icon" disabled={!input.trim() || status === "streaming"}>
                 <Send className="h-4 w-4" />
               </Button>
             </form>
           </Card>
 
-          {/* Previous chats */}
           {previousChats.length > 0 && (
             <Card className="p-4">
               <h3 className="font-semibold text-sm mb-3">Previous Chats</h3>
