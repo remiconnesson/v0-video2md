@@ -31,7 +31,7 @@ export async function POST(
   const { videoId } = await params;
   const body = await req.json();
   const messages: UIMessage[] = body.messages;
-  const chatId: string | undefined = body.chatId;
+  const _chatId: string | undefined = body.chatId;
 
   // Get mock video data
   const video = MOCK_VIDEO_DATA[videoId as keyof typeof MOCK_VIDEO_DATA] || {
@@ -69,7 +69,7 @@ Answer questions about this video based on the transcript provided. Be helpful a
   });
 
   return result.toUIMessageStreamResponse({
-    onFinish: async ({ text, isAborted }) => {
+    onFinish: async ({ isAborted }) => {
       if (isAborted) {
         console.log("[v0] Chat aborted");
         return;

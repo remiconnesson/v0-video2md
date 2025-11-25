@@ -1,9 +1,10 @@
 "use client";
 
 import { useChat } from "@ai-sdk/react";
+import { DefaultChatTransport } from "ai";
 import { ExternalLink, Loader2, MessageSquare, Send } from "lucide-react";
 import type React from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Streamdown } from "streamdown";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -70,12 +71,20 @@ export function VideoChat({ youtubeId }: { youtubeId: string }) {
 
   const chatSessionId = currentChatId ?? `${youtubeId}-new`;
 
+  const transport = useMemo(
+    () =>
+      new DefaultChatTransport({
+        api: `/api/video/${youtubeId}/chat`,
+        body: {
+          chatId: currentChatId,
+        },
+      }),
+    [youtubeId, currentChatId],
+  );
+
   const { messages, sendMessage, status } = useChat({
     id: chatSessionId,
-    api: `/api/video/${youtubeId}/chat`,
-    body: {
-      chatId: currentChatId,
-    },
+    transport,
   });
 
   useEffect(() => {
@@ -200,7 +209,7 @@ export function VideoChat({ youtubeId }: { youtubeId: string }) {
                 {messages.map((message) => {
                   const text = message.parts
                     .filter((part) => part.type === "text")
-                    .map((part) => (part as any).text)
+                    .map((part) => (part as { type: "text"; text: string }).text)
                     .join("");
 
                   return (
@@ -264,6 +273,7 @@ export function VideoChat({ youtubeId }: { youtubeId: string }) {
                 <div className="space-y-2">
                   {previousChats.map((chat) => (
                     <button
+                      type="button"
                       key={chat.id}
                       onClick={() => setCurrentChatId(chat.id)}
                       className={cn(

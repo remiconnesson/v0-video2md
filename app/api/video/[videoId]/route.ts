@@ -21,7 +21,7 @@ const mockVideos: Record<
 };
 
 export async function GET(
-  request: Request,
+  _request: Request,
   { params }: { params: Promise<{ videoId: string }> },
 ) {
   const { videoId } = await params;

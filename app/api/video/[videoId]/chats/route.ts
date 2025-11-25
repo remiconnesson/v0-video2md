@@ -1,8 +1,8 @@
 export async function GET(
-  req: Request,
+  _req: Request,
   { params }: { params: Promise<{ videoId: string }> },
 ) {
-  const { videoId } = await params;
+  const { videoId: _videoId } = await params;
 
   // Mock previous chats data
   const mockChats = [
