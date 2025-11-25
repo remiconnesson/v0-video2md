@@ -8,8 +8,9 @@ import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Loader2, Send, MessageSquare } from "lucide-react"
+import { Loader2, Send, MessageSquare, ExternalLink } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { Streamdown } from "streamdown"
 
 interface Chat {
   id: string
@@ -24,6 +25,41 @@ interface Video {
   description: string
   transcript: string
 }
+
+const mockSummary = `# Video Summary
+
+This is a **comprehensive summary** of the video content. Here are the key points:
+
+## Main Topics
+
+1. **Introduction** - Overview of the subject matter
+2. **Core Concepts** - Essential principles and ideas
+3. **Practical Applications** - How to apply the concepts
+4. **Conclusion** - Key takeaways and next steps
+
+## Key Points
+
+- The video covers \`important concepts\` in detail
+- Several examples are provided throughout
+- *Practical demonstrations* make the content easy to understand
+
+## Quotes
+
+> "This is an important quote from the video that highlights a key insight."
+
+## Code Examples
+
+\`\`\`javascript
+// Example code mentioned in the video
+function example() {
+  return "Hello World";
+}
+\`\`\`
+
+---
+
+**Duration:** 15:30 | **Views:** 1.2M | **Published:** 2 days ago
+`
 
 export function VideoChat({ youtubeId }: { youtubeId: string }) {
   const [video, setVideo] = useState<Video | null>(null)
@@ -88,32 +124,32 @@ export function VideoChat({ youtubeId }: { youtubeId: string }) {
 
   return (
     <div className="grid lg:grid-cols-[1fr_400px] gap-6 h-[calc(100vh-120px)]">
-      {/* Left side - Video player and transcript */}
       <div className="space-y-4">
-        <Card className="p-0 overflow-hidden">
-          <div className="aspect-video w-full">
-            <iframe
-              src={`https://www.youtube.com/embed/${youtubeId}`}
-              title="YouTube video"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowFullScreen
-              className="w-full h-full"
-            />
-          </div>
-        </Card>
-
         {video && (
           <Card className="p-6">
-            <h2 className="text-2xl font-bold mb-2">{video.title}</h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-2xl font-bold">{video.title}</h2>
+              <Button variant="outline" size="sm" asChild>
+                <a
+                  href={`https://www.youtube.com/watch?v=${youtubeId}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="gap-2"
+                >
+                  Watch Video
+                  <ExternalLink className="h-4 w-4" />
+                </a>
+              </Button>
+            </div>
             {video.description && <p className="text-muted-foreground mb-4">{video.description}</p>}
-            <ScrollArea className="h-[300px] rounded-md border p-4">
-              <div className="space-y-2">
-                <h3 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground">Transcript</h3>
-                <p className="text-sm leading-relaxed whitespace-pre-wrap">{video.transcript}</p>
-              </div>
-            </ScrollArea>
           </Card>
         )}
+
+        <Card className="p-6">
+          <ScrollArea className="h-[calc(100vh-280px)]">
+            <Streamdown>{mockSummary}</Streamdown>
+          </ScrollArea>
+        </Card>
       </div>
 
       {/* Right side - Chat interface */}
