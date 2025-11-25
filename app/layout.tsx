@@ -4,7 +4,6 @@ import { Geist, Geist_Mono } from "next/font/google";
 import type React from "react";
 import { stackClientApp } from "../stack/client";
 import "./globals.css";
-import { Toaster } from "@/components/ui/toaster";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -34,10 +33,7 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <StackProvider app={stackClientApp}>
-          <StackTheme>
-            {children}
-            <Toaster />
-          </StackTheme>
+          <StackTheme>{children}</StackTheme>
         </StackProvider>
       </body>
     </html>
