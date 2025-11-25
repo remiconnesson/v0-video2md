@@ -151,10 +151,9 @@ async function generateDraft(topic: string) {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
     },
     body: JSON.stringify({
-      model: "gpt-4o",
+      model: "openai/gpt-5-mini",
       messages: [{ role: "user", content: `Write about: ${topic}` }],
     }),
   });
@@ -169,7 +168,6 @@ async function summarizeDraft(draftText: string) {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
     },
     body: JSON.stringify({
       model: "gpt-4o",
@@ -190,7 +188,6 @@ The AI SDK uses `fetch` internally. Override `globalThis.fetch` with workflow's 
 
 ```ts
 import { generateText } from "ai";
-import { openai } from "@ai-sdk/openai";
 import { fetch } from "workflow";
 
 export async function aiWorkflow(userMessage: string) {
@@ -198,7 +195,7 @@ export async function aiWorkflow(userMessage: string) {
   globalThis.fetch = fetch; // Required!
   
   const result = await generateText({
-    model: openai("gpt-4o"),
+    model: "openai/gpt-5-mini",
     prompt: userMessage,
   });
   return result.text;
