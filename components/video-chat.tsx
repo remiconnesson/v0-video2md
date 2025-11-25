@@ -68,7 +68,10 @@ export function VideoChat({ youtubeId }: { youtubeId: string }) {
   const [currentChatId, setCurrentChatId] = useState<string | undefined>()
   const [input, setInput] = useState("")
 
+  const chatSessionId = currentChatId ?? `${youtubeId}-new`
+
   const { messages, sendMessage, status } = useChat({
+    id: chatSessionId,
     api: `/api/video/${youtubeId}/chat`,
     body: {
       chatId: currentChatId,
@@ -79,6 +82,7 @@ export function VideoChat({ youtubeId }: { youtubeId: string }) {
     const fetchData = async () => {
       setIsLoadingVideo(true)
       try {
+        setCurrentChatId(undefined)
         const [videoRes, chatsRes] = await Promise.all([
           fetch(`/api/video/${youtubeId}`),
           fetch(`/api/video/${youtubeId}/chats`),
