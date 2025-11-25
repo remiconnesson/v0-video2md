@@ -1,10 +1,9 @@
 import { generateObject } from "ai";
-
-import {
-  transcriptToBookSchema,
-  type TranscriptToBook,
-} from "./transcript-to-book-schema";
 import { TRANSCRIPT_TO_BOOK_SYSTEM_PROMPT } from "./transcript-to-book-prompt";
+import {
+  type TranscriptToBook,
+  transcriptToBookSchema,
+} from "./transcript-to-book-schema";
 
 export interface TranscriptToBookInput {
   transcriptString: string;
@@ -68,4 +67,4 @@ function buildUserPrompt(input: {
   return parts.join("\n\n");
 }
 
-export type { TranscriptToBook, Chapter } from "./transcript-to-book-schema";
+export type { Chapter, TranscriptToBook } from "./transcript-to-book-schema";

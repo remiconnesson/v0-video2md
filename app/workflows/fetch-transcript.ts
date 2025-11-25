@@ -71,7 +71,9 @@ const formatTimestamp = (seconds: number): string => {
 };
 
 const formatTranscriptString = (segments: TranscriptSegment[]): string =>
-  segments.map((segment) => `[${formatTimestamp(segment.start)}] ${segment.text}`).join("\n");
+  segments
+    .map((segment) => `[${formatTimestamp(segment.start)}] ${segment.text}`)
+    .join("\n");
 
 export async function fetchAndStoreTranscriptWorkflow(videoId: string) {
   "use workflow";
