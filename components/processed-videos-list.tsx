@@ -3,7 +3,7 @@
 import { CheckCircle2, Clock, FileVideo } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -20,31 +20,48 @@ interface VideoData {
 }
 
 export function ProcessedVideosList() {
-  const [videos, setVideos] = useState<VideoData[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchVideos = async () => {
-      try {
-        const response = await fetch("/api/youtube/list");
-        if (response.ok) {
-          const data = await response.json();
-          setVideos(data.videos);
-        }
-      } catch (error) {
-        console.error("[v0] Error fetching videos:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchVideos();
-
-    // Poll for updates every 5 seconds
-    const intervalId = setInterval(fetchVideos, 5000);
-
-    return () => clearInterval(intervalId);
-  }, []);
+  const [videos] = useState<VideoData[]>([
+    {
+      videoId: "mock-1",
+      videoData: {
+        title: "Next.js 14 Full Course 2024",
+        description:
+          "Learn Next.js 14 from scratch. We'll build a full-stack application with Server Actions, Prisma, and Tailwind CSS.",
+        duration: "12:45:00",
+        thumbnail:
+          "https://images.unsplash.com/photo-1633356122544-f134324a6cee?w=800&q=80",
+      },
+      extractSlides: true,
+      completedAt: new Date().toISOString(),
+    },
+    {
+      videoId: "mock-2",
+      videoData: {
+        title: "Understanding React Server Components",
+        description:
+          "A deep dive into React Server Components, how they work, and why they are the future of React development.",
+        duration: "45:20",
+        thumbnail:
+          "https://images.unsplash.com/photo-1633356122102-3fe601e15ccc?w=800&q=80",
+      },
+      extractSlides: false,
+      completedAt: new Date(Date.now() - 86400000).toISOString(),
+    },
+    {
+      videoId: "mock-3",
+      videoData: {
+        title: "System Design Interview Guide",
+        description:
+          "Master system design interviews with this comprehensive guide covering scalability, availability, and consistency.",
+        duration: "1:15:30",
+        thumbnail:
+          "https://images.unsplash.com/photo-1555949963-aa79dcee981c?w=800&q=80",
+      },
+      extractSlides: true,
+      completedAt: new Date(Date.now() - 172800000).toISOString(),
+    },
+  ]);
+  const [loading] = useState(false);
 
   if (loading) {
     return (
