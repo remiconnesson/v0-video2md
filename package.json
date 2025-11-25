@@ -14,6 +14,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@ai-sdk/react": "latest",
     "@edge-runtime/vm": "latest",
     "@neondatabase/serverless": "latest",
     "@opentelemetry/api": "latest",
@@ -51,6 +52,7 @@
     "@vitest/browser-preview": "latest",
     "@vitest/browser-webdriverio": "latest",
     "@vitest/ui": "latest",
+    "ai": "latest",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "latest",
@@ -75,7 +77,8 @@
     "tailwindcss-animate": "^1.0.7",
     "vaul": "latest",
     "vite": "latest",
-    "workflow": "latest"
+    "workflow": "latest",
+    "zod": "latest"
   },
   "devDependencies": {
     "@biomejs/biome": "2.2.0",
