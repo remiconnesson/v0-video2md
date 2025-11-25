@@ -36,6 +36,7 @@ export function VideoChat({ youtubeId }: { youtubeId: string }) {
     body: {
       chatId: currentChatId,
     },
+    initialInput: "",
   })
 
   // Fetch video data and previous chats
@@ -69,7 +70,7 @@ export function VideoChat({ youtubeId }: { youtubeId: string }) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!input.trim()) return
+    if (!input || !input.trim()) return
 
     sendMessage({
       text: input,
@@ -168,13 +169,13 @@ export function VideoChat({ youtubeId }: { youtubeId: string }) {
           {/* Chat input */}
           <form onSubmit={handleSubmit} className="mt-4 flex gap-2">
             <Input
-              value={input}
+              value={input || ""}
               onChange={(e) => setInput(e.target.value)}
               placeholder="Ask a question about this video..."
               disabled={status === "streaming"}
               className="flex-1"
             />
-            <Button type="submit" size="icon" disabled={!input.trim() || status === "streaming"}>
+            <Button type="submit" size="icon" disabled={!input || !input.trim() || status === "streaming"}>
               <Send className="h-4 w-4" />
             </Button>
           </form>

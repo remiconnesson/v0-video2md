@@ -10,6 +10,12 @@ const MOCK_VIDEO_DATA = {
     transcript:
       "This is a mock transcript of the video. It contains sample text that would normally be extracted from a real YouTube video. The speaker discusses various topics and provides insights on the subject matter.",
   },
+  CpcS3CQ8NTY: {
+    title: "Understanding AI and Machine Learning",
+    description: "An in-depth look at artificial intelligence and machine learning concepts.",
+    transcript:
+      "Welcome to this video about artificial intelligence and machine learning. Today we'll explore the fundamental concepts that power modern AI systems. Machine learning is a subset of artificial intelligence that focuses on creating systems that can learn from data. These systems improve their performance over time without being explicitly programmed for every task. There are several types of machine learning: supervised learning, unsupervised learning, and reinforcement learning. Each has its own use cases and applications in the real world.",
+  },
 }
 
 export async function POST(req: Request, { params }: { params: Promise<{ videoId: string }> }) {
