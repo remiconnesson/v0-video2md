@@ -1,7 +1,7 @@
 "use client";
 
 import { useChat } from "@ai-sdk/react";
-import { DefaultChatTransport } from "ai";
+import { DefaultChatTransport, isTextUIPart } from "ai";
 import { ExternalLink, Loader2, MessageSquare, Send } from "lucide-react";
 import type React from "react";
 import { useEffect, useMemo, useState } from "react";
@@ -208,10 +208,8 @@ export function VideoChat({ youtubeId }: { youtubeId: string }) {
 
                 {messages.map((message) => {
                   const text = message.parts
-                    .filter((part) => part.type === "text")
-                    .map(
-                      (part) => (part as { type: "text"; text: string }).text,
-                    )
+                    .filter(isTextUIPart)
+                    .map((part) => part.text)
                     .join("");
 
                   return (
