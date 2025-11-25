@@ -11,6 +11,8 @@ import {
   varchar,
 } from "drizzle-orm/pg-core";
 
+import type { Chapter } from "@/ai/transcript-to-book-schema";
+
 export const channels = pgTable("channels", {
   channelId: varchar("channel_id", { length: 64 }).primaryKey(),
   channelName: text("channel_name").notNull(),
@@ -55,3 +57,16 @@ export const scrapTranscriptV1 = pgTable(
   },
   (table) => [unique("unique_video_transcript").on(table.videoId)],
 );
+
+export const videoBookContent = pgTable("video_book_content", {
+  videoId: varchar("video_id", { length: 32 })
+    .primaryKey()
+    .references(() => videos.videoId, { onDelete: "cascade" }),
+  videoSummary: text("video_summary").notNull(),
+  chapters: jsonb("chapters").$type<Chapter[]>().notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export type VideoBookContent = typeof videoBookContent.$inferSelect;
+export type NewVideoBookContent = typeof videoBookContent.$inferInsert;
