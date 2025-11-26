@@ -20,47 +20,7 @@ interface VideoData {
 }
 
 export function ProcessedVideosList() {
-  const [videos] = useState<VideoData[]>([
-    {
-      videoId: "mock-1",
-      videoData: {
-        title: "Next.js 14 Full Course 2024",
-        description:
-          "Learn Next.js 14 from scratch. We'll build a full-stack application with Server Actions, Prisma, and Tailwind CSS.",
-        duration: "12:45:00",
-        thumbnail:
-          "https://images.unsplash.com/photo-1633356122544-f134324a6cee?w=800&q=80",
-      },
-      extractSlides: true,
-      completedAt: new Date().toISOString(),
-    },
-    {
-      videoId: "mock-2",
-      videoData: {
-        title: "Understanding React Server Components",
-        description:
-          "A deep dive into React Server Components, how they work, and why they are the future of React development.",
-        duration: "45:20",
-        thumbnail:
-          "https://images.unsplash.com/photo-1633356122102-3fe601e15ccc?w=800&q=80",
-      },
-      extractSlides: false,
-      completedAt: new Date(Date.now() - 86400000).toISOString(),
-    },
-    {
-      videoId: "mock-3",
-      videoData: {
-        title: "System Design Interview Guide",
-        description:
-          "Master system design interviews with this comprehensive guide covering scalability, availability, and consistency.",
-        duration: "1:15:30",
-        thumbnail:
-          "https://images.unsplash.com/photo-1555949963-aa79dcee981c?w=800&q=80",
-      },
-      extractSlides: true,
-      completedAt: new Date(Date.now() - 172800000).toISOString(),
-    },
-  ]);
+  const [videos] = useState<VideoData[]>([]);
   const [loading] = useState(false);
 
   if (loading) {
