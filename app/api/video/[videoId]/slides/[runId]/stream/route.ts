@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getRun } from "workflow/api";
+import type { SlideStreamEvent } from "@/lib/slides-extractor-types";
 
 export async function GET(
   request: Request,
@@ -21,7 +22,16 @@ export async function GET(
     const run = getRun(runId);
     const stream = run.getReadable({ startIndex });
 
-    return new NextResponse(stream, {
+    // Transform the object stream to SSE-formatted text stream
+    const transformStream = new TransformStream<SlideStreamEvent, string>({
+      transform(chunk, controller) {
+        controller.enqueue(`data: ${JSON.stringify(chunk)}\n\n`);
+      },
+    });
+
+    const sseStream = stream.pipeThrough(transformStream);
+
+    return new NextResponse(sseStream, {
       headers: {
         "Content-Type": "text/event-stream",
         "Cache-Control": "no-cache",

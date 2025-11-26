@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { start } from "workflow/api";
-import { fetchAndStoreTranscriptWorkflow } from "@/app/workflows/fetch-transcript";
+import {
+  fetchAndStoreTranscriptWorkflow,
+  type TranscriptWorkflowEvent,
+} from "@/app/workflows/fetch-transcript";
 
 export async function POST(
   _request: Request,
@@ -19,7 +22,20 @@ export async function POST(
   try {
     const run = await start(fetchAndStoreTranscriptWorkflow, [videoId]);
 
-    return new NextResponse(run.readable, {
+    // Transform the object stream to SSE-formatted text stream
+    const transformStream = new TransformStream<
+      TranscriptWorkflowEvent,
+      string
+    >({
+      transform(chunk, controller) {
+        // Serialize objects to SSE format
+        controller.enqueue(`data: ${JSON.stringify(chunk)}\n\n`);
+      },
+    });
+
+    const sseStream = run.readable.pipeThrough(transformStream);
+
+    return new NextResponse(sseStream, {
       headers: {
         "Content-Type": "text/event-stream",
         "Cache-Control": "no-cache",
