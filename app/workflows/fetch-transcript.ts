@@ -1,6 +1,5 @@
 import { ApifyClient } from "apify-client";
 import { fetch } from "workflow";
-
 import { generateTranscriptToBook } from "@/ai/transcript-to-book";
 import type { TranscriptToBook } from "@/ai/transcript-to-book-schema";
 import { db } from "@/db";
@@ -106,6 +105,7 @@ export async function fetchAndStoreTranscriptWorkflow(videoId: string) {
     videoId: apifyResult.id,
     title: apifyResult.title,
     hasBookContent: bookContent !== null,
+    chapters: bookContent?.chapters || [],
   };
 }
 

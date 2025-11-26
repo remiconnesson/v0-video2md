@@ -1,88 +1,49 @@
-// app/workflows/extract-slides.ts
-
-import { fetch, getWritable } from "workflow";
 import { AwsClient } from "aws4fetch";
 import { createParser } from "eventsource-parser";
+
+type ParserEvent =
+  | { type: "event"; data: string }
+  | { type: "reconnect-interval"; value: number };
+
+import { fetch, getWritable } from "workflow";
+
 import type { Chapter } from "@/ai/transcript-to-book-schema";
+import type {
+  JobUpdate,
+  SlideManifest,
+  SlideStreamEvent,
+  StaticSegment,
+} from "@/lib/slides-extractor-types";
+import { JobStatus } from "@/lib/slides-extractor-types";
 
-// Types declared inline to avoid import issues in workflow context
-interface JobUpdate {
-  status: string;
-  progress: number;
-  message: string;
-  updated_at: string;
-  video_id?: string;
-  metadata_uri?: string;
-  error?: string;
-}
-
-interface SlideManifest {
-  [videoId: string]: {
-    segments: VideoSegment[];
-  };
-}
-
-type VideoSegment = MovingSegment | StaticSegment;
-
-interface MovingSegment {
-  kind: "moving";
-  start_time: number;
-  end_time: number;
-}
-
-interface StaticSegment {
-  kind: "static";
-  start_time: number;
-  end_time: number;
-  frame_id: string;
-  url: string;
-  s3_uri: string;
-  s3_key: string;
-  s3_bucket: string;
-  has_text: boolean;
-  text_confidence: number;
-  text_box_count: number;
-  skip_reason: string | null;
-}
-
-// Stream event types for the frontend
-interface SlideStreamEvent {
-  type: "progress" | "slide" | "complete" | "error";
-  data: unknown;
+function getEnv(key: string, fallback?: string): string {
+  const value = process.env[key];
+  if (value) return value;
+  if (fallback !== undefined) return fallback;
+  throw new Error(`Missing required environment variable: ${key}`);
 }
 
 const CONFIG = {
-  API_BASE:
-    process.env.SLIDES_API_BASE || "https://slides-extractor.remtoolz.ai",
-  S3_BASE: process.env.S3_BASE_URL || "https://s3.remtoolz.ai",
-  API_PASSWORD: process.env.SLIDES_API_PASSWORD!,
-  S3_ACCESS_KEY: process.env.S3_ACCESS_KEY!,
-  S3_SECRET_KEY: process.env.S3_SECRET_KEY!,
+  API_BASE: getEnv("SLIDES_API_BASE", "https://slides-extractor.remtoolz.ai"),
+  S3_BASE: getEnv("S3_BASE_URL", "https://s3.remtoolz.ai"),
+  API_PASSWORD: getEnv("SLIDES_API_PASSWORD"),
+  S3_ACCESS_KEY: getEnv("S3_ACCESS_KEY"),
 };
 
-/**
- * Main workflow for extracting slides from a YouTube video
- * Streams progress and slides to the frontend
- */
 export async function extractSlidesWorkflow(
   videoId: string,
   chapters?: Chapter[],
 ) {
   "use workflow";
 
-  // Step 1: Trigger the extraction job
   await triggerExtractionJob(videoId);
 
-  // Step 2: Monitor progress and stream updates
   const metadataUri = await monitorJobProgress(videoId);
 
-  // Step 3: Fetch the manifest
   const manifest = await fetchSlideManifest(metadataUri);
 
-  // Step 4: Stream slides with signed URLs
   const totalSlides = await streamSlidesToFrontend(videoId, manifest, chapters);
 
-  // Step 5: Signal completion
   await signalCompletion(videoId, totalSlides);
 
   return {
@@ -101,7 +62,7 @@ async function triggerExtractionJob(videoId: string) {
   await writer.write({
     type: "progress",
     data: {
-      status: "pending",
+      status: JobStatus.PENDING,
       progress: 0,
       message: "Starting video processing...",
     },
@@ -138,35 +99,42 @@ async function monitorJobProgress(videoId: string): Promise<string> {
     throw new Error(`Stream connection failed: ${response.statusText}`);
   }
 
+  const body = response.body;
+
   return new Promise<string>((resolve, reject) => {
-    const reader = response.body!.getReader();
+    const reader = body.getReader();
     const decoder = new TextDecoder();
 
-    const parser = createParser(async (event) => {
+    const parser = (
+      createParser as unknown as (onParse: (event: ParserEvent) => void) => {
+        feed: (chunk: string) => void;
+      }
+    )((event: ParserEvent) => {
       if (event.type === "event") {
-        try {
-          const data: JobUpdate = JSON.parse(event.data);
+        void (async () => {
+          try {
+            const data: JobUpdate = JSON.parse(event.data);
 
-          // Stream progress to frontend
-          const writer = writable.getWriter();
-          await writer.write({
-            type: "progress",
-            data: {
-              status: data.status,
-              progress: data.progress,
-              message: data.message,
-            },
-          });
-          writer.releaseLock();
+            const writer = writable.getWriter();
+            await writer.write({
+              type: "progress",
+              data: {
+                status: data.status,
+                progress: data.progress,
+                message: data.message,
+              },
+            });
+            writer.releaseLock();
 
-          if (data.status === "completed" && data.metadata_uri) {
-            resolve(data.metadata_uri);
-          } else if (data.status === "failed") {
-            reject(new Error(data.error || "Job failed"));
+            if (data.status === "completed" && data.metadata_uri) {
+              resolve(data.metadata_uri);
+            } else if (data.status === "failed") {
+              reject(new Error(data.error || "Job failed"));
+            }
+          } catch {
+            // Ignore parse errors
           }
-        } catch {
-          // Ignore parse errors
-        }
+        })();
       }
     });
 
@@ -183,16 +151,9 @@ async function monitorJobProgress(videoId: string): Promise<string> {
 async function fetchSlideManifest(s3Uri: string): Promise<SlideManifest> {
   "use step";
 
-  const urlParts = s3Uri.replace("s3://", "").split("/");
-  const bucket = urlParts.shift();
-  const key = urlParts.join("/");
+  const { bucket, key } = parseS3Uri(s3Uri);
 
-  const s3Client = new AwsClient({
-    accessKeyId: CONFIG.S3_ACCESS_KEY,
-    secretAccessKey: CONFIG.S3_SECRET_KEY,
-    service: "s3",
-    region: "us-east-1",
-  });
+  const s3Client = makeAwsClient();
 
   const httpUrl = `${CONFIG.S3_BASE}/${bucket}/${key}`;
   const response = await s3Client.fetch(httpUrl);
@@ -214,12 +175,7 @@ async function streamSlidesToFrontend(
   const writable = getWritable<SlideStreamEvent>();
   const writer = writable.getWriter();
 
-  const s3Client = new AwsClient({
-    accessKeyId: CONFIG.S3_ACCESS_KEY,
-    secretAccessKey: CONFIG.S3_SECRET_KEY,
-    service: "s3",
-    region: "us-east-1",
-  });
+  const s3Client = makeAwsClient();
 
   const videoData = manifest[videoId];
   if (!videoData) {
@@ -227,43 +183,40 @@ async function streamSlidesToFrontend(
     return 0;
   }
 
-  // Filter to static segments (actual slides)
   const slides = videoData.segments.filter(
     (seg): seg is StaticSegment => seg.kind === "static" && !seg.skip_reason,
   );
 
-  // Parse chapter timestamps for matching
   const chapterTimestamps =
     chapters?.map((ch) => parseTimestamp(ch.start)) || [];
 
-  for (let i = 0; i < slides.length; i++) {
-    const slide = slides[i];
+  try {
+    for (let i = 0; i < slides.length; i++) {
+      const slide = slides[i];
 
-    // Generate signed URL for the image
-    const urlParts = slide.s3_uri.replace("s3://", "").split("/");
-    const bucket = urlParts.shift();
-    const key = urlParts.join("/");
-    const signedUrl = await generateSignedUrl(s3Client, bucket!, key);
+      const { bucket, key } = parseS3Uri(slide.s3_uri, "slide");
+      const signedUrl = await generateSignedUrl(s3Client, bucket, key);
 
-    // Determine which chapter this slide belongs to
-    const chapterIndex = findChapterIndex(slide.start_time, chapterTimestamps);
+      const chapterIndex = findChapterIndex(slide.start_time, chapterTimestamps);
 
-    await writer.write({
-      type: "slide",
-      data: {
-        slide_index: i,
-        chapter_index: chapterIndex,
-        frame_id: slide.frame_id,
-        start_time: slide.start_time,
-        end_time: slide.end_time,
-        image_url: signedUrl,
-        has_text: slide.has_text,
-        text_confidence: slide.text_confidence,
-      },
-    });
+      await writer.write({
+        type: "slide",
+        data: {
+          slide_index: i,
+          chapter_index: chapterIndex,
+          frame_id: slide.frame_id,
+          start_time: slide.start_time,
+          end_time: slide.end_time,
+          image_url: signedUrl,
+          has_text: slide.has_text,
+          text_confidence: slide.text_confidence,
+        },
+      });
+    }
+  } finally {
+    writer.releaseLock();
   }
 
-  writer.releaseLock();
   return slides.length;
 }
 
@@ -298,10 +251,16 @@ async function signalCompletion(videoId: string, totalSlides: number) {
   await writable.close();
 }
 
-/**
- * Parse timestamp string to seconds
- * Supports "MM:SS" and "HH:MM:SS" formats
- */
+function makeAwsClient() {
+  const s3Client = new AwsClient({
+    accessKeyId: CONFIG.S3_ACCESS_KEY,
+    secretAccessKey: CONFIG.S3_ACCESS_KEY, // on purpose, see our private s3 docs
+    service: "s3",
+    region: "us-east-1",
+  });
+  return s3Client;
+}
+
 function parseTimestamp(timestamp: string): number {
   const parts = timestamp.split(":").map(Number);
   if (parts.length === 2) {
@@ -313,9 +272,6 @@ function parseTimestamp(timestamp: string): number {
   return 0;
 }
 
-/**
- * Find which chapter a slide belongs to based on timestamp
- */
 function findChapterIndex(slideTime: number, chapterStarts: number[]): number {
   for (let i = chapterStarts.length - 1; i >= 0; i--) {
     if (slideTime >= chapterStarts[i]) {
@@ -323,4 +279,15 @@ function findChapterIndex(slideTime: number, chapterStarts: number[]): number {
     }
   }
   return 0;
+}
+
+function parseS3Uri(s3Uri: string, context?: string) {
+  const urlParts = s3Uri.replace("s3://", "").split("/");
+  const bucket = urlParts.shift();
+  const key = urlParts.join("/");
+  if (!bucket || !key) {
+    const label = context ? `Invalid S3 URI on ${context}` : "Invalid S3 URI";
+    throw new Error(`${label}: ${s3Uri}`);
+  }
+  return { bucket, key };
 }

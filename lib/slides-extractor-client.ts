@@ -1,30 +1,38 @@
-// lib/slides-extractor-client.ts
-
 import { AwsClient } from "aws4fetch";
 import { createParser } from "eventsource-parser";
-import type {
-  JobUpdate,
-  SlideManifest,
-  StaticSegment,
+
+type ParserEvent =
+  | { type: "event"; data: string }
+  | { type: "reconnect-interval"; value: number };
+
+import {
+  JobStatus,
+  type JobUpdate,
+  type SlideManifest,
+  type StaticSegment,
 } from "./slides-extractor-types";
 
+function getEnv(key: string, fallback?: string): string {
+  const value = process.env[key];
+  if (value) return value;
+  if (fallback !== undefined) return fallback;
+  throw new Error(`Missing required environment variable: ${key}`);
+}
+
 const CONFIG = {
-  API_BASE:
-    process.env.SLIDES_API_BASE || "https://slides-extractor.remtoolz.ai",
-  S3_BASE: process.env.S3_BASE_URL || "https://s3.remtoolz.ai",
-  API_PASSWORD: process.env.SLIDES_API_PASSWORD!,
-  S3_ACCESS_KEY: process.env.S3_ACCESS_KEY!,
-  S3_SECRET_KEY: process.env.S3_SECRET_KEY!,
-  S3_REGION: process.env.S3_REGION || "us-east-1",
+  API_BASE: getEnv("SLIDES_API_BASE", "https://slides-extractor.remtoolz.ai"),
+  S3_BASE: getEnv("S3_BASE_URL", "https://s3.remtoolz.ai"),
+  API_PASSWORD: getEnv("SLIDES_API_PASSWORD"),
+  S3_ACCESS_KEY: getEnv("S3_ACCESS_KEY"),
+  S3_REGION: getEnv("S3_REGION", "us-east-1"),
 };
 
-// Lazy-initialize S3 client
 let _s3Client: AwsClient | null = null;
 function getS3Client(): AwsClient {
   if (!_s3Client) {
     _s3Client = new AwsClient({
       accessKeyId: CONFIG.S3_ACCESS_KEY,
-      secretAccessKey: CONFIG.S3_SECRET_KEY,
+      secretAccessKey: CONFIG.S3_ACCESS_KEY, // on purpose, see our private s3 doc
       service: "s3",
       region: CONFIG.S3_REGION,
     });
@@ -33,9 +41,6 @@ function getS3Client(): AwsClient {
 }
 
 export class SlidesExtractorClient {
-  /**
-   * Trigger the background job for video processing
-   */
   async triggerJob(videoId: string): Promise<void> {
     const res = await fetch(`${CONFIG.API_BASE}/process/youtube/${videoId}`, {
       method: "POST",
@@ -50,10 +55,6 @@ export class SlidesExtractorClient {
     }
   }
 
-  /**
-   * Stream job updates via SSE
-   * Yields JobUpdate objects as they arrive
-   */
   async *streamJobUpdates(videoId: string): AsyncGenerator<JobUpdate> {
     const streamUrl = `${CONFIG.API_BASE}/jobs/${videoId}/stream`;
 
@@ -65,14 +66,25 @@ export class SlidesExtractorClient {
       throw new Error(`Stream connection failed: ${response.statusText}`);
     }
 
-    const reader = response.body.getReader();
+    const body = response.body;
+    const reader = body.getReader();
     const decoder = new TextDecoder();
 
-    // Buffer for parsing SSE events
     const updates: JobUpdate[] = [];
     let resolveNext: ((value: JobUpdate) => void) | null = null;
 
-    const parser = createParser((event) => {
+    // Sentinel for stream completion
+    const STREAM_CLOSED = Symbol("STREAM_CLOSED");
+    let streamClosedResolve: (() => void) | null = null;
+    const streamClosedPromise = new Promise<typeof STREAM_CLOSED>((resolve) => {
+      streamClosedResolve = () => resolve(STREAM_CLOSED);
+    });
+
+    const parser = (
+      createParser as unknown as (onParse: (event: ParserEvent) => void) => {
+        feed: (chunk: string) => void;
+      }
+    )((event: ParserEvent) => {
       if (event.type === "event") {
         try {
           const data: JobUpdate = JSON.parse(event.data);
@@ -88,35 +100,52 @@ export class SlidesExtractorClient {
       }
     });
 
-    // Start reading in background
     const readLoop = async () => {
       while (true) {
         const { done, value } = await reader.read();
-        if (done) break;
+        if (done) {
+          // Signal stream completion
+          streamClosedResolve?.();
+          break;
+        }
         parser.feed(decoder.decode(value));
       }
     };
 
     const readPromise = readLoop();
 
-    // Yield updates as they come
     while (true) {
       if (updates.length > 0) {
-        const update = updates.shift()!;
-        yield update;
+        const update = updates.shift();
+        if (update) {
+          yield update;
 
-        // Check for terminal states
-        if (update.status === "completed" || update.status === "failed") {
-          break;
+          if (
+            update.status === JobStatus.COMPLETED ||
+            update.status === JobStatus.FAILED
+          ) {
+            break;
+          }
         }
       } else {
-        // Wait for next update
-        const update = await new Promise<JobUpdate>((resolve) => {
-          resolveNext = resolve;
-        });
-        yield update;
+        // Race between next update and stream closing
+        const result = await Promise.race([
+          new Promise<JobUpdate>((resolve) => {
+            resolveNext = resolve;
+          }),
+          streamClosedPromise,
+        ]);
 
-        if (update.status === "completed" || update.status === "failed") {
+        if (result === STREAM_CLOSED) {
+          throw new Error("Stream closed without terminal status");
+        }
+
+        yield result;
+
+        if (
+          result.status === JobStatus.COMPLETED ||
+          result.status === JobStatus.FAILED
+        ) {
           break;
         }
       }
@@ -125,24 +154,18 @@ export class SlidesExtractorClient {
     await readPromise;
   }
 
-  /**
-   * Wait for job completion and return the metadata URI
-   */
   async waitForCompletion(videoId: string): Promise<string> {
     for await (const update of this.streamJobUpdates(videoId)) {
-      if (update.status === "completed" && update.metadata_uri) {
+      if (update.status === JobStatus.COMPLETED && update.metadata_uri) {
         return update.metadata_uri;
       }
-      if (update.status === "failed") {
+      if (update.status === JobStatus.FAILED) {
         throw new Error(update.error || "Job failed with unknown error");
       }
     }
     throw new Error("Stream ended without completion");
   }
 
-  /**
-   * Fetch the slide manifest from S3
-   */
   async fetchManifest(s3Uri: string): Promise<SlideManifest> {
     const urlParts = s3Uri.replace("s3://", "").split("/");
     const bucket = urlParts.shift();
@@ -162,13 +185,14 @@ export class SlidesExtractorClient {
     return response.json();
   }
 
-  /**
-   * Generate a signed URL for an S3 object (valid for 1 hour)
-   */
   async getSignedUrl(s3Uri: string): Promise<string> {
     const urlParts = s3Uri.replace("s3://", "").split("/");
     const bucket = urlParts.shift();
     const key = urlParts.join("/");
+
+    if (!bucket || !key) {
+      throw new Error(`Invalid S3 URI: ${s3Uri}`);
+    }
 
     const url = new URL(`${CONFIG.S3_BASE}/${bucket}/${key}`);
 
@@ -180,22 +204,14 @@ export class SlidesExtractorClient {
     return signed.url;
   }
 
-  /**
-   * Get all static segments (slides) from a manifest
-   */
-  getStaticSegments(
-    manifest: SlideManifest,
-    videoId: string,
-  ): StaticSegment[] {
+  getStaticSegments(manifest: SlideManifest, videoId: string): StaticSegment[] {
     const videoData = manifest[videoId];
     if (!videoData) return [];
 
     return videoData.segments.filter(
-      (seg): seg is StaticSegment =>
-        seg.kind === "static" && !seg.skip_reason,
+      (seg): seg is StaticSegment => seg.kind === "static" && !seg.skip_reason,
     );
   }
 }
 
-// Export singleton instance
 export const slidesClient = new SlidesExtractorClient();

@@ -1,28 +1,34 @@
-// app/api/video/[videoId]/slides/route.ts
-
 import { NextResponse } from "next/server";
 import { start } from "workflow/api";
+import { z } from "zod";
+import { chapterSchema } from "@/ai/transcript-to-book-schema";
 import { extractSlidesWorkflow } from "@/app/workflows/extract-slides";
-import type { Chapter } from "@/ai/transcript-to-book-schema";
 
-interface RequestBody {
-  chapters?: Chapter[];
-}
+const chaptersPayloadSchema = z.object({
+  chapters: z.array(chapterSchema).optional(),
+});
 
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ videoId: string }> },
 ) {
   const { videoId } = await params;
-
-  let body: RequestBody = {};
+  let body: unknown;
   try {
     body = await request.json();
   } catch {
-    // No body or invalid JSON is fine
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  const chapters = body.chapters;
+  const parsed = chaptersPayloadSchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: "Validation failed", details: parsed.error.format() },
+      { status: 400 },
+    );
+  }
+
+  const { chapters } = parsed.data;
 
   try {
     const run = await start(extractSlidesWorkflow, [videoId, chapters]);
@@ -42,19 +48,4 @@ export async function POST(
       { status: 500 },
     );
   }
-}
-
-// GET endpoint for checking slide extraction status (optional)
-export async function GET(
-  _request: Request,
-  { params }: { params: Promise<{ videoId: string }> },
-) {
-  const { videoId } = await params;
-
-  // Return info about the video's slide extraction capability
-  return NextResponse.json({
-    videoId,
-    extractionAvailable: true,
-    message: "POST to this endpoint to start slide extraction",
-  });
 }
