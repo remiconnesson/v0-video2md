@@ -1,5 +1,5 @@
 import { ApifyClient } from "apify-client";
-import { fetch } from "workflow";
+import { fetch, getWritable } from "workflow";
 import { generateTranscriptToBook } from "@/ai/transcript-to-book";
 import type { TranscriptToBook } from "@/ai/transcript-to-book-schema";
 import { db } from "@/db";
@@ -9,6 +9,41 @@ import {
   videoBookContent,
   videos,
 } from "@/db/schema";
+
+// Types for streaming progress events
+export type TranscriptWorkflowEvent =
+  | { type: "progress"; step: string; message: string }
+  | { type: "complete"; bookContent: TranscriptToBook }
+  | { type: "error"; message: string };
+
+async function emitProgress(step: string, message: string) {
+  "use step";
+
+  const writable = getWritable<TranscriptWorkflowEvent>();
+  const writer = writable.getWriter();
+  await writer.write({ type: "progress", step, message });
+  writer.releaseLock();
+}
+
+async function emitComplete(bookContent: TranscriptToBook) {
+  "use step";
+
+  const writable = getWritable<TranscriptWorkflowEvent>();
+  const writer = writable.getWriter();
+  await writer.write({ type: "complete", bookContent });
+  writer.releaseLock();
+  await writable.close();
+}
+
+async function emitError(message: string) {
+  "use step";
+
+  const writable = getWritable<TranscriptWorkflowEvent>();
+  const writer = writable.getWriter();
+  await writer.write({ type: "error", message });
+  writer.releaseLock();
+  await writable.close();
+}
 
 interface TranscriptSegment {
   start: number;
@@ -77,17 +112,24 @@ const formatTranscriptString = (segments: TranscriptSegment[]): string =>
 export async function fetchAndStoreTranscriptWorkflow(videoId: string) {
   "use workflow";
 
+  await emitProgress("fetching", "Fetching transcript from YouTube...");
+
   const apifyResult = await stepFetchFromApify(videoId);
 
   if (!apifyResult) {
+    await emitError(`No results found for video ID: ${videoId}`);
     throw new Error(`Apify returned no results for video ID: ${videoId}`);
   }
+
+  await emitProgress("saving", "Saving video data to database...");
 
   await stepSaveToDb(apifyResult);
 
   let bookContent: TranscriptToBook | null = null;
 
   if (apifyResult.transcript && apifyResult.transcript.length > 0) {
+    await emitProgress("analyzing", "Generating chapter analysis...");
+
     bookContent = await stepGenerateBookContent({
       transcript: apifyResult.transcript,
       title: apifyResult.title,
@@ -96,7 +138,9 @@ export async function fetchAndStoreTranscriptWorkflow(videoId: string) {
     });
 
     if (bookContent) {
+      await emitProgress("finalizing", "Saving analysis results...");
       await stepSaveBookContent(apifyResult.id, bookContent);
+      await emitComplete(bookContent);
     }
   }
 
