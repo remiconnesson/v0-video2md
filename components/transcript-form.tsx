@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { triggerTranscript } from "@/app/actions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,6 +10,13 @@ import { Label } from "@/components/ui/label";
 
 export function TranscriptFetcher() {
   const [state, action, isPending] = useActionState(triggerTranscript, null);
+  const router = useRouter();
+
+  useEffect(() => {
+    if (state?.success && state?.videoId) {
+      router.push(`/video/youtube/${state.videoId}`);
+    }
+  }, [state, router]);
 
   return (
     <Card className="border-2 shadow-lg">
@@ -38,16 +46,6 @@ export function TranscriptFetcher() {
         {state?.error && (
           <div className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
             ❌ {state.error}
-          </div>
-        )}
-
-        {state?.success && (
-          <div className="rounded-md bg-green-50 px-3 py-2 text-sm text-green-700 space-y-1">
-            <p className="font-semibold">✅ Workflow Started!</p>
-            <p className="text-xs font-mono">Run ID: {state.runId}</p>
-            <p className="text-xs">
-              The transcript will appear in the database shortly.
-            </p>
           </div>
         )}
       </CardContent>
