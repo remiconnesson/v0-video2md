@@ -118,7 +118,16 @@ async function stepFetchFromApify(videoId: string) {
   });
 
   const { items } = await client.dataset(run.defaultDatasetId).listItems();
-  return (items[0] as unknown as TranscriptResult | undefined) ?? null;
+  const rawResult = items[0];
+
+  // Log the raw API response to understand field names
+  console.log(
+    "[Apify] Raw response keys:",
+    rawResult ? Object.keys(rawResult) : "null",
+  );
+  console.log("[Apify] Raw response:", JSON.stringify(rawResult, null, 2));
+
+  return (rawResult as unknown as TranscriptResult | undefined) ?? null;
 }
 
 async function stepSaveToDb(data: TranscriptResult) {
