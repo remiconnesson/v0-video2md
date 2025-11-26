@@ -3,25 +3,26 @@
  */
 
 /**
- * Checks if an IP address is in a private or reserved range
- * This prevents SSRF attacks targeting internal services
+ * Checks if an IP address is in a private or reserved range.
+ * Treats malformed IPs as unsafe.
+ * This prevents SSRF attacks targeting internal services.
  */
 function isPrivateOrReservedIP(hostname: string): boolean {
-  // Check for localhost
+  // Obvious local names
   if (hostname === "localhost" || hostname === "::1") {
     return true;
   }
 
-  // IPv4 patterns
+  // IPv4 dotted-decimal
   const ipv4Match = hostname.match(
     /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/,
   );
   if (ipv4Match) {
-    const octets = ipv4Match.slice(1, 5).map(Number);
+    const octets = ipv4Match.slice(1).map(Number);
 
-    // Check if all octets are valid (0-255)
-    if (octets.some((octet) => octet > 255)) {
-      return true; // Invalid IP, treat as dangerous
+    // Invalid octet -> treat as unsafe
+    if (octets.some((o) => Number.isNaN(o) || o < 0 || o > 255)) {
+      return true;
     }
 
     const [a, b] = octets;
@@ -40,20 +41,27 @@ function isPrivateOrReservedIP(hostname: string): boolean {
     // Multicast and reserved
     if (a >= 224) return true; // 224.0.0.0/4 and above
 
-    // This host (0.0.0.0/8)
+    // 0.0.0.0/8
     if (a === 0) return true;
   }
 
-  // IPv6 patterns - check for loopback and link-local
+  // IPv6-ish
   if (hostname.includes(":")) {
     const lower = hostname.toLowerCase();
+
     // Loopback
     if (lower === "::1" || lower === "0:0:0:0:0:0:0:1") return true;
+
     // Link-local (fe80::/10)
     if (lower.startsWith("fe80:")) return true;
+
     // Unique local addresses (fc00::/7)
     if (lower.startsWith("fc") || lower.startsWith("fd")) return true;
-    // IPv4-mapped IPv6 addresses
+
+    // Multicast (ff00::/8)
+    if (lower.startsWith("ff")) return true;
+
+    // IPv4-mapped IPv6 (::ffff:127.0.0.1, etc.)
     if (lower.includes("::ffff:")) return true;
   }
 
@@ -69,11 +77,18 @@ const ALLOWED_YOUTUBE_DOMAINS = [
   "m.youtube.com",
   "youtu.be",
   "music.youtube.com",
-];
+] as const;
 
 /**
- * Validates a URL to prevent SSRF attacks
- * Only allows HTTP/HTTPS protocols and YouTube domains
+ * Maximum number of redirects to follow when resolving short URLs
+ */
+const MAX_REDIRECTS = 5;
+
+/**
+ * Validates a URL to prevent SSRF attacks.
+ * - Only HTTP/HTTPS
+ * - YouTube domains only
+ * - Rejects localhost / private / reserved IPs
  */
 function validateUrlForSSRF(urlString: string): {
   valid: boolean;
@@ -87,7 +102,7 @@ function validateUrlForSSRF(urlString: string): {
     return { valid: false, error: "Invalid URL format" };
   }
 
-  // Only allow http and https protocols
+  // Only allow http and https
   if (url.protocol !== "http:" && url.protocol !== "https:") {
     return {
       valid: false,
@@ -95,8 +110,10 @@ function validateUrlForSSRF(urlString: string): {
     };
   }
 
-  // Check if hostname is a YouTube domain
-  const hostname = url.hostname.toLowerCase();
+  // Normalise hostname (strip trailing dot, lower-case)
+  const hostname = url.hostname.replace(/\.$/, "").toLowerCase();
+
+  // Allowlist YouTube hostnames
   const isYouTubeDomain = ALLOWED_YOUTUBE_DOMAINS.some(
     (domain) => hostname === domain || hostname.endsWith(`.${domain}`),
   );
@@ -108,7 +125,7 @@ function validateUrlForSSRF(urlString: string): {
     };
   }
 
-  // Check for private/reserved IPs
+  // Defense-in-depth: block private/reserved IP literals masquerading as hostnames
   if (isPrivateOrReservedIP(hostname)) {
     return {
       valid: false,
@@ -168,68 +185,85 @@ export function extractYoutubeVideoId(input: string): string | null {
 }
 
 /**
- * Resolves a short URL to get the full URL and extract the video ID
- * Handles youtu.be redirects and other shortened URLs
- * Includes SSRF protection by validating URLs before fetching
+ * Resolves a short YouTube URL to a full URL and extracts the video ID.
+ * - Handles youtu.be redirects
+ * - Includes SSRF protection (allowlist, protocol checks, IP blocklist, manual redirects)
  */
-export async function resolveShortUrl(url: string): Promise<string | null> {
-  try {
-    // First try to extract ID directly
-    const directId = extractYoutubeVideoId(url);
-    if (directId) {
-      return directId;
-    }
+export async function resolveShortUrl(input: string): Promise<string | null> {
+  // 1. If we can extract an ID directly, don't hit the network at all.
+  const directId = extractYoutubeVideoId(input);
+  if (directId) {
+    return directId;
+  }
 
-    // Validate the URL to prevent SSRF attacks
-    const validation = validateUrlForSSRF(url);
+  // 2. Parse the input as a URL; if it's not even a URL, bail.
+  let currentUrl: string;
+  try {
+    currentUrl = new URL(input).toString();
+  } catch {
+    return null;
+  }
+
+  // Only bother resolving obvious short YouTube URLs (e.g. https://youtu.be/xyz)
+  if (!currentUrl.includes("youtu.be")) {
+    return null;
+  }
+
+  for (let i = 0; i < MAX_REDIRECTS; i++) {
+    const validation = validateUrlForSSRF(currentUrl);
     if (!validation.valid) {
       console.error(`URL validation failed: ${validation.error}`);
       return null;
     }
 
-    // If it's a short URL that we couldn't parse, try to resolve it
-    if (url.includes("youtu.be") || url.length < 30) {
-      // Use manual redirect to validate each redirect URL
-      const response = await fetch(url, {
+    let response: Response;
+    try {
+      response = await fetch(currentUrl, {
         method: "HEAD",
-        redirect: "manual",
+        redirect: "manual", // <– we handle redirects ourselves
       });
-
-      // If there's a redirect, validate the redirect URL
-      if (
-        response.status >= 300 &&
-        response.status < 400 &&
-        response.headers.has("location")
-      ) {
-        const redirectUrl = response.headers.get("location");
-        if (!redirectUrl) {
-          return null;
-        }
-
-        // Resolve relative URLs
-        const absoluteRedirectUrl = new URL(redirectUrl, url).toString();
-
-        // Validate the redirect URL
-        const redirectValidation = validateUrlForSSRF(absoluteRedirectUrl);
-        if (!redirectValidation.valid) {
-          console.error(
-            `Redirect URL validation failed: ${redirectValidation.error}`,
-          );
-          return null;
-        }
-
-        return extractYoutubeVideoId(absoluteRedirectUrl);
-      }
-
-      // No redirect, try to extract from the original URL
-      return extractYoutubeVideoId(url);
+    } catch (err) {
+      console.error("Error while resolving YouTube URL", err);
+      return null;
     }
 
-    return null;
-  } catch (error) {
-    console.error("Error resolving short URL:", error);
-    return null;
+    // 3xx: handle redirect manually and loop
+    if (
+      response.status >= 300 &&
+      response.status < 400 &&
+      response.headers.has("location")
+    ) {
+      const redirectLocation = response.headers.get("location");
+      if (!redirectLocation) {
+        return null;
+      }
+
+      // Resolve relative redirect against current URL
+      const absoluteRedirectUrl = new URL(
+        redirectLocation,
+        currentUrl,
+      ).toString();
+
+      const redirectValidation = validateUrlForSSRF(absoluteRedirectUrl);
+      if (!redirectValidation.valid) {
+        console.error(
+          `Redirect URL validation failed: ${redirectValidation.error}`,
+        );
+        return null;
+      }
+
+      // Next iteration will issue the HEAD to this URL
+      currentUrl = absoluteRedirectUrl;
+      continue;
+    }
+
+    // Not a redirect: final URL; extract the video ID from it.
+    const finalId = extractYoutubeVideoId(currentUrl);
+    return finalId ?? null;
   }
+
+  console.error("Too many redirects while resolving YouTube URL");
+  return null;
 }
 
 /**
