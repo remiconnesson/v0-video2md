@@ -26,6 +26,7 @@ const CONFIG = {
   S3_BASE: getEnv("S3_BASE_URL", "https://s3.remtoolz.ai"),
   API_PASSWORD: getEnv("SLIDES_API_PASSWORD"),
   S3_ACCESS_KEY: getEnv("S3_ACCESS_KEY"),
+  BLOB_READ_WRITE_TOKEN: getEnv("BLOB_READ_WRITE_TOKEN"),
 };
 
 export async function extractSlidesWorkflow(
@@ -174,7 +175,6 @@ async function streamSlidesToFrontend(
   const writer = writable.getWriter();
 
   const s3Client = makeAwsClient();
-  const blobToken = process.env.BLOB_READ_WRITE_TOKEN;
 
   const videoData = manifest[videoId];
   if (!videoData) {
@@ -204,37 +204,11 @@ async function streamSlidesToFrontend(
         );
       }
 
-      let imageUrl: string;
+      const imageBuffer = await imageResponse.arrayBuffer();
 
-      // Upload to Vercel Blob if token is available, otherwise use signed S3 URL
-      if (blobToken) {
-        const imageBuffer = await imageResponse.arrayBuffer();
-        const blobPath = `slides/${videoId}/${slide.frame_id}.webp`;
-
-        // Use raw Vercel Blob API instead of SDK (SDK causes issues in workflow runtime)
-        const blobResponse = await fetch(
-          `https://blob.vercel-storage.com/${blobPath}`,
-          {
-            method: "PUT",
-            headers: {
-              Authorization: `Bearer ${blobToken}`,
-              "x-api-version": "7",
-              "x-content-type": "image/webp",
-            },
-            body: imageBuffer,
-          },
-        );
-
-        if (!blobResponse.ok) {
-          throw new Error(`Failed to upload to blob: ${blobResponse.statusText}`);
-        }
-
-        const blobResult = (await blobResponse.json()) as { url: string };
-        imageUrl = blobResult.url;
-      } else {
-        // Fallback to signed S3 URL if no blob token
-        imageUrl = await generateSignedUrl(s3Client, bucket, key);
-      }
+      // Upload to Vercel Blob using raw fetch API
+      const blobPath = `slides/${videoId}/${slide.frame_id}.webp`;
+      const blobUrl = await uploadToVercelBlob(blobPath, imageBuffer);
 
       const chapterIndex = findChapterIndex(
         slide.start_time,
@@ -249,7 +223,7 @@ async function streamSlidesToFrontend(
           frame_id: slide.frame_id,
           start_time: slide.start_time,
           end_time: slide.end_time,
-          image_url: imageUrl,
+          image_url: blobUrl,
           has_text: slide.has_text,
           text_confidence: slide.text_confidence,
         },
@@ -262,17 +236,32 @@ async function streamSlidesToFrontend(
   return slides.length;
 }
 
-async function generateSignedUrl(
-  s3Client: AwsClient,
-  bucket: string,
-  key: string,
+async function uploadToVercelBlob(
+  pathname: string,
+  body: ArrayBuffer,
 ): Promise<string> {
-  const url = new URL(`${CONFIG.S3_BASE}/${bucket}/${key}`);
-  const signed = await s3Client.sign(url, {
-    method: "GET",
-    aws: { signQuery: true },
-  });
-  return signed.url;
+  // Use the Vercel Blob API directly with fetch
+  // https://vercel.com/docs/storage/vercel-blob/using-blob-sdk#put
+  const response = await fetch(
+    `https://blob.vercel-storage.com/${pathname}`,
+    {
+      method: "PUT",
+      headers: {
+        Authorization: `Bearer ${CONFIG.BLOB_READ_WRITE_TOKEN}`,
+        "Content-Type": "image/webp",
+        "x-api-version": "7",
+      },
+      body,
+    },
+  );
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`Failed to upload to Vercel Blob: ${response.status} - ${text}`);
+  }
+
+  const result = await response.json();
+  return result.url;
 }
 
 async function signalCompletion(videoId: string, totalSlides: number) {
