@@ -172,15 +172,17 @@ async function stepFetchFromApify(videoId: string) {
 async function stepSaveToDb(data: TranscriptResult) {
   "use step";
 
+  const channelName = data.channelName || "Unknown Channel";
+
   await db
     .insert(channels)
     .values({
       channelId: data.channelId,
-      channelName: data.channelName || "Unknown Channel",
+      channelName,
     })
     .onConflictDoUpdate({
       target: channels.channelId,
-      set: { channelName: data.channelName },
+      set: { channelName },
     });
 
   await db
