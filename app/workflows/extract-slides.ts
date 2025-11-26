@@ -1,3 +1,4 @@
+import { put } from "@vercel/blob";
 import { AwsClient } from "aws4fetch";
 import { createParser } from "eventsource-parser";
 import { fetch, getWritable } from "workflow";
@@ -192,8 +193,25 @@ async function streamSlidesToFrontend(
     for (let i = 0; i < slides.length; i++) {
       const slide = slides[i];
 
+      // Fetch image from S3
       const { bucket, key } = parseS3Uri(slide.s3_uri, "slide");
-      const signedUrl = await generateSignedUrl(s3Client, bucket, key);
+      const s3Url = `${CONFIG.S3_BASE}/${bucket}/${key}`;
+      const imageResponse = await s3Client.fetch(s3Url);
+
+      if (!imageResponse.ok) {
+        throw new Error(
+          `Failed to fetch slide image: ${imageResponse.statusText}`,
+        );
+      }
+
+      const imageBlob = await imageResponse.blob();
+
+      // Upload to Vercel Blob
+      const blobPath = `slides/${videoId}/${slide.frame_id}.webp`;
+      const { url: blobUrl } = await put(blobPath, imageBlob, {
+        access: "public",
+        contentType: "image/webp",
+      });
 
       const chapterIndex = findChapterIndex(
         slide.start_time,
@@ -208,7 +226,7 @@ async function streamSlidesToFrontend(
           frame_id: slide.frame_id,
           start_time: slide.start_time,
           end_time: slide.end_time,
-          image_url: signedUrl,
+          image_url: blobUrl,
           has_text: slide.has_text,
           text_confidence: slide.text_confidence,
         },
@@ -219,19 +237,6 @@ async function streamSlidesToFrontend(
   }
 
   return slides.length;
-}
-
-async function generateSignedUrl(
-  s3Client: AwsClient,
-  bucket: string,
-  key: string,
-): Promise<string> {
-  const url = new URL(`${CONFIG.S3_BASE}/${bucket}/${key}`);
-  const signed = await s3Client.sign(url, {
-    method: "GET",
-    aws: { signQuery: true },
-  });
-  return signed.url;
 }
 
 async function signalCompletion(videoId: string, totalSlides: number) {

@@ -644,8 +644,8 @@ function SlideCard({
           src={slide.image_url}
           alt={`Slide at ${formatTime(slide.start_time)}`}
           fill
+          sizes="400px"
           className="object-contain"
-          unoptimized
         />
       </div>
       <div className="p-2 text-xs text-muted-foreground flex items-center justify-between">
