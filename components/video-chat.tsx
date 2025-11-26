@@ -621,17 +621,13 @@ export function VideoChat({ youtubeId }: { youtubeId: string }) {
                 </div>
               )}
 
-              {slideExtraction.status === "extracting" && (
-                <div className="flex flex-col items-center justify-center h-full min-h-[300px] text-center text-muted-foreground">
-                  <Loader2 className="h-8 w-8 animate-spin mb-4" />
-                  <p className="text-sm">Extracting slides...</p>
-                  {slides.length > 0 && (
-                    <p className="text-xs mt-2">
-                      {slides.length} slides found so far
-                    </p>
-                  )}
-                </div>
-              )}
+              {slideExtraction.status === "extracting" &&
+                slides.length === 0 && (
+                  <div className="flex flex-col items-center justify-center h-full min-h-[300px] text-center text-muted-foreground">
+                    <Loader2 className="h-8 w-8 animate-spin mb-4" />
+                    <p className="text-sm">Extracting slides...</p>
+                  </div>
+                )}
 
               {(slideExtraction.status === "ready" ||
                 (slideExtraction.status === "extracting" &&
