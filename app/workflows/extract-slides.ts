@@ -190,30 +190,33 @@ async function streamSlidesToFrontend(
   const chapterTimestamps =
     chapters?.map((ch) => parseTimestamp(ch.start)) || [];
 
-  for (let i = 0; i < slides.length; i++) {
-    const slide = slides[i];
+  try {
+    for (let i = 0; i < slides.length; i++) {
+      const slide = slides[i];
 
-    const { bucket, key } = parseS3Uri(slide.s3_uri, "slide");
-    const signedUrl = await generateSignedUrl(s3Client, bucket, key);
+      const { bucket, key } = parseS3Uri(slide.s3_uri, "slide");
+      const signedUrl = await generateSignedUrl(s3Client, bucket, key);
 
-    const chapterIndex = findChapterIndex(slide.start_time, chapterTimestamps);
+      const chapterIndex = findChapterIndex(slide.start_time, chapterTimestamps);
 
-    await writer.write({
-      type: "slide",
-      data: {
-        slide_index: i,
-        chapter_index: chapterIndex,
-        frame_id: slide.frame_id,
-        start_time: slide.start_time,
-        end_time: slide.end_time,
-        image_url: signedUrl,
-        has_text: slide.has_text,
-        text_confidence: slide.text_confidence,
-      },
-    });
+      await writer.write({
+        type: "slide",
+        data: {
+          slide_index: i,
+          chapter_index: chapterIndex,
+          frame_id: slide.frame_id,
+          start_time: slide.start_time,
+          end_time: slide.end_time,
+          image_url: signedUrl,
+          has_text: slide.has_text,
+          text_confidence: slide.text_confidence,
+        },
+      });
+    }
+  } finally {
+    writer.releaseLock();
   }
 
-  writer.releaseLock();
   return slides.length;
 }
 
