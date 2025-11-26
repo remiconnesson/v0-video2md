@@ -1,7 +1,7 @@
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { VideoChat } from "@/components/video-chat";
+import { VideoTranscript } from "@/components/video-transcript";
 
 export default async function VideoPage({
   params,
@@ -20,7 +20,7 @@ export default async function VideoPage({
           </Button>
         </Link>
 
-        <VideoChat youtubeId={youtubeId} />
+        <VideoTranscript youtubeId={youtubeId} />
       </div>
     </div>
   );
