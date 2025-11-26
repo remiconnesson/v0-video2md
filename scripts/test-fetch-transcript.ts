@@ -14,10 +14,6 @@ import {
   type TranscriptResult,
 } from "../db/save-transcript";
 
-// Load environment variables
-dotenv.config({ path: ".env.local" });
-dotenv.config();
-
 async function fetchTranscriptFromApify(
   videoId: string,
 ): Promise<TranscriptResult | null> {
