@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
 import { start } from "workflow/api";
+<<<<<<< HEAD:app/api/video/[videoId]/slides/route.ts
 import { z } from "zod";
 import { chapterSchema } from "@/ai/transcript-to-book-schema";
+=======
+import type { Chapter } from "@/ai/transcript-to-book-schema";
+>>>>>>> 8ba67a8 (Feat: Allow YouTube URL input for transcript fetching):docs/instructions/route.ts
 import { extractSlidesWorkflow } from "@/app/workflows/extract-slides";
 
 const chaptersPayloadSchema = z.object({

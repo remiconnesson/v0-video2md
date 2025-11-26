@@ -3,6 +3,7 @@
 import { start } from "workflow/api";
 import { z } from "zod";
 import { fetchAndStoreTranscriptWorkflow } from "@/app/workflows/fetch-transcript";
+import { extractYoutubeVideoId } from "@/lib/youtube-utils";
 
 const schema = z.object({
   videoId: z
@@ -15,7 +16,11 @@ export async function triggerTranscript(
   _prevState: unknown,
   formData: FormData,
 ) {
-  const videoId = (formData.get("videoId") as string | null) || "";
+  const input = (formData.get("videoId") as string | null) || "";
+
+  // Extract video ID from URL if a full URL was provided
+  const videoId = extractYoutubeVideoId(input) || input;
+
   const parsed = schema.safeParse({ videoId });
 
   if (!parsed.success) {
