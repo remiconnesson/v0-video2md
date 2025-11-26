@@ -26,7 +26,6 @@ const CONFIG = {
   S3_BASE: getEnv("S3_BASE_URL", "https://s3.remtoolz.ai"),
   API_PASSWORD: getEnv("SLIDES_API_PASSWORD"),
   S3_ACCESS_KEY: getEnv("S3_ACCESS_KEY"),
-  BLOB_READ_WRITE_TOKEN: getEnv("BLOB_READ_WRITE_TOKEN"),
 };
 
 export async function extractSlidesWorkflow(
@@ -189,6 +188,12 @@ async function streamSlidesToFrontend(
   const chapterTimestamps =
     chapters?.map((ch) => parseTimestamp(ch.start)) || [];
 
+  // Get Vercel Blob token for uploads
+  const blobToken = process.env.BLOB_READ_WRITE_TOKEN;
+  if (!blobToken) {
+    throw new Error("BLOB_READ_WRITE_TOKEN is not configured");
+  }
+
   try {
     for (let i = 0; i < slides.length; i++) {
       const slide = slides[i];
@@ -207,8 +212,27 @@ async function streamSlidesToFrontend(
       const imageBuffer = await imageResponse.arrayBuffer();
 
       // Upload to Vercel Blob using raw fetch API
+      // This avoids using the @vercel/blob SDK which may conflict with workflow runtime
       const blobPath = `slides/${videoId}/${slide.frame_id}.webp`;
-      const blobUrl = await uploadToVercelBlob(blobPath, imageBuffer);
+      const blobResponse = await fetch(
+        `https://blob.vercel-storage.com/${blobPath}`,
+        {
+          method: "PUT",
+          headers: {
+            Authorization: `Bearer ${blobToken}`,
+            "Content-Type": "image/webp",
+            "x-api-version": "7",
+          },
+          body: imageBuffer,
+        },
+      );
+
+      if (!blobResponse.ok) {
+        const errorText = await blobResponse.text();
+        throw new Error(`Failed to upload to Vercel Blob: ${errorText}`);
+      }
+
+      const blobResult = (await blobResponse.json()) as { url: string };
 
       const chapterIndex = findChapterIndex(
         slide.start_time,
@@ -223,7 +247,7 @@ async function streamSlidesToFrontend(
           frame_id: slide.frame_id,
           start_time: slide.start_time,
           end_time: slide.end_time,
-          image_url: blobUrl,
+          image_url: blobResult.url,
           has_text: slide.has_text,
           text_confidence: slide.text_confidence,
         },
@@ -234,34 +258,6 @@ async function streamSlidesToFrontend(
   }
 
   return slides.length;
-}
-
-async function uploadToVercelBlob(
-  pathname: string,
-  body: ArrayBuffer,
-): Promise<string> {
-  // Use the Vercel Blob API directly with fetch
-  // https://vercel.com/docs/storage/vercel-blob/using-blob-sdk#put
-  const response = await fetch(
-    `https://blob.vercel-storage.com/${pathname}`,
-    {
-      method: "PUT",
-      headers: {
-        Authorization: `Bearer ${CONFIG.BLOB_READ_WRITE_TOKEN}`,
-        "Content-Type": "image/webp",
-        "x-api-version": "7",
-      },
-      body,
-    },
-  );
-
-  if (!response.ok) {
-    const text = await response.text();
-    throw new Error(`Failed to upload to Vercel Blob: ${response.status} - ${text}`);
-  }
-
-  const result = await response.json();
-  return result.url;
 }
 
 async function signalCompletion(videoId: string, totalSlides: number) {
