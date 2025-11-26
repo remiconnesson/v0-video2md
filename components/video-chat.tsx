@@ -185,8 +185,6 @@ export function VideoChat({ youtubeId }: { youtubeId: string }) {
 
   // Start slide extraction workflow
   const startSlideExtraction = useCallback(async () => {
-    if (!bookContent) return;
-
     setSlideExtraction({
       status: "extracting",
       message: "Starting slide extraction...",
@@ -198,7 +196,9 @@ export function VideoChat({ youtubeId }: { youtubeId: string }) {
       const response = await fetch(`/api/video/${youtubeId}/slides`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ chapters: bookContent.chapters }),
+        body: JSON.stringify({
+          chapters: bookContent?.chapters,
+        }),
       });
 
       if (!response.ok || !response.body) {
@@ -375,18 +375,70 @@ export function VideoChat({ youtubeId }: { youtubeId: string }) {
           <h1 className="text-2xl font-bold">
             {video?.title || `Processing Video...`}
           </h1>
-          <Button variant="outline" asChild>
-            <a
-              href={`https://www.youtube.com/watch?v=${youtubeId}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="gap-2"
-            >
-              Watch Video
-              <ExternalLink className="h-4 w-4" />
-            </a>
-          </Button>
+          <div className="flex items-center gap-2">
+            {slideExtraction.status === "idle" && (
+              <Button
+                variant="default"
+                onClick={startSlideExtraction}
+                className="gap-2"
+              >
+                <ImageIcon className="h-4 w-4" />
+                Extract Slides
+              </Button>
+            )}
+            <Button variant="outline" asChild>
+              <a
+                href={`https://www.youtube.com/watch?v=${youtubeId}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="gap-2"
+              >
+                Watch Video
+                <ExternalLink className="h-4 w-4" />
+              </a>
+            </Button>
+          </div>
         </div>
+
+        {/* Slide Extraction Progress */}
+        {slideExtraction.status === "extracting" && (
+          <Card className="p-4 border-primary/20 bg-primary/5">
+            <div className="flex items-center gap-4">
+              <div className="relative flex-shrink-0">
+                <ImageIcon className="h-8 w-8 text-primary" />
+                <Loader2 className="h-4 w-4 animate-spin text-primary absolute -bottom-1 -right-1" />
+              </div>
+              <div className="flex-1">
+                <div className="flex items-center justify-between mb-1">
+                  <p className="text-sm font-medium">Extracting Slides</p>
+                  <span className="text-xs text-muted-foreground">
+                    {slides.length} slides found
+                  </span>
+                </div>
+                <Progress value={slideExtraction.progress} className="h-2" />
+                <p className="text-xs text-muted-foreground mt-1">
+                  {slideExtraction.message}
+                </p>
+              </div>
+            </div>
+          </Card>
+        )}
+
+        {slideExtraction.status === "error" && (
+          <Card className="p-4 border-destructive bg-destructive/10">
+            <p className="text-sm text-destructive">
+              {slideExtraction.message}
+            </p>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={startSlideExtraction}
+              className="mt-2"
+            >
+              Retry
+            </Button>
+          </Card>
+        )}
 
         <Card className="p-8 max-w-2xl mx-auto">
           <div className="flex flex-col items-center justify-center min-h-[400px] space-y-6">
@@ -409,11 +461,39 @@ export function VideoChat({ youtubeId }: { youtubeId: string }) {
             </div>
           </div>
         </Card>
+
+        {/* Slides Panel during processing */}
+        {(slideExtraction.status === "extracting" ||
+          slideExtraction.status === "ready") &&
+          slides.length > 0 && (
+            <Card className="p-4 max-w-2xl mx-auto">
+              <div className="flex items-center justify-between mb-4 pb-3 border-b">
+                <div className="flex items-center gap-2">
+                  <ImageIcon className="h-5 w-5" />
+                  <h3 className="font-semibold">Extracted Slides</h3>
+                </div>
+                <span className="text-xs text-muted-foreground">
+                  {slides.length} slides
+                </span>
+              </div>
+              <ScrollArea className="h-[400px]">
+                <div className="space-y-3">
+                  {slides.map((slide) => (
+                    <SlideCard
+                      key={slide.frame_id}
+                      slide={slide}
+                      formatTime={formatTime}
+                    />
+                  ))}
+                </div>
+              </ScrollArea>
+            </Card>
+          )}
       </div>
     );
   }
 
-  // Ready state UI
+  // Ready or processing state UI with Extract Slides button
   return (
     <div className="space-y-4">
       {video && (
@@ -535,13 +615,9 @@ export function VideoChat({ youtubeId }: { youtubeId: string }) {
               {slideExtraction.status === "idle" && (
                 <div className="flex flex-col items-center justify-center h-full min-h-[300px] text-center text-muted-foreground">
                   <ImageIcon className="h-12 w-12 mb-4 opacity-30" />
-                  <p className="text-sm mb-4">
+                  <p className="text-sm">
                     Extract slides from the video to see them here
                   </p>
-                  <Button onClick={startSlideExtraction} className="gap-2">
-                    <ImageIcon className="h-4 w-4" />
-                    Extract Slides
-                  </Button>
                 </div>
               )}
 
