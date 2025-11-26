@@ -90,6 +90,7 @@ export function VideoChat({ youtubeId }: { youtubeId: string }) {
   const startProcessing = useCallback(async () => {
     setVideoStatus("processing");
     setProcessingState({ step: "", message: "Starting...", progress: 5 });
+    let completed = false;
 
     // Attempt to fetch the video title early to display in the header
     fetchYoutubeVideoTitle(youtubeId)
@@ -143,6 +144,7 @@ export function VideoChat({ youtubeId }: { youtubeId: string }) {
               } else if (event.type === "complete") {
                 setBookContent(event.bookContent);
                 setVideoStatus("ready");
+                completed = true;
                 setProcessingState({
                   step: "complete",
                   message: "Complete!",
@@ -164,7 +166,7 @@ export function VideoChat({ youtubeId }: { youtubeId: string }) {
       }
 
       // If we finished without getting a complete event, refetch video data
-      if (videoStatus !== "ready") {
+      if (!completed) {
         const videoRes = await fetch(`/api/video/${youtubeId}`);
         const data = await videoRes.json();
         if (data.status === "ready") {
@@ -179,7 +181,7 @@ export function VideoChat({ youtubeId }: { youtubeId: string }) {
       setError(errorMessage);
       setVideoStatus(null);
     }
-  }, [youtubeId, videoStatus]);
+  }, [youtubeId]);
 
   // Start slide extraction workflow
   const startSlideExtraction = useCallback(async () => {
