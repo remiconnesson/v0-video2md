@@ -73,6 +73,13 @@ export class SlidesExtractorClient {
     const updates: JobUpdate[] = [];
     let resolveNext: ((value: JobUpdate) => void) | null = null;
 
+    // Sentinel for stream completion
+    const STREAM_CLOSED = Symbol("STREAM_CLOSED");
+    let streamClosedResolve: (() => void) | null = null;
+    const streamClosedPromise = new Promise<typeof STREAM_CLOSED>((resolve) => {
+      streamClosedResolve = () => resolve(STREAM_CLOSED);
+    });
+
     const parser = (
       createParser as unknown as (onParse: (event: ParserEvent) => void) => {
         feed: (chunk: string) => void;
@@ -96,7 +103,11 @@ export class SlidesExtractorClient {
     const readLoop = async () => {
       while (true) {
         const { done, value } = await reader.read();
-        if (done) break;
+        if (done) {
+          // Signal stream completion
+          streamClosedResolve?.();
+          break;
+        }
         parser.feed(decoder.decode(value));
       }
     };
@@ -117,14 +128,23 @@ export class SlidesExtractorClient {
           }
         }
       } else {
-        const update = await new Promise<JobUpdate>((resolve) => {
-          resolveNext = resolve;
-        });
-        yield update;
+        // Race between next update and stream closing
+        const result = await Promise.race([
+          new Promise<JobUpdate>((resolve) => {
+            resolveNext = resolve;
+          }),
+          streamClosedPromise,
+        ]);
+
+        if (result === STREAM_CLOSED) {
+          throw new Error("Stream closed without terminal status");
+        }
+
+        yield result;
 
         if (
-          update.status === JobStatus.COMPLETED ||
-          update.status === JobStatus.FAILED
+          result.status === JobStatus.COMPLETED ||
+          result.status === JobStatus.FAILED
         ) {
           break;
         }
