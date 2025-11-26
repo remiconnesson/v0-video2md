@@ -151,8 +151,13 @@ export function VideoChat({ youtubeId }: { youtubeId: string }) {
               } else if (event.type === "error") {
                 throw new Error(event.message);
               }
-            } catch {
-              // Ignore parse errors for malformed events
+            } catch (parseError) {
+              // Only ignore JSON parse errors; propagate other errors
+              if (parseError instanceof SyntaxError) {
+                // Ignore malformed SSE lines
+              } else {
+                throw parseError;
+              }
             }
           }
         }
@@ -249,8 +254,13 @@ export function VideoChat({ youtubeId }: { youtubeId: string }) {
                 const errorData = event.data as { message: string };
                 throw new Error(errorData.message);
               }
-            } catch {
-              // Ignore parse errors for malformed events
+            } catch (parseError) {
+              // Only ignore JSON parse errors; propagate other errors
+              if (parseError instanceof SyntaxError) {
+                // Ignore malformed SSE lines
+              } else {
+                throw parseError;
+              }
             }
           }
         }
