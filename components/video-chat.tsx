@@ -20,6 +20,7 @@ import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
+import { fetchYoutubeVideoTitle } from "@/lib/youtube-utils";
 
 interface Chat {
   id: string;
@@ -95,6 +96,24 @@ export function VideoChat({ youtubeId }: { youtubeId: string }) {
   const startProcessing = useCallback(async () => {
     setVideoStatus("processing");
     setProcessingState({ step: "", message: "Starting...", progress: 5 });
+
+    // Attempt to fetch the video title early to display in the header
+    // It's ok if this fails - we'll show "Processing Video..." instead
+    fetchYoutubeVideoTitle(youtubeId)
+      .then((title) => {
+        if (title) {
+          setVideo((prev) => ({
+            videoId: youtubeId,
+            url: `https://www.youtube.com/watch?v=${youtubeId}`,
+            title,
+            ...(prev || {}),
+          }));
+        }
+      })
+      .catch((error) => {
+        console.error("Failed to fetch video title:", error);
+        // Silently fail - title will remain as "Processing Video..."
+      });
 
     try {
       const response = await fetch(`/api/video/${youtubeId}/process`, {
