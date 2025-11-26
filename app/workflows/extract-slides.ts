@@ -1,3 +1,4 @@
+<<<<<<< HEAD:app/workflows/extract-slides.ts
 import { AwsClient } from "aws4fetch";
 import { createParser } from "eventsource-parser";
 
@@ -7,6 +8,13 @@ type ParserEvent =
 
 import { fetch, getWritable } from "workflow";
 
+=======
+// app/workflows/extract-slides.ts
+
+import { AwsClient } from "aws4fetch";
+import { createParser } from "eventsource-parser";
+import { fetch, getWritable } from "workflow";
+>>>>>>> 8ba67a8 (Feat: Allow YouTube URL input for transcript fetching):docs/instructions/extract-slides.ts
 import type { Chapter } from "@/ai/transcript-to-book-schema";
 import type {
   JobUpdate,

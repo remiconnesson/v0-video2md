@@ -20,11 +20,11 @@ export function TranscriptFetcher() {
       <CardContent className="space-y-4">
         <form action={action} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="videoId">YouTube Video ID</Label>
+            <Label htmlFor="videoId">YouTube URL or Video ID</Label>
             <Input
               name="videoId"
               id="videoId"
-              placeholder="e.g. gN07gbipMoY"
+              placeholder="e.g. https://youtu.be/gN07gbipMoY or gN07gbipMoY"
               disabled={isPending}
               required
             />

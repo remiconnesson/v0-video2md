@@ -204,6 +204,9 @@ export class SlidesExtractorClient {
     return signed.url;
   }
 
+  /**
+   * Get all static segments (slides) from a manifest
+   */
   getStaticSegments(manifest: SlideManifest, videoId: string): StaticSegment[] {
     const videoData = manifest[videoId];
     if (!videoData) return [];
