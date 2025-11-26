@@ -1,5 +1,5 @@
 import { ApifyClient } from "apify-client";
-import { fetch, getWritable } from "workflow";
+import { getWritable } from "workflow";
 import { z } from "zod";
 import { generateTranscriptToBook } from "@/ai/transcript-to-book";
 import type { TranscriptToBook } from "@/ai/transcript-to-book-schema";
@@ -218,7 +218,9 @@ async function stepGenerateBookContent(input: {
 }): Promise<TranscriptToBook> {
   "use step";
 
-  globalThis.fetch = fetch;
+  // Note: Steps have full Node.js access with native fetch.
+  // Do NOT set globalThis.fetch to workflow's fetch here - it creates
+  // infinite recursion since workflow's fetch calls globalThis.fetch.
 
   const transcriptString = formatTranscriptString(input.transcript);
 
