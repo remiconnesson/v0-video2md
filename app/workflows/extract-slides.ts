@@ -1,4 +1,3 @@
-import { put } from "@vercel/blob";
 import { AwsClient } from "aws4fetch";
 import { createParser } from "eventsource-parser";
 import { fetch, getWritable } from "workflow";
@@ -175,6 +174,7 @@ async function streamSlidesToFrontend(
   const writer = writable.getWriter();
 
   const s3Client = makeAwsClient();
+  const blobToken = process.env.BLOB_READ_WRITE_TOKEN;
 
   const videoData = manifest[videoId];
   if (!videoData) {
@@ -204,14 +204,37 @@ async function streamSlidesToFrontend(
         );
       }
 
-      const imageBlob = await imageResponse.blob();
+      let imageUrl: string;
 
-      // Upload to Vercel Blob
-      const blobPath = `slides/${videoId}/${slide.frame_id}.webp`;
-      const { url: blobUrl } = await put(blobPath, imageBlob, {
-        access: "public",
-        contentType: "image/webp",
-      });
+      // Upload to Vercel Blob if token is available, otherwise use signed S3 URL
+      if (blobToken) {
+        const imageBuffer = await imageResponse.arrayBuffer();
+        const blobPath = `slides/${videoId}/${slide.frame_id}.webp`;
+
+        // Use raw Vercel Blob API instead of SDK (SDK causes issues in workflow runtime)
+        const blobResponse = await fetch(
+          `https://blob.vercel-storage.com/${blobPath}`,
+          {
+            method: "PUT",
+            headers: {
+              Authorization: `Bearer ${blobToken}`,
+              "x-api-version": "7",
+              "x-content-type": "image/webp",
+            },
+            body: imageBuffer,
+          },
+        );
+
+        if (!blobResponse.ok) {
+          throw new Error(`Failed to upload to blob: ${blobResponse.statusText}`);
+        }
+
+        const blobResult = (await blobResponse.json()) as { url: string };
+        imageUrl = blobResult.url;
+      } else {
+        // Fallback to signed S3 URL if no blob token
+        imageUrl = await generateSignedUrl(s3Client, bucket, key);
+      }
 
       const chapterIndex = findChapterIndex(
         slide.start_time,
@@ -226,7 +249,7 @@ async function streamSlidesToFrontend(
           frame_id: slide.frame_id,
           start_time: slide.start_time,
           end_time: slide.end_time,
-          image_url: blobUrl,
+          image_url: imageUrl,
           has_text: slide.has_text,
           text_confidence: slide.text_confidence,
         },
@@ -237,6 +260,19 @@ async function streamSlidesToFrontend(
   }
 
   return slides.length;
+}
+
+async function generateSignedUrl(
+  s3Client: AwsClient,
+  bucket: string,
+  key: string,
+): Promise<string> {
+  const url = new URL(`${CONFIG.S3_BASE}/${bucket}/${key}`);
+  const signed = await s3Client.sign(url, {
+    method: "GET",
+    aws: { signQuery: true },
+  });
+  return signed.url;
 }
 
 async function signalCompletion(videoId: string, totalSlides: number) {
