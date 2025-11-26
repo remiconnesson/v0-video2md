@@ -19,7 +19,18 @@ export async function POST(
   try {
     const run = await start(fetchAndStoreTranscriptWorkflow, [videoId]);
 
-    return new NextResponse(run.readable, {
+    // Transform workflow stream to SSE format
+    const sseStream = run.readable.pipeThrough(
+      new TransformStream({
+        transform(chunk, controller) {
+          // Convert the chunk to SSE format: "data: {json}\n\n"
+          const sseData = `data: ${JSON.stringify(chunk)}\n\n`;
+          controller.enqueue(new TextEncoder().encode(sseData));
+        },
+      }),
+    );
+
+    return new NextResponse(sseStream, {
       headers: {
         "Content-Type": "text/event-stream",
         "Cache-Control": "no-cache",
