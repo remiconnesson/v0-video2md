@@ -2,7 +2,6 @@ import { ApifyClient } from "apify-client";
 import { fetch } from "workflow";
 import { generateTranscriptToBook } from "@/ai/transcript-to-book";
 import type { TranscriptToBook } from "@/ai/transcript-to-book-schema";
-import { extractSlidesWorkflow } from "@/app/workflows/extract-slides";
 import { db } from "@/db";
 import {
   channels,
@@ -75,10 +74,7 @@ const formatTranscriptString = (segments: TranscriptSegment[]): string =>
     .map((segment) => `[${formatTimestamp(segment.start)}] ${segment.text}`)
     .join("\n");
 
-export async function fetchAndStoreTranscriptWorkflow(
-  videoId: string,
-  options?: { extractSlides?: boolean },
-) {
+export async function fetchAndStoreTranscriptWorkflow(videoId: string) {
   "use workflow";
 
   const apifyResult = await stepFetchFromApify(videoId);
@@ -102,12 +98,6 @@ export async function fetchAndStoreTranscriptWorkflow(
     if (bookContent) {
       await stepSaveBookContent(apifyResult.id, bookContent);
     }
-  }
-
-  if (options?.extractSlides && bookContent) {
-    void extractSlidesWorkflow(apifyResult.id, bookContent.chapters).catch(
-      console.error,
-    );
   }
 
   return {
