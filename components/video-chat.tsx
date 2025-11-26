@@ -183,31 +183,11 @@ export function VideoChat({ youtubeId }: { youtubeId: string }) {
     }
   }, [youtubeId]);
 
-  // Start slide extraction workflow
-  const startSlideExtraction = useCallback(async () => {
-    setSlideExtraction({
-      status: "extracting",
-      message: "Starting slide extraction...",
-      progress: 5,
-    });
-    setSlides([]);
-
-    try {
-      const response = await fetch(`/api/video/${youtubeId}/slides`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          chapters: bookContent?.chapters,
-        }),
-      });
-
-      if (!response.ok || !response.body) {
-        throw new Error("Failed to start slide extraction");
-      }
-
-      const runId = response.headers.get("X-Workflow-Run-Id");
-      if (runId) {
-        setSlideExtraction((prev) => ({ ...prev, runId }));
+  // Process SSE stream for slides
+  const processSlideStream = useCallback(
+    async (response: Response, runId: string | null) => {
+      if (!response.body) {
+        throw new Error("No response body");
       }
 
       const reader = response.body.getReader();
@@ -244,7 +224,13 @@ export function VideoChat({ youtubeId }: { youtubeId: string }) {
                 });
               } else if (event.type === "slide") {
                 const slideData = event.data as SlideEvent;
-                setSlides((prev) => [...prev, slideData]);
+                setSlides((prev) => {
+                  // Avoid duplicates when resuming
+                  if (prev.some((s) => s.frame_id === slideData.frame_id)) {
+                    return prev;
+                  }
+                  return [...prev, slideData];
+                });
               } else if (event.type === "complete") {
                 setSlideExtraction({
                   status: "ready",
@@ -267,6 +253,75 @@ export function VideoChat({ youtubeId }: { youtubeId: string }) {
           }
         }
       }
+    },
+    [],
+  );
+
+  // Resume an in-progress slide extraction
+  const resumeSlideExtraction = useCallback(
+    async (runId: string, existingSlides: SlideEvent[]) => {
+      setSlideExtraction({
+        status: "extracting",
+        message: "Resuming slide extraction...",
+        progress: 50,
+        runId,
+      });
+      setSlides(existingSlides);
+
+      try {
+        // Start from after the existing slides
+        const startIndex = existingSlides.length;
+        const response = await fetch(
+          `/api/video/${youtubeId}/slides/${runId}/stream?startIndex=${startIndex}`,
+        );
+
+        if (!response.ok) {
+          throw new Error("Failed to resume slide extraction");
+        }
+
+        await processSlideStream(response, runId);
+      } catch (err) {
+        const errorMessage =
+          err instanceof Error ? err.message : "Slide extraction failed";
+        setSlideExtraction({
+          status: "error",
+          message: errorMessage,
+          progress: 0,
+          runId,
+        });
+      }
+    },
+    [youtubeId, processSlideStream],
+  );
+
+  // Start slide extraction workflow
+  const startSlideExtraction = useCallback(async () => {
+    setSlideExtraction({
+      status: "extracting",
+      message: "Starting slide extraction...",
+      progress: 5,
+    });
+    setSlides([]);
+
+    try {
+      const response = await fetch(`/api/video/${youtubeId}/slides`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chapters: bookContent?.chapters,
+        }),
+      });
+
+      if (!response.ok || !response.body) {
+        throw new Error("Failed to start slide extraction");
+      }
+
+      const runId = response.headers.get("X-Workflow-Run-Id");
+      if (runId) {
+        setSlideExtraction((prev) => ({ ...prev, runId }));
+      }
+
+      await processSlideStream(response, runId);
     } catch (err) {
       const errorMessage =
         err instanceof Error ? err.message : "Slide extraction failed";
@@ -276,7 +331,37 @@ export function VideoChat({ youtubeId }: { youtubeId: string }) {
         progress: 0,
       });
     }
-  }, [youtubeId, bookContent]);
+  }, [youtubeId, bookContent, processSlideStream]);
+
+  // Fetch existing slides and handle resumption
+  const fetchExistingSlides = useCallback(async () => {
+    try {
+      const response = await fetch(`/api/video/${youtubeId}/slides`);
+      if (!response.ok) return;
+
+      const data = await response.json();
+
+      if (data.status === "completed" && data.slides.length > 0) {
+        // Slides already extracted - display them
+        setSlides(data.slides);
+        setSlideExtraction({
+          status: "ready",
+          message: "Slides loaded",
+          progress: 100,
+          runId: data.runId ?? undefined,
+        });
+      } else if (data.status === "in_progress" && data.runId) {
+        // Extraction in progress - resume the stream
+        resumeSlideExtraction(data.runId, data.slides);
+      } else if (data.slides.length > 0) {
+        // Has some slides but not in a known state - just display what we have
+        setSlides(data.slides);
+      }
+      // If status is "idle" or no slides, leave slideExtraction in idle state
+    } catch (err) {
+      console.error("[VideoChat] Error fetching existing slides:", err);
+    }
+  }, [youtubeId, resumeSlideExtraction]);
 
   // Initial data fetch
   useEffect(() => {
@@ -315,6 +400,9 @@ export function VideoChat({ youtubeId }: { youtubeId: string }) {
         setVideo(videoData.video);
         setBookContent(videoData.bookContent);
         setVideoStatus("ready");
+
+        // Fetch existing slides
+        fetchExistingSlides();
       } catch (err) {
         const errorMessage =
           err instanceof Error ? err.message : "Failed to fetch data";
@@ -326,7 +414,7 @@ export function VideoChat({ youtubeId }: { youtubeId: string }) {
     };
 
     fetchData();
-  }, [youtubeId, startProcessing]);
+  }, [youtubeId, startProcessing, fetchExistingSlides]);
 
   // Get slides for the selected chapter
   const slidesForChapter = useMemo(() => {
