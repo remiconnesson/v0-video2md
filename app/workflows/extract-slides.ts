@@ -65,7 +65,6 @@ const CONFIG = {
   S3_BASE: getEnv("S3_BASE_URL", "https://s3.remtoolz.ai"),
   API_PASSWORD: getEnv("SLIDES_API_PASSWORD"),
   S3_ACCESS_KEY: getEnv("S3_ACCESS_KEY"),
-  S3_SECRET_KEY: getEnv("S3_SECRET_KEY"),
 };
 
 export async function extractSlidesWorkflow(
@@ -193,12 +192,7 @@ async function fetchSlideManifest(s3Uri: string): Promise<SlideManifest> {
   const bucket = urlParts.shift();
   const key = urlParts.join("/");
 
-  const s3Client = new AwsClient({
-    accessKeyId: CONFIG.S3_ACCESS_KEY,
-    secretAccessKey: CONFIG.S3_SECRET_KEY,
-    service: "s3",
-    region: "us-east-1",
-  });
+  const s3Client = makeAwsClient();
 
   const httpUrl = `${CONFIG.S3_BASE}/${bucket}/${key}`;
   const response = await s3Client.fetch(httpUrl);
@@ -220,12 +214,7 @@ async function streamSlidesToFrontend(
   const writable = getWritable<SlideStreamEvent>();
   const writer = writable.getWriter();
 
-  const s3Client = new AwsClient({
-    accessKeyId: CONFIG.S3_ACCESS_KEY,
-    secretAccessKey: CONFIG.S3_SECRET_KEY,
-    service: "s3",
-    region: "us-east-1",
-  });
+  const s3Client = makeAwsClient();
 
   const videoData = manifest[videoId];
   if (!videoData) {
@@ -301,6 +290,16 @@ async function signalCompletion(videoId: string, totalSlides: number) {
 
   writer.releaseLock();
   await writable.close();
+}
+
+function makeAwsClient() {
+  const s3Client = new AwsClient({
+    accessKeyId: CONFIG.S3_ACCESS_KEY,
+    secretAccessKey: CONFIG.S3_ACCESS_KEY, // on purpose, see our private s3 docs
+    service: "s3",
+    region: "us-east-1",
+  });
+  return s3Client;
 }
 
 function parseTimestamp(timestamp: string): number {

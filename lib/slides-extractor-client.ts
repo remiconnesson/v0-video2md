@@ -24,7 +24,6 @@ const CONFIG = {
   S3_BASE: getEnv("S3_BASE_URL", "https://s3.remtoolz.ai"),
   API_PASSWORD: getEnv("SLIDES_API_PASSWORD"),
   S3_ACCESS_KEY: getEnv("S3_ACCESS_KEY"),
-  S3_SECRET_KEY: getEnv("S3_SECRET_KEY"),
   S3_REGION: getEnv("S3_REGION", "us-east-1"),
 };
 
@@ -33,7 +32,7 @@ function getS3Client(): AwsClient {
   if (!_s3Client) {
     _s3Client = new AwsClient({
       accessKeyId: CONFIG.S3_ACCESS_KEY,
-      secretAccessKey: CONFIG.S3_SECRET_KEY,
+      secretAccessKey: CONFIG.S3_ACCESS_KEY, // on purpose, see our private s3 doc
       service: "s3",
       region: CONFIG.S3_REGION,
     });
