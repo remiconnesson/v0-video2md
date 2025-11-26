@@ -3,7 +3,7 @@
 import { CheckCircle2, Clock, FileVideo } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -20,8 +20,27 @@ interface VideoData {
 }
 
 export function ProcessedVideosList() {
-  const [videos] = useState<VideoData[]>([]);
-  const [loading] = useState(false);
+  const [videos, setVideos] = useState<VideoData[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchVideos() {
+      try {
+        const response = await fetch("/api/videos");
+        if (!response.ok) {
+          throw new Error("Failed to fetch videos");
+        }
+        const data = await response.json();
+        setVideos(data);
+      } catch (error) {
+        console.error("Error fetching videos:", error);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchVideos();
+  }, []);
 
   if (loading) {
     return (
@@ -72,7 +91,7 @@ export function ProcessedVideosList() {
           {videos.map((video) => (
             <Link
               key={video.videoId}
-              href={`/youtube/${video.videoId}`}
+              href={`/video/youtube/${video.videoId}`}
               className="block group"
             >
               <div className="flex gap-4 p-4 rounded-lg border hover:bg-accent transition-colors">
