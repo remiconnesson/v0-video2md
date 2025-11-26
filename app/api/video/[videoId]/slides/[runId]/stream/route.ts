@@ -8,9 +8,14 @@ export async function GET(
   const { runId } = await params;
   const url = new URL(request.url);
   const startIndexParam = url.searchParams.get("startIndex");
-  const startIndex = startIndexParam
-    ? parseInt(startIndexParam, 10)
-    : undefined;
+  const parsedStartIndex =
+    startIndexParam !== null ? Number.parseInt(startIndexParam, 10) : undefined;
+  const startIndex =
+    parsedStartIndex !== undefined &&
+    Number.isInteger(parsedStartIndex) &&
+    parsedStartIndex >= 0
+      ? parsedStartIndex
+      : undefined;
 
   try {
     const run = getRun(runId);

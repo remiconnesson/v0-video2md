@@ -8,50 +8,13 @@ type ParserEvent =
 import { fetch, getWritable } from "workflow";
 
 import type { Chapter } from "@/ai/transcript-to-book-schema";
-
-interface JobUpdate {
-  status: string;
-  progress: number;
-  message: string;
-  updated_at: string;
-  video_id?: string;
-  metadata_uri?: string;
-  error?: string;
-}
-
-interface SlideManifest {
-  [videoId: string]: {
-    segments: VideoSegment[];
-  };
-}
-
-type VideoSegment = MovingSegment | StaticSegment;
-
-interface MovingSegment {
-  kind: "moving";
-  start_time: number;
-  end_time: number;
-}
-
-interface StaticSegment {
-  kind: "static";
-  start_time: number;
-  end_time: number;
-  frame_id: string;
-  url: string;
-  s3_uri: string;
-  s3_key: string;
-  s3_bucket: string;
-  has_text: boolean;
-  text_confidence: number;
-  text_box_count: number;
-  skip_reason: string | null;
-}
-
-interface SlideStreamEvent {
-  type: "progress" | "slide" | "complete" | "error";
-  data: unknown;
-}
+import type {
+  JobUpdate,
+  SlideManifest,
+  SlideStreamEvent,
+  StaticSegment,
+} from "@/lib/slides-extractor-types";
+import { JobStatus } from "@/lib/slides-extractor-types";
 
 function getEnv(key: string, fallback?: string): string {
   const value = process.env[key];
@@ -99,7 +62,7 @@ async function triggerExtractionJob(videoId: string) {
   await writer.write({
     type: "progress",
     data: {
-      status: "pending",
+      status: JobStatus.PENDING,
       progress: 0,
       message: "Starting video processing...",
     },

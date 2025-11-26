@@ -1,26 +1,32 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 
-interface SlideFeedback {
-  slide_index: number;
-  frame_id: string;
-  feedback_type: "duplicate" | "not_relevant";
-  chapter_index?: number;
-  timestamp?: number;
-}
+const slideFeedbackSchema = z.object({
+  slide_index: z.number().int().nonnegative(),
+  frame_id: z.string().min(1),
+  feedback_type: z.enum(["duplicate", "not_relevant"]),
+  chapter_index: z.number().int().nonnegative().optional(),
+  timestamp: z.number().nonnegative().optional(),
+});
+
+type SlideFeedback = z.infer<typeof slideFeedbackSchema>;
 
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ videoId: string }> },
 ) {
   const { videoId } = await params;
-  const body: SlideFeedback = await request.json();
+  const json = await request.json();
+  const parsed = slideFeedbackSchema.safeParse(json);
 
-  if (!body.frame_id || !body.feedback_type) {
+  if (!parsed.success) {
     return NextResponse.json(
-      { error: "Missing required fields: frame_id, feedback_type" },
+      { error: "Validation failed", details: parsed.error.format() },
       { status: 400 },
     );
   }
+
+  const body: SlideFeedback = parsed.data;
 
   console.log("[Slide Feedback]", {
     videoId,
