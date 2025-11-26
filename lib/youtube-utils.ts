@@ -104,6 +104,34 @@ export async function validateYoutubeVideoId(
 }
 
 /**
+ * Fetches video title from YouTube oEmbed API
+ * Returns null if fetching fails (graceful degradation)
+ */
+export async function fetchYoutubeVideoTitle(
+  videoId: string,
+): Promise<string | null> {
+  if (!videoId || !/^[a-zA-Z0-9_-]{11}$/.test(videoId)) {
+    return null;
+  }
+
+  try {
+    const response = await fetch(
+      `https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`,
+    );
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const data = await response.json();
+    return data.title || null;
+  } catch (error) {
+    console.error("Error fetching YouTube video title:", error);
+    return null;
+  }
+}
+
+/**
  * Complete URL processing: extract ID, resolve if needed, and validate
  */
 export async function processYoutubeInput(
