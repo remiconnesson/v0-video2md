@@ -151,9 +151,7 @@ async function monitorJobProgress(videoId: string): Promise<string> {
 async function fetchSlideManifest(s3Uri: string): Promise<SlideManifest> {
   "use step";
 
-  const urlParts = s3Uri.replace("s3://", "").split("/");
-  const bucket = urlParts.shift();
-  const key = urlParts.join("/");
+  const { bucket, key } = parseS3Uri(s3Uri);
 
   const s3Client = makeAwsClient();
 
@@ -195,12 +193,7 @@ async function streamSlidesToFrontend(
   for (let i = 0; i < slides.length; i++) {
     const slide = slides[i];
 
-    const urlParts = slide.s3_uri.replace("s3://", "").split("/");
-    const bucket = urlParts.shift();
-    const key = urlParts.join("/");
-    if (!bucket || !key) {
-      throw new Error(`Invalid S3 URI on slide: ${slide.s3_uri}`);
-    }
+    const { bucket, key } = parseS3Uri(slide.s3_uri, "slide");
     const signedUrl = await generateSignedUrl(s3Client, bucket, key);
 
     const chapterIndex = findChapterIndex(slide.start_time, chapterTimestamps);
@@ -283,4 +276,15 @@ function findChapterIndex(slideTime: number, chapterStarts: number[]): number {
     }
   }
   return 0;
+}
+
+function parseS3Uri(s3Uri: string, context?: string) {
+  const urlParts = s3Uri.replace("s3://", "").split("/");
+  const bucket = urlParts.shift();
+  const key = urlParts.join("/");
+  if (!bucket || !key) {
+    const label = context ? `Invalid S3 URI on ${context}` : "Invalid S3 URI";
+    throw new Error(`${label}: ${s3Uri}`);
+  }
+  return { bucket, key };
 }
