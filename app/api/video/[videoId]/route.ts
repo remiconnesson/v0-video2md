@@ -1,24 +1,12 @@
+import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
-
-// Mock video data
-const mockVideos: Record<
-  string,
-  { youtube_id: string; title: string; description: string; transcript: string }
-> = {
-  CpcS3CQ8NTY: {
-    youtube_id: "CpcS3CQ8NTY",
-    title: "Understanding Modern Web Development",
-    description:
-      "A comprehensive guide to modern web development practices and tools.",
-    transcript: "Welcome to this video about modern web development...",
-  },
-  dQw4w9WgXcQ: {
-    youtube_id: "dQw4w9WgXcQ",
-    title: "Sample Video Title",
-    description: "This is a sample video description.",
-    transcript: "This is a sample transcript for the video...",
-  },
-};
+import { db } from "@/db";
+import {
+  channels,
+  scrapTranscriptV1,
+  videoBookContent,
+  videos,
+} from "@/db/schema";
 
 export async function GET(
   _request: Request,
@@ -26,13 +14,75 @@ export async function GET(
 ) {
   const { videoId } = await params;
 
-  // Return mock video data
-  const video = mockVideos[videoId] || {
-    youtube_id: videoId,
-    title: `Video ${videoId}`,
-    description: "No description available",
-    transcript: "No transcript available",
-  };
+  // Query video with related data
+  const result = await db
+    .select({
+      video: {
+        videoId: videos.videoId,
+        url: videos.url,
+        title: videos.title,
+        publishedAt: videos.publishedAt,
+      },
+      channel: {
+        channelId: channels.channelId,
+        channelName: channels.channelName,
+      },
+      transcript: {
+        description: scrapTranscriptV1.description,
+        thumbnail: scrapTranscriptV1.thumbnail,
+        viewCount: scrapTranscriptV1.viewCount,
+        likeCount: scrapTranscriptV1.likeCount,
+        durationSeconds: scrapTranscriptV1.durationSeconds,
+      },
+      bookContent: {
+        videoSummary: videoBookContent.videoSummary,
+        chapters: videoBookContent.chapters,
+      },
+    })
+    .from(videos)
+    .leftJoin(channels, eq(videos.channelId, channels.channelId))
+    .leftJoin(scrapTranscriptV1, eq(videos.videoId, scrapTranscriptV1.videoId))
+    .leftJoin(videoBookContent, eq(videos.videoId, videoBookContent.videoId))
+    .where(eq(videos.videoId, videoId))
+    .limit(1);
 
-  return NextResponse.json({ video });
+  const row = result[0];
+
+  // Video not found in database
+  if (!row) {
+    return NextResponse.json({ status: "not_found" as const, videoId });
+  }
+
+  // Video exists but book content not yet generated
+  if (!row.bookContent?.videoSummary) {
+    return NextResponse.json({
+      status: "processing" as const,
+      videoId,
+      video: {
+        ...row.video,
+        channelName: row.channel?.channelName,
+        description: row.transcript?.description,
+        thumbnail: row.transcript?.thumbnail,
+      },
+    });
+  }
+
+  // Video and book content both exist - ready to use
+  return NextResponse.json({
+    status: "ready" as const,
+    videoId,
+    video: {
+      ...row.video,
+      channelName: row.channel?.channelName,
+      description: row.transcript?.description,
+      thumbnail: row.transcript?.thumbnail,
+      viewCount: row.transcript?.viewCount,
+      likeCount: row.transcript?.likeCount,
+      durationSeconds: row.transcript?.durationSeconds,
+    },
+    bookContent: {
+      videoSummary: row.bookContent.videoSummary,
+      chapters: row.bookContent.chapters,
+    },
+  });
 }

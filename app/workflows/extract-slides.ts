@@ -1,20 +1,6 @@
-<<<<<<< HEAD:app/workflows/extract-slides.ts
-import { AwsClient } from "aws4fetch";
-import { createParser } from "eventsource-parser";
-
-type ParserEvent =
-  | { type: "event"; data: string }
-  | { type: "reconnect-interval"; value: number };
-
-import { fetch, getWritable } from "workflow";
-
-=======
-// app/workflows/extract-slides.ts
-
 import { AwsClient } from "aws4fetch";
 import { createParser } from "eventsource-parser";
 import { fetch, getWritable } from "workflow";
->>>>>>> 8ba67a8 (Feat: Allow YouTube URL input for transcript fetching):docs/instructions/extract-slides.ts
 import type { Chapter } from "@/ai/transcript-to-book-schema";
 import type {
   JobUpdate,
@@ -23,6 +9,10 @@ import type {
   StaticSegment,
 } from "@/lib/slides-extractor-types";
 import { JobStatus } from "@/lib/slides-extractor-types";
+
+type ParserEvent =
+  | { type: "event"; data: string }
+  | { type: "reconnect-interval"; value: number };
 
 function getEnv(key: string, fallback?: string): string {
   const value = process.env[key];
@@ -205,7 +195,10 @@ async function streamSlidesToFrontend(
       const { bucket, key } = parseS3Uri(slide.s3_uri, "slide");
       const signedUrl = await generateSignedUrl(s3Client, bucket, key);
 
-      const chapterIndex = findChapterIndex(slide.start_time, chapterTimestamps);
+      const chapterIndex = findChapterIndex(
+        slide.start_time,
+        chapterTimestamps,
+      );
 
       await writer.write({
         type: "slide",
