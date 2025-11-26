@@ -10,10 +10,6 @@ import type {
 } from "@/lib/slides-extractor-types";
 import { JobStatus } from "@/lib/slides-extractor-types";
 
-type ParserEvent =
-  | { type: "event"; data: string }
-  | { type: "reconnect-interval"; value: number };
-
 function getEnv(key: string, fallback?: string): string {
   const value = process.env[key];
   if (value) return value;
@@ -103,12 +99,8 @@ async function monitorJobProgress(videoId: string): Promise<string> {
     const reader = body.getReader();
     const decoder = new TextDecoder();
 
-    const parser = (
-      createParser as unknown as (onParse: (event: ParserEvent) => void) => {
-        feed: (chunk: string) => void;
-      }
-    )((event: ParserEvent) => {
-      if (event.type === "event") {
+    const parser = createParser({
+      onEvent: (event) => {
         void (async () => {
           try {
             const data: JobUpdate = JSON.parse(event.data);
@@ -133,7 +125,7 @@ async function monitorJobProgress(videoId: string): Promise<string> {
             // Ignore parse errors
           }
         })();
-      }
+      },
     });
 
     (async () => {
