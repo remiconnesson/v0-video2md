@@ -120,6 +120,7 @@ This being said, ALWAYS include a detailed summary of the video as one of the fi
 
 ## Output Schema
 
+Please answer in JSON respecting the following schema:
 \`\`\`ts
 {
   reasoning: string; // Format in markdown
