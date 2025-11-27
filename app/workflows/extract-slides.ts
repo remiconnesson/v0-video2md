@@ -2,7 +2,6 @@ import { AwsClient } from "aws4fetch";
 import { eq } from "drizzle-orm";
 import { createParser } from "eventsource-parser";
 import { fetch, getWritable } from "workflow";
-import type { Chapter } from "@/ai/transcript-to-book-schema";
 import { db } from "@/db";
 import { videoSlideExtractions, videoSlides } from "@/db/schema";
 import type {
@@ -27,10 +26,7 @@ const CONFIG = {
   S3_ACCESS_KEY: getEnv("S3_ACCESS_KEY"),
 };
 
-export async function extractSlidesWorkflow(
-  videoId: string,
-  chapters?: Chapter[],
-) {
+export async function extractSlidesWorkflow(videoId: string) {
   "use workflow";
 
   await triggerExtractionJob(videoId);
@@ -39,7 +35,7 @@ export async function extractSlidesWorkflow(
 
   const manifest = await fetchSlideManifest(metadataUri);
 
-  const totalSlides = await streamSlidesToFrontend(videoId, manifest, chapters);
+  const totalSlides = await streamSlidesToFrontend(videoId, manifest);
 
   await signalCompletion(videoId, totalSlides);
 
@@ -161,7 +157,6 @@ async function fetchSlideManifest(s3Uri: string): Promise<SlideManifest> {
 async function streamSlidesToFrontend(
   videoId: string,
   manifest: SlideManifest,
-  chapters?: Chapter[],
 ): Promise<number> {
   "use step";
 
@@ -179,9 +174,6 @@ async function streamSlidesToFrontend(
   const slides = videoData.segments.filter(
     (seg): seg is StaticSegment => seg.kind === "static" && !seg.skip_reason,
   );
-
-  const chapterTimestamps =
-    chapters?.map((ch) => parseTimestamp(ch.start)) || [];
 
   // Get Vercel Blob token for uploads
   const blobToken = process.env.BLOB_READ_WRITE_TOKEN;
@@ -229,14 +221,8 @@ async function streamSlidesToFrontend(
 
       const blobResult = (await blobResponse.json()) as { url: string };
 
-      const chapterIndex = findChapterIndex(
-        slide.start_time,
-        chapterTimestamps,
-      );
-
       const slideData = {
         slide_index: i,
-        chapter_index: chapterIndex,
         frame_id: slide.frame_id,
         start_time: slide.start_time,
         end_time: slide.end_time,
@@ -251,7 +237,6 @@ async function streamSlidesToFrontend(
         .values({
           videoId,
           slideIndex: slideData.slide_index,
-          chapterIndex: slideData.chapter_index,
           frameId: slideData.frame_id,
           startTime: Math.round(slideData.start_time),
           endTime: Math.round(slideData.end_time),
@@ -311,22 +296,13 @@ function makeAwsClient() {
   return s3Client;
 }
 
-function parseTimestamp(timestamp: string): number {
+function _parseTimestamp(timestamp: string): number {
   const parts = timestamp.split(":").map(Number);
   if (parts.length === 2) {
     return parts[0] * 60 + parts[1];
   }
   if (parts.length === 3) {
     return parts[0] * 3600 + parts[1] * 60 + parts[2];
-  }
-  return 0;
-}
-
-function findChapterIndex(slideTime: number, chapterStarts: number[]): number {
-  for (let i = chapterStarts.length - 1; i >= 0; i--) {
-    if (slideTime >= chapterStarts[i]) {
-      return i;
-    }
   }
   return 0;
 }

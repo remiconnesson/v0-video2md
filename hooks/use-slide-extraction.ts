@@ -4,7 +4,6 @@ import type {
   SlideStreamEvent,
 } from "@/lib/slides-extractor-types";
 import { JobStatus } from "@/lib/slides-extractor-types";
-import type { BookContent } from "./use-video-processing";
 
 export type SlideExtractionStatus = "idle" | "extracting" | "ready" | "error";
 
@@ -33,7 +32,6 @@ interface UseSlideExtractionReturn {
 
 export function useSlideExtraction(
   youtubeId: string,
-  bookContent: BookContent | null,
 ): UseSlideExtractionReturn {
   const [slideExtraction, setSlideExtraction] = useState<SlideExtractionState>({
     status: "idle",
@@ -63,9 +61,6 @@ export function useSlideExtraction(
       const response = await fetch(`/api/video/${youtubeId}/slides`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          chapters: bookContent?.chapters,
-        }),
         signal: abortControllerRef.current.signal,
       });
 
@@ -148,7 +143,7 @@ export function useSlideExtraction(
         progress: 0,
       });
     }
-  }, [youtubeId, bookContent]);
+  }, [youtubeId]);
 
   const abortSlideExtraction = useCallback(() => {
     if (abortControllerRef.current) {

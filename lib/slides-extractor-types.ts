@@ -60,7 +60,6 @@ export interface ProgressEvent {
 
 export interface SlideEvent {
   slide_index: number;
-  chapter_index: number;
   frame_id: string;
   start_time: number;
   end_time: number;

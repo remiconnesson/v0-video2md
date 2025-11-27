@@ -12,8 +12,6 @@ import {
   varchar,
 } from "drizzle-orm/pg-core";
 
-import type { Chapter } from "@/ai/transcript-to-book-schema";
-
 // ============================================================================
 // Enums
 // ============================================================================
@@ -86,23 +84,6 @@ export const scrapTranscriptV1 = pgTable(
 );
 
 // ============================================================================
-// Book Content Tables
-// ============================================================================
-
-export const videoBookContent = pgTable("video_book_content", {
-  videoId: varchar("video_id", { length: 32 })
-    .primaryKey()
-    .references(() => videos.videoId, { onDelete: "cascade" }),
-  videoSummary: text("video_summary").notNull(),
-  chapters: jsonb("chapters").$type<Chapter[]>().notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
-
-export type VideoBookContent = typeof videoBookContent.$inferSelect;
-export type NewVideoBookContent = typeof videoBookContent.$inferInsert;
-
-// ============================================================================
 // Slide Extraction Tables
 // ============================================================================
 
@@ -114,7 +95,6 @@ export const videoSlides = pgTable(
       .notNull()
       .references(() => videos.videoId, { onDelete: "cascade" }),
     slideIndex: integer("slide_index").notNull(),
-    chapterIndex: integer("chapter_index").notNull(),
     frameId: varchar("frame_id", { length: 64 }).notNull(),
     startTime: integer("start_time").notNull(),
     endTime: integer("end_time").notNull(),

@@ -14,7 +14,7 @@ export function TranscriptFetcher() {
 
   useEffect(() => {
     if (state?.success && state?.videoId) {
-      router.push(`/video/youtube/${state.videoId}`);
+      router.push(`/video/youtube/${state.videoId}/analyze`);
     }
   }, [state, router]);
 

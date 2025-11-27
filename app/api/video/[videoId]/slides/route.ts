@@ -1,16 +1,10 @@
 import { and, asc, eq, ne } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { start } from "workflow/api";
-import { z } from "zod";
-import { chapterSchema } from "@/ai/transcript-to-book-schema";
 import { extractSlidesWorkflow } from "@/app/workflows/extract-slides";
 import { db } from "@/db";
 import { videoSlideExtractions, videoSlides } from "@/db/schema";
 import type { SlideStreamEvent } from "@/lib/slides-extractor-types";
-
-const chaptersPayloadSchema = z.object({
-  chapters: z.array(chapterSchema).optional(),
-});
 
 export async function GET(
   _request: Request,
@@ -40,7 +34,6 @@ export async function GET(
     totalSlides: extractionRecord?.totalSlides ?? 0,
     slides: slides.map((s) => ({
       slide_index: s.slideIndex,
-      chapter_index: s.chapterIndex,
       frame_id: s.frameId,
       start_time: s.startTime,
       end_time: s.endTime,
@@ -51,28 +44,12 @@ export async function GET(
   });
 }
 
-export async function POST(
-  request: Request,
-  { params }: { params: Promise<{ videoId: string }> },
-) {
+export async function POST({
+  params,
+}: {
+  params: Promise<{ videoId: string }>;
+}) {
   const { videoId } = await params;
-  let body: unknown;
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
-  }
-
-  const parsed = chaptersPayloadSchema.safeParse(body);
-  if (!parsed.success) {
-    return NextResponse.json(
-      { error: "Validation failed", details: parsed.error.format() },
-      { status: 400 },
-    );
-  }
-
-  const { chapters } = parsed.data;
-
   try {
     // Check if an extraction is already in progress for this video
     const existingExtraction = await db
@@ -142,7 +119,7 @@ export async function POST(
       });
 
     // Start the workflow
-    const run = await start(extractSlidesWorkflow, [videoId, chapters]);
+    const run = await start(extractSlidesWorkflow, [videoId]);
 
     // Update the runId, but only if status is still "in_progress"
     // (in case the workflow already completed)
