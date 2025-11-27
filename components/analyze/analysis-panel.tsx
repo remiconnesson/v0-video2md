@@ -47,6 +47,7 @@ export function AnalysisPanel({
       return (
         <ul className="space-y-2">
           {value.map((item, idx) => (
+            // biome-ignore lint/suspicious/noArrayIndexKey: using index is intentional here
             <li key={`${sectionKey}-${idx}`} className="flex gap-2">
               <span className="text-muted-foreground">•</span>
               <span>
