@@ -67,10 +67,10 @@ export function useVideoProcessing(
         .then((title) => {
           if (title) {
             setVideo((prev) => ({
+              ...(prev || {}),
               videoId: youtubeId,
               url: `https://www.youtube.com/watch?v=${youtubeId}`,
               title,
-              ...(prev || {}),
             }));
           }
         })

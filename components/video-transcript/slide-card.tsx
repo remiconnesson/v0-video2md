@@ -1,12 +1,12 @@
 import Image from "next/image";
 import type { SlideEvent } from "@/lib/slides-extractor-types";
+import { formatTime } from "@/lib/time-utils";
 
 interface SlideCardProps {
   slide: SlideEvent;
-  formatTime: (seconds: number) => string;
 }
 
-export function SlideCard({ slide, formatTime }: SlideCardProps) {
+export function SlideCard({ slide }: SlideCardProps) {
   return (
     <div className="rounded-lg border overflow-hidden bg-card">
       <div className="aspect-video bg-muted relative">

@@ -5,7 +5,6 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import type { SlideExtractionState } from "@/hooks/use-slide-extraction";
 import type { ProcessingState, VideoInfo } from "@/hooks/use-video-processing";
 import type { SlideEvent } from "@/lib/slides-extractor-types";
-import { formatTime } from "@/lib/time-utils";
 import { SlideCard } from "./slide-card";
 import { SlideExtractionProgress } from "./slide-extraction-progress";
 import { VideoHeader } from "./video-header";
@@ -80,11 +79,7 @@ export function ProcessingView({
             <ScrollArea className="h-[400px]">
               <div className="space-y-3">
                 {slides.map((slide) => (
-                  <SlideCard
-                    key={slide.frame_id}
-                    slide={slide}
-                    formatTime={formatTime}
-                  />
+                  <SlideCard key={slide.frame_id} slide={slide} />
                 ))}
               </div>
             </ScrollArea>

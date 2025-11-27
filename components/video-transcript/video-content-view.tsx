@@ -6,7 +6,6 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import type { SlideExtractionState } from "@/hooks/use-slide-extraction";
 import type { BookContent, VideoInfo } from "@/hooks/use-video-processing";
 import type { SlideEvent } from "@/lib/slides-extractor-types";
-import { formatTime } from "@/lib/time-utils";
 import { ChapterSection } from "./chapter-section";
 import { SlideCard } from "./slide-card";
 import { SlideExtractionProgress } from "./slide-extraction-progress";
@@ -69,7 +68,7 @@ export function VideoContentView({
                 {/* Chapters */}
                 {bookContent.chapters.map((chapter, index) => (
                   <ChapterSection
-                    key={chapter.chapterTitle}
+                    key={`${chapter.start}-${index}`}
                     chapter={chapter}
                     index={index}
                     isSelected={selectedChapterIndex === index}
@@ -128,11 +127,7 @@ export function VideoContentView({
                     </div>
                   ) : (
                     slidesForChapter.map((slide) => (
-                      <SlideCard
-                        key={slide.frame_id}
-                        slide={slide}
-                        formatTime={formatTime}
-                      />
+                      <SlideCard key={slide.frame_id} slide={slide} />
                     ))
                   )}
                 </div>
