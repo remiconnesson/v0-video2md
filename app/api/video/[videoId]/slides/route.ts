@@ -81,18 +81,44 @@ export async function POST(
       .where(eq(videoSlideExtractions.videoId, videoId))
       .limit(1);
 
+    // Consider an extraction "stale" if it's been in_progress for more than 15 minutes
+    const STALE_THRESHOLD_MS = 15 * 60 * 1000;
+
     if (
       existingExtraction.length > 0 &&
       existingExtraction[0].status === "in_progress"
     ) {
-      return NextResponse.json(
-        {
-          error: "Extraction already in progress",
-          runId: existingExtraction[0].runId,
-          message: "An extraction is already running for this video",
-        },
-        { status: 409 },
-      );
+      const updatedAt = existingExtraction[0].updatedAt;
+      const isStale = Date.now() - updatedAt.getTime() > STALE_THRESHOLD_MS;
+
+      if (isStale) {
+        // Mark stale extraction as failed before starting a new one
+        console.warn(
+          `[Slides API] Marking stale extraction as failed for video ${videoId}. ` +
+            `Last updated: ${updatedAt.toISOString()}, runId: ${existingExtraction[0].runId}`,
+        );
+        await db
+          .update(videoSlideExtractions)
+          .set({
+            status: "failed",
+            updatedAt: new Date(),
+          })
+          .where(eq(videoSlideExtractions.videoId, videoId));
+      } else {
+        // Active extraction in progress - return 409
+        console.warn(
+          `[Slides API] 409 Conflict: Extraction already in progress for video ${videoId}. ` +
+            `runId: ${existingExtraction[0].runId}, updatedAt: ${updatedAt.toISOString()}`,
+        );
+        return NextResponse.json(
+          {
+            error: "Extraction already in progress",
+            runId: existingExtraction[0].runId,
+            message: "An extraction is already running for this video",
+          },
+          { status: 409 },
+        );
+      }
     }
 
     // Create/update extraction record BEFORE starting the workflow

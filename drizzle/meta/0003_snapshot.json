@@ -113,12 +113,8 @@
           "name": "scrap_transcript_v1_video_id_videos_video_id_fk",
           "tableFrom": "scrap_transcript_v1",
           "tableTo": "videos",
-          "columnsFrom": [
-            "video_id"
-          ],
-          "columnsTo": [
-            "video_id"
-          ],
+          "columnsFrom": ["video_id"],
+          "columnsTo": ["video_id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -126,12 +122,8 @@
           "name": "scrap_transcript_v1_channel_id_channels_channel_id_fk",
           "tableFrom": "scrap_transcript_v1",
           "tableTo": "channels",
-          "columnsFrom": [
-            "channel_id"
-          ],
-          "columnsTo": [
-            "channel_id"
-          ],
+          "columnsFrom": ["channel_id"],
+          "columnsTo": ["channel_id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -141,9 +133,7 @@
         "unique_video_transcript": {
           "name": "unique_video_transcript",
           "nullsNotDistinct": false,
-          "columns": [
-            "video_id"
-          ]
+          "columns": ["video_id"]
         }
       },
       "policies": {},
@@ -193,12 +183,8 @@
           "name": "video_book_content_video_id_videos_video_id_fk",
           "tableFrom": "video_book_content",
           "tableTo": "videos",
-          "columnsFrom": [
-            "video_id"
-          ],
-          "columnsTo": [
-            "video_id"
-          ],
+          "columnsFrom": ["video_id"],
+          "columnsTo": ["video_id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -261,12 +247,8 @@
           "name": "video_slide_extractions_video_id_videos_video_id_fk",
           "tableFrom": "video_slide_extractions",
           "tableTo": "videos",
-          "columnsFrom": [
-            "video_id"
-          ],
-          "columnsTo": [
-            "video_id"
-          ],
+          "columnsFrom": ["video_id"],
+          "columnsTo": ["video_id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -373,12 +355,8 @@
           "name": "video_slides_video_id_videos_video_id_fk",
           "tableFrom": "video_slides",
           "tableTo": "videos",
-          "columnsFrom": [
-            "video_id"
-          ],
-          "columnsTo": [
-            "video_id"
-          ],
+          "columnsFrom": ["video_id"],
+          "columnsTo": ["video_id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -388,10 +366,7 @@
         "unique_video_slide": {
           "name": "unique_video_slide",
           "nullsNotDistinct": false,
-          "columns": [
-            "video_id",
-            "frame_id"
-          ]
+          "columns": ["video_id", "frame_id"]
         }
       },
       "policies": {},
@@ -455,12 +430,8 @@
           "name": "videos_channel_id_channels_channel_id_fk",
           "tableFrom": "videos",
           "tableTo": "channels",
-          "columnsFrom": [
-            "channel_id"
-          ],
-          "columnsTo": [
-            "channel_id"
-          ],
+          "columnsFrom": ["channel_id"],
+          "columnsTo": ["channel_id"],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
@@ -476,12 +447,7 @@
     "public.extraction_status": {
       "name": "extraction_status",
       "schema": "public",
-      "values": [
-        "pending",
-        "in_progress",
-        "completed",
-        "failed"
-      ]
+      "values": ["pending", "in_progress", "completed", "failed"]
     }
   },
   "schemas": {},
