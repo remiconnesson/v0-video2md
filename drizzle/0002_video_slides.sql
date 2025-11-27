@@ -1,3 +1,6 @@
+-- Create extraction status enum
+CREATE TYPE "extraction_status" AS ENUM ('pending', 'in_progress', 'completed', 'failed');
+--> statement-breakpoint
 CREATE TABLE "video_slides" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"video_id" varchar(32) NOT NULL,
@@ -16,7 +19,7 @@ CREATE TABLE "video_slides" (
 CREATE TABLE "video_slide_extractions" (
 	"video_id" varchar(32) PRIMARY KEY NOT NULL,
 	"run_id" varchar(64),
-	"status" varchar(32) DEFAULT 'pending' NOT NULL,
+	"status" "extraction_status" DEFAULT 'pending' NOT NULL,
 	"total_slides" integer DEFAULT 0,
 	"created_at" timestamp DEFAULT now() NOT NULL,
 	"updated_at" timestamp DEFAULT now() NOT NULL

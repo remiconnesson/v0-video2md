@@ -1,4 +1,4 @@
-import { asc, eq } from "drizzle-orm";
+import { and, asc, eq, ne } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { start } from "workflow/api";
 import { z } from "zod";
@@ -74,25 +74,44 @@ export async function POST(
   const { chapters } = parsed.data;
 
   try {
-    const run = await start(extractSlidesWorkflow, [videoId, chapters]);
-
-    // Create/update extraction record with runId
+    // IMPORTANT: Create/update extraction record BEFORE starting the workflow
+    // to avoid race conditions where a fast workflow completes before this runs.
+    // We insert with status="in_progress" and a placeholder runId.
     await db
       .insert(videoSlideExtractions)
       .values({
         videoId,
-        runId: run.runId,
+        runId: null,
         status: "in_progress",
         totalSlides: 0,
+        updatedAt: new Date(),
       })
       .onConflictDoUpdate({
         target: videoSlideExtractions.videoId,
         set: {
-          runId: run.runId,
           status: "in_progress",
+          totalSlides: 0,
           updatedAt: new Date(),
         },
       });
+
+    // Start the workflow
+    const run = await start(extractSlidesWorkflow, [videoId, chapters]);
+
+    // Update the runId, but only if status is still "in_progress"
+    // (in case the workflow already completed)
+    await db
+      .update(videoSlideExtractions)
+      .set({
+        runId: run.runId,
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(videoSlideExtractions.videoId, videoId),
+          ne(videoSlideExtractions.status, "completed"),
+        ),
+      );
 
     // Transform the object stream to SSE-formatted text stream
     const transformStream = new TransformStream<SlideStreamEvent, string>({
@@ -113,6 +132,16 @@ export async function POST(
     });
   } catch (error) {
     console.error("Failed to start slides extraction:", error);
+
+    // Mark as failed if there was an error starting the workflow
+    await db
+      .update(videoSlideExtractions)
+      .set({
+        status: "failed",
+        updatedAt: new Date(),
+      })
+      .where(eq(videoSlideExtractions.videoId, videoId));
+
     return NextResponse.json(
       { error: "Failed to start slide extraction" },
       { status: 500 },

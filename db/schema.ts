@@ -3,6 +3,7 @@ import {
   index,
   integer,
   jsonb,
+  pgEnum,
   pgTable,
   serial,
   text,
@@ -12,6 +13,16 @@ import {
 } from "drizzle-orm/pg-core";
 
 import type { Chapter } from "@/ai/transcript-to-book-schema";
+
+// Enum for slide extraction status
+export const extractionStatusEnum = pgEnum("extraction_status", [
+  "pending",
+  "in_progress",
+  "completed",
+  "failed",
+]);
+
+export type ExtractionStatus = (typeof extractionStatusEnum.enumValues)[number];
 
 export const channels = pgTable("channels", {
   channelId: varchar("channel_id", { length: 64 }).primaryKey(),
@@ -102,7 +113,7 @@ export const videoSlideExtractions = pgTable("video_slide_extractions", {
     .primaryKey()
     .references(() => videos.videoId, { onDelete: "cascade" }),
   runId: varchar("run_id", { length: 64 }),
-  status: varchar("status", { length: 32 }).notNull().default("pending"),
+  status: extractionStatusEnum("status").notNull().default("pending"),
   totalSlides: integer("total_slides").default(0),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
