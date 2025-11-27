@@ -3,6 +3,7 @@ import {
   index,
   integer,
   jsonb,
+  pgEnum,
   pgTable,
   serial,
   text,
@@ -12,6 +13,16 @@ import {
 } from "drizzle-orm/pg-core";
 
 import type { Chapter } from "@/ai/transcript-to-book-schema";
+
+// Enum for slide extraction status
+export const extractionStatusEnum = pgEnum("extraction_status", [
+  "pending",
+  "in_progress",
+  "completed",
+  "failed",
+]);
+
+export type ExtractionStatus = (typeof extractionStatusEnum.enumValues)[number];
 
 export const channels = pgTable("channels", {
   channelId: varchar("channel_id", { length: 64 }).primaryKey(),
@@ -70,3 +81,43 @@ export const videoBookContent = pgTable("video_book_content", {
 
 export type VideoBookContent = typeof videoBookContent.$inferSelect;
 export type NewVideoBookContent = typeof videoBookContent.$inferInsert;
+
+export const videoSlides = pgTable(
+  "video_slides",
+  {
+    id: serial("id").primaryKey(),
+    videoId: varchar("video_id", { length: 32 })
+      .notNull()
+      .references(() => videos.videoId, { onDelete: "cascade" }),
+    slideIndex: integer("slide_index").notNull(),
+    chapterIndex: integer("chapter_index").notNull(),
+    frameId: varchar("frame_id", { length: 64 }).notNull(),
+    startTime: integer("start_time").notNull(),
+    endTime: integer("end_time").notNull(),
+    imageUrl: text("image_url").notNull(),
+    hasText: boolean("has_text").notNull().default(false),
+    textConfidence: integer("text_confidence").default(0),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("video_slides_video_id_idx").on(table.videoId),
+    unique("unique_video_slide").on(table.videoId, table.frameId),
+  ],
+);
+
+export type VideoSlide = typeof videoSlides.$inferSelect;
+export type NewVideoSlide = typeof videoSlides.$inferInsert;
+
+export const videoSlideExtractions = pgTable("video_slide_extractions", {
+  videoId: varchar("video_id", { length: 32 })
+    .primaryKey()
+    .references(() => videos.videoId, { onDelete: "cascade" }),
+  runId: varchar("run_id", { length: 64 }),
+  status: extractionStatusEnum("status").notNull().default("pending"),
+  totalSlides: integer("total_slides").default(0),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export type VideoSlideExtraction = typeof videoSlideExtractions.$inferSelect;
+export type NewVideoSlideExtraction = typeof videoSlideExtractions.$inferInsert;

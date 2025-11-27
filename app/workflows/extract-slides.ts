@@ -1,7 +1,10 @@
 import { AwsClient } from "aws4fetch";
+import { eq } from "drizzle-orm";
 import { createParser } from "eventsource-parser";
 import { fetch, getWritable } from "workflow";
 import type { Chapter } from "@/ai/transcript-to-book-schema";
+import { db } from "@/db";
+import { videoSlideExtractions, videoSlides } from "@/db/schema";
 import type {
   JobUpdate,
   SlideManifest,
@@ -231,18 +234,36 @@ async function streamSlidesToFrontend(
         chapterTimestamps,
       );
 
+      const slideData = {
+        slide_index: i,
+        chapter_index: chapterIndex,
+        frame_id: slide.frame_id,
+        start_time: slide.start_time,
+        end_time: slide.end_time,
+        image_url: blobResult.url,
+        has_text: slide.has_text,
+        text_confidence: slide.text_confidence,
+      };
+
+      // Save slide to database
+      await db
+        .insert(videoSlides)
+        .values({
+          videoId,
+          slideIndex: slideData.slide_index,
+          chapterIndex: slideData.chapter_index,
+          frameId: slideData.frame_id,
+          startTime: Math.round(slideData.start_time),
+          endTime: Math.round(slideData.end_time),
+          imageUrl: slideData.image_url,
+          hasText: slideData.has_text,
+          textConfidence: Math.round(slideData.text_confidence * 100),
+        })
+        .onConflictDoNothing();
+
       await writer.write({
         type: "slide",
-        data: {
-          slide_index: i,
-          chapter_index: chapterIndex,
-          frame_id: slide.frame_id,
-          start_time: slide.start_time,
-          end_time: slide.end_time,
-          image_url: blobResult.url,
-          has_text: slide.has_text,
-          text_confidence: slide.text_confidence,
-        },
+        data: slideData,
       });
     }
   } finally {
@@ -254,6 +275,16 @@ async function streamSlidesToFrontend(
 
 async function signalCompletion(videoId: string, totalSlides: number) {
   "use step";
+
+  // Update extraction status in database
+  await db
+    .update(videoSlideExtractions)
+    .set({
+      status: "completed",
+      totalSlides,
+      updatedAt: new Date(),
+    })
+    .where(eq(videoSlideExtractions.videoId, videoId));
 
   const writable = getWritable<SlideStreamEvent>();
   const writer = writable.getWriter();
