@@ -88,9 +88,10 @@ export const scrapTranscriptV1 = pgTable(
 // ============================================================================
 
 /**
- * Schema section definition - describes what to extract
+ * Schema section entry - describes what to extract
  */
-export interface SectionDefinition {
+export interface SectionEntry {
+  key: string;
   description: string;
   type: "string" | "string[]" | "object";
 }
@@ -99,7 +100,27 @@ export interface SectionDefinition {
  * Generated schema from god prompt
  */
 export interface GeneratedSchema {
-  sections: Record<string, SectionDefinition>;
+  sections: SectionEntry[];
+}
+
+/**
+ * Analysis value union type for additional sections
+ */
+export type AnalysisValue =
+  | { key: string; kind: "string"; value: string }
+  | { key: string; kind: "array"; value: string[] }
+  | { key: string; kind: "object"; value: { key: string; value: string }[] };
+
+/**
+ * God prompt analysis structure
+ */
+export interface GodPromptAnalysis {
+  required_sections: {
+    tldr: string;
+    transcript_corrections: string;
+    detailed_summary: string;
+  };
+  additional_sections: AnalysisValue[];
 }
 
 /**
@@ -118,7 +139,7 @@ export const videoAnalysisRuns = pgTable(
     // God prompt output (all three parts)
     reasoning: text("reasoning"),
     generatedSchema: jsonb("generated_schema").$type<GeneratedSchema>(),
-    analysis: jsonb("analysis").$type<Record<string, unknown>>(),
+    analysis: jsonb("analysis").$type<GodPromptAnalysis>(),
 
     // Context for rerolls - what instructions led to this version
     additionalInstructions: text("additional_instructions"),
@@ -148,8 +169,8 @@ export const derivedAnalysisRuns = pgTable(
       .notNull()
       .references(() => videoAnalysisRuns.id, { onDelete: "cascade" }),
 
-    // The analysis output from running the schema
-    analysis: jsonb("analysis").$type<Record<string, unknown>>(),
+    // The analysis output from running the schema - array of analysis values
+    analysis: jsonb("analysis").$type<AnalysisValue[]>(),
 
     status: analysisStatusEnum("status").notNull().default("pending"),
     createdAt: timestamp("created_at").defaultNow().notNull(),

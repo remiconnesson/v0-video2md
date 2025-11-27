@@ -77,5 +77,5 @@ export type {
   DerivedAnalysisOutput,
   GeneratedSchema,
   GodPromptOutput,
-  SectionDefinition,
+  SectionEntry,
 } from "./dynamic-analysis-prompt";

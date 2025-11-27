@@ -32,7 +32,7 @@ export function SchemaPanel({ schema, runId, videoId }: SchemaPanelProps) {
     unknown
   > | null>(null);
 
-  const sections = Object.entries(schema.sections ?? {});
+  const sections = schema.sections ?? [];
 
   const handleRunSchema = async () => {
     if (!runId) return;
@@ -114,15 +114,17 @@ export function SchemaPanel({ schema, runId, videoId }: SchemaPanelProps) {
           </p>
         ) : (
           <div className="space-y-3">
-            {sections.map(([key, section]) => (
+            {sections.map((section) => (
               <div
-                key={key}
+                key={section.key}
                 className="p-4 rounded-lg border bg-card hover:bg-accent/50 transition-colors"
               >
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
-                      <code className="text-sm font-semibold">{key}</code>
+                      <code className="text-sm font-semibold">
+                        {section.key}
+                      </code>
                       <Badge
                         variant="secondary"
                         className={typeColors[section.type] ?? ""}

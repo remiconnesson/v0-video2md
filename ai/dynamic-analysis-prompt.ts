@@ -1,8 +1,10 @@
 import { z } from "zod";
+
 /**
- * Schema section definition - describes what to extract
+ * A section entry with its key - describes what to extract
  */
-export const sectionDefinitionSchema = z.object({
+export const sectionEntrySchema = z.object({
+  key: z.string().describe("Section key in snake_case (e.g., 'key_takeaways')"),
   description: z
     .string()
     .describe("Clear instructions for what to extract in this section"),
@@ -13,27 +15,44 @@ export const sectionDefinitionSchema = z.object({
     ),
 });
 
-export type SectionDefinition = z.infer<typeof sectionDefinitionSchema>;
+export type SectionEntry = z.infer<typeof sectionEntrySchema>;
 
 /**
  * Generated schema - the extraction blueprint
  */
 export const generatedSchemaSchema = z.object({
   sections: z
-    .record(z.string(), sectionDefinitionSchema)
-    .describe(
-      "Map of section_key to section definition. Use snake_case for keys.",
-    ),
+    .array(sectionEntrySchema)
+    .describe("Array of section definitions. Use snake_case for keys."),
 });
 
 export type GeneratedSchema = z.infer<typeof generatedSchemaSchema>;
 /**
  * Derived analysis output - just the analysis part
  * Used when running a schema separately
+ * Note: Uses the same analysisValueSchema array format as godPromptOutputSchema
  */
 export const derivedAnalysisOutputSchema = z.object({
-  analysis: z
-    .record(z.string(), z.unknown())
+  sections: z
+    .array(
+      z.union([
+        z.object({
+          key: z.string().describe("Section key matching the schema"),
+          kind: z.literal("string"),
+          value: z.string(),
+        }),
+        z.object({
+          key: z.string().describe("Section key matching the schema"),
+          kind: z.literal("array"),
+          value: z.array(z.string()),
+        }),
+        z.object({
+          key: z.string().describe("Section key matching the schema"),
+          kind: z.literal("object"),
+          value: z.array(z.object({ key: z.string(), value: z.string() })),
+        }),
+      ]),
+    )
     .describe("Extracted content following the provided schema"),
 });
 
@@ -139,11 +158,12 @@ This being said, ALWAYS include a detailed summary of the video as one of the fi
 
 ## Schema Rules
 
-- Use snake_case for section keys
+- Use snake_case for section keys (e.g., "key_takeaways", "action_items")
 - Only include sections that are genuinely valuable for THIS content
 - Quality over quantity - 5 great sections beats 15 mediocre ones
 - The description field should be clear instructions for extraction
-- Type can be "string", "string[]", or "Record<string, string>", in strings, you can use markdown extensively.
+- Type can be "string" (for prose/markdown), "string[]" (for lists), or "object" (for key-value pairs)
+- In string values, you can use markdown extensively
 
 ## Analysis Rules
 
@@ -220,7 +240,7 @@ Your task: Extract the content according to the schema. Follow each section's de
 export function buildDerivedAnalysisUserMessage(input: {
   title: string;
   transcript: string;
-  schema: { sections: Record<string, { description: string; type: string }> };
+  schema: GeneratedSchema;
 }): string {
   const parts: string[] = [];
 

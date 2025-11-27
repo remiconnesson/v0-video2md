@@ -3,6 +3,7 @@ import type {
   AnalysisValue,
   GodPromptAnalysis,
   GodPromptOutput,
+  SectionEntry,
 } from "@/ai/dynamic-analysis-prompt";
 import type { AnalysisStreamEvent } from "@/app/workflows/dynamic-analysis";
 
@@ -13,7 +14,7 @@ type PartialGodPromptOutput = Extract<
 
 const EMPTY_GOD_PROMPT_OUTPUT: GodPromptOutput = {
   reasoning: "",
-  schema: { sections: {} },
+  schema: { sections: [] },
   analysis: {
     required_sections: {
       tldr: "",
@@ -24,29 +25,47 @@ const EMPTY_GOD_PROMPT_OUTPUT: GodPromptOutput = {
   },
 };
 
+function mergeSchemaSections(
+  base: SectionEntry[],
+  partial?: Partial<SectionEntry>[] | undefined,
+): SectionEntry[] {
+  if (!partial) return base;
+
+  const result = [...base];
+
+  for (const partialSection of partial) {
+    if (!partialSection?.key) continue;
+
+    const existingIdx = result.findIndex((s) => s.key === partialSection.key);
+
+    if (existingIdx >= 0) {
+      // Update existing
+      result[existingIdx] = {
+        ...result[existingIdx],
+        ...partialSection,
+      } as SectionEntry;
+    } else {
+      // Add new (only if it has required fields)
+      if (partialSection.description && partialSection.type) {
+        result.push(partialSection as SectionEntry);
+      }
+    }
+  }
+
+  return result;
+}
+
 function mergePartialResult(
   current: GodPromptOutput | null,
   partial: PartialGodPromptOutput,
 ): GodPromptOutput {
   const base = current ?? EMPTY_GOD_PROMPT_OUTPUT;
 
-  // Merge schema sections
-  const mergedSections = { ...base.schema.sections };
-  const partialSections = partial.schema?.sections ?? {};
-
-  for (const [key, definition] of Object.entries(partialSections)) {
-    if (!definition) continue;
-
-    const existing = mergedSections[key] ?? {
-      description: "",
-      type: "string" as const,
-    };
-
-    mergedSections[key] = {
-      description: definition.description ?? existing.description,
-      type: definition.type ?? existing.type,
-    };
-  }
+  // Merge schema sections (now array-based)
+  const mergedSections = mergeSchemaSections(
+    base.schema.sections,
+    partial.schema?.sections,
+  );
 
   // Merge analysis
   const mergedAnalysis: GodPromptAnalysis = {

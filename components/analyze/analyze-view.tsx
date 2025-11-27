@@ -208,7 +208,7 @@ export function AnalyzeView({ youtubeId, initialVersion }: AnalyzeViewProps) {
     : selectedRun
       ? {
           reasoning: selectedRun.reasoning ?? "",
-          schema: selectedRun.generatedSchema ?? { sections: {} },
+          schema: selectedRun.generatedSchema ?? { sections: [] },
           analysis: selectedRun.analysis ?? emptyAnalysis,
         }
       : null;

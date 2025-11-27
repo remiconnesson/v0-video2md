@@ -182,7 +182,9 @@ export function AnalysisPanel({
 
         {/* Additional sections */}
         {additional_sections.map((section) => {
-          const sectionDef = schema.sections?.[section.key];
+          const sectionDef = schema.sections?.find(
+            (s) => s.key === section.key,
+          );
           return renderSection(
             section.key,
             renderAnalysisValue(section),

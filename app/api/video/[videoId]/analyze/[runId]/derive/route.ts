@@ -151,7 +151,7 @@ export async function POST(
     await db
       .update(derivedAnalysisRuns)
       .set({
-        analysis: result.analysis,
+        analysis: result.sections,
         status: "completed",
       })
       .where(eq(derivedAnalysisRuns.id, derivedRun.id));
@@ -159,7 +159,7 @@ export async function POST(
     return NextResponse.json({
       success: true,
       derivedRunId: derivedRun.id,
-      analysis: result.analysis,
+      analysis: result.sections,
     });
   } catch (error) {
     // Mark as failed

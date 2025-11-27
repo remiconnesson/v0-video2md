@@ -3,7 +3,7 @@ import { FatalError, getWritable } from "workflow";
 import { z } from "zod";
 import {
   type GodPromptOutput,
-  type SectionDefinition,
+  type SectionEntry,
   streamDynamicAnalysis,
 } from "@/ai/dynamic-analysis";
 import { db } from "@/db";
@@ -30,7 +30,7 @@ import type { AnalysisValue } from "@/ai/dynamic-analysis-prompt";
 type PartialGodPromptOutput = {
   reasoning?: string;
   schema?: {
-    sections?: Record<string, Partial<SectionDefinition> | undefined>;
+    sections?: Partial<SectionEntry>[];
   };
   analysis?: {
     required_sections?: {
