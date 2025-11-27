@@ -1,3 +1,4 @@
+export { VideoTranscript } from "../video-transcript";
 export { VideoHeader } from "./video-header";
 export { SlideExtractionProgress } from "./slide-extraction-progress";
 export { ProcessingView } from "./processing-view";
