@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
-import type { GodPromptOutput } from "@/ai/dynamic-analysis-schema";
+import type { GodPromptOutput } from "@/ai/dynamic-analysis-prompt";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";

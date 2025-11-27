@@ -2,7 +2,7 @@
 
 import { FileText } from "lucide-react";
 import { Streamdown } from "streamdown";
-import type { GeneratedSchema } from "@/ai/dynamic-analysis-schema";
+import type { GeneratedSchema } from "@/ai/dynamic-analysis-prompt";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SectionFeedback } from "./section-feedback";
 

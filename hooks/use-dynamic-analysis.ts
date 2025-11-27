@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from "react";
-import type { GodPromptOutput } from "@/ai/dynamic-analysis-schema";
+import type { GodPromptOutput } from "@/ai/dynamic-analysis-prompt";
 import type { AnalysisStreamEvent } from "@/app/workflows/dynamic-analysis";
 
 type PartialGodPromptOutput = Extract<
@@ -10,7 +10,14 @@ type PartialGodPromptOutput = Extract<
 const EMPTY_GOD_PROMPT_OUTPUT: GodPromptOutput = {
   reasoning: "",
   schema: { sections: {} },
-  analysis: {},
+  analysis: {
+    required_sections: {
+      tldr: "",
+      transcript_corrections: "",
+      detailed_summary: "",
+    },
+    additional_sections: [],
+  },
 };
 
 function mergePartialResult(

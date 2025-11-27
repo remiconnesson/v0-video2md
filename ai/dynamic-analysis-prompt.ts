@@ -1,3 +1,90 @@
+import { z } from "zod";
+/**
+ * Schema section definition - describes what to extract
+ */
+export const sectionDefinitionSchema = z.object({
+  description: z
+    .string()
+    .describe("Clear instructions for what to extract in this section"),
+  type: z
+    .enum(["string", "string[]", "object"])
+    .describe(
+      "The data type: string for prose, string[] for lists, object for structured data",
+    ),
+});
+
+export type SectionDefinition = z.infer<typeof sectionDefinitionSchema>;
+
+/**
+ * Generated schema - the extraction blueprint
+ */
+export const generatedSchemaSchema = z.object({
+  sections: z
+    .record(z.string(), sectionDefinitionSchema)
+    .describe(
+      "Map of section_key to section definition. Use snake_case for keys.",
+    ),
+});
+
+export type GeneratedSchema = z.infer<typeof generatedSchemaSchema>;
+/**
+ * Derived analysis output - just the analysis part
+ * Used when running a schema separately
+ */
+export const derivedAnalysisOutputSchema = z.object({
+  analysis: z
+    .record(z.string(), z.unknown())
+    .describe("Extracted content following the provided schema"),
+});
+
+export type DerivedAnalysisOutput = z.infer<typeof derivedAnalysisOutputSchema>;
+/**
+ * The god prompt outputs everything at once:
+ * 1. Reasoning - why these sections were chosen
+ * 2. Schema - the extraction blueprint
+ * 3. Analysis - the actual extracted content
+ */
+const objectEntrySchema = z.object({
+  key: z.string(),
+  value: z.string(),
+});
+
+const analysisValueSchema = z.union([
+  z.object({ kind: z.literal("string"), value: z.string() }),
+  z.object({ kind: z.literal("array"), value: z.array(z.string()) }),
+  z.object({
+    kind: z.literal("object"),
+    value: z.array(objectEntrySchema),
+  }),
+]);
+
+export const godPromptOutputSchema = z.object({
+  reasoning: z
+    .string()
+    .describe(
+      "Your analysis: What makes this transcript unique? What would be genuinely useful to extract? Why did you choose these sections?",
+    ),
+  schema: generatedSchemaSchema.describe(
+    "The extraction schema you designed for this specific content",
+  ),
+  analysis: z.object({
+    required_sections: z.object({
+      tldr: z.string().describe("A short summary of the transcript"),
+      transcript_corrections: z
+        .string()
+        .describe("Corrections to the transcript"),
+      detailed_summary: z
+        .string()
+        .describe("A detailed summary of the transcript"),
+    }),
+    additional_sections: z
+      .array(analysisValueSchema)
+      .describe("Additional sections that are genuinely useful to extract"),
+  }),
+});
+
+export type GodPromptOutput = z.infer<typeof godPromptOutputSchema>;
+
 export const DYNAMIC_ANALYSIS_SYSTEM_PROMPT = `
 You are an expert at analyzing video transcripts and extracting genuinely USEFUL information.
 

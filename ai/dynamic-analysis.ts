@@ -4,14 +4,12 @@ import {
   buildGodPromptUserMessage,
   DERIVED_ANALYSIS_SYSTEM_PROMPT,
   DYNAMIC_ANALYSIS_SYSTEM_PROMPT,
-} from "./dynamic-analysis-prompt";
-import {
-  type DerivedAnalysisOutput,
   derivedAnalysisOutputSchema,
+  godPromptOutputSchema,
+  type DerivedAnalysisOutput,
   type GeneratedSchema,
   type GodPromptOutput,
-  godPromptOutputSchema,
-} from "./dynamic-analysis-schema";
+} from "./dynamic-analysis-prompt";
 
 export interface DynamicAnalysisInput {
   title: string;
