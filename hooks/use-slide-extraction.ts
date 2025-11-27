@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type {
   SlideEvent,
   SlideStreamEvent,
@@ -28,6 +28,7 @@ interface UseSlideExtractionReturn {
   slideExtraction: SlideExtractionState;
   slides: SlideEvent[];
   startSlideExtraction: () => Promise<void>;
+  abortSlideExtraction: () => void;
 }
 
 export function useSlideExtraction(
@@ -40,8 +41,17 @@ export function useSlideExtraction(
     progress: 0,
   });
   const [slides, setSlides] = useState<SlideEvent[]>([]);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   const startSlideExtraction = useCallback(async () => {
+    // Abort any existing extraction
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+
+    // Create new abort controller for this extraction
+    abortControllerRef.current = new AbortController();
+
     setSlideExtraction({
       status: "extracting",
       message: "Starting slide extraction...",
@@ -56,6 +66,7 @@ export function useSlideExtraction(
         body: JSON.stringify({
           chapters: bookContent?.chapters,
         }),
+        signal: abortControllerRef.current.signal,
       });
 
       if (!response.ok || !response.body) {
@@ -125,6 +136,10 @@ export function useSlideExtraction(
         }
       }
     } catch (err) {
+      // Ignore abort errors - extraction was cancelled
+      if (err instanceof Error && err.name === "AbortError") {
+        return;
+      }
       const errorMessage =
         err instanceof Error ? err.message : "Slide extraction failed";
       setSlideExtraction({
@@ -135,9 +150,26 @@ export function useSlideExtraction(
     }
   }, [youtubeId, bookContent]);
 
+  const abortSlideExtraction = useCallback(() => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+  }, []);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, []);
+
   return {
     slideExtraction,
     slides,
     startSlideExtraction,
+    abortSlideExtraction,
   };
 }
