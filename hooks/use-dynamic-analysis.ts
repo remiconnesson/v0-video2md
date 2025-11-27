@@ -2,6 +2,55 @@ import { useCallback, useRef, useState } from "react";
 import type { GodPromptOutput } from "@/ai/dynamic-analysis-schema";
 import type { AnalysisStreamEvent } from "@/app/workflows/dynamic-analysis";
 
+type PartialGodPromptOutput = Extract<
+  AnalysisStreamEvent,
+  { type: "partial" }
+>["data"];
+
+const EMPTY_GOD_PROMPT_OUTPUT: GodPromptOutput = {
+  reasoning: "",
+  schema: { sections: {} },
+  analysis: {},
+};
+
+function mergePartialResult(
+  current: GodPromptOutput | null,
+  partial: PartialGodPromptOutput,
+): GodPromptOutput {
+  const base = current ?? EMPTY_GOD_PROMPT_OUTPUT;
+
+  const mergedSections = { ...base.schema.sections };
+  const partialSections = partial.schema?.sections ?? {};
+
+  for (const [key, definition] of Object.entries(partialSections)) {
+    if (!definition) continue;
+
+    const existing = mergedSections[key] ?? {
+      description: "",
+      type: "string" as const,
+    };
+
+    mergedSections[key] = {
+      description: definition.description ?? existing.description,
+      type: definition.type ?? existing.type,
+    };
+  }
+
+  return {
+    reasoning:
+      typeof partial.reasoning === "string"
+        ? partial.reasoning
+        : base.reasoning,
+    schema: {
+      sections: mergedSections,
+    },
+    analysis: {
+      ...base.analysis,
+      ...(partial.analysis ?? {}),
+    },
+  };
+}
+
 export type AnalysisStatus = "idle" | "running" | "completed" | "error";
 
 export interface AnalysisState {
@@ -44,7 +93,7 @@ export function useDynamicAnalysis(videoId: string): UseDynamicAnalysisReturn {
         status: "running",
         phase: "starting",
         message: "Starting analysis...",
-        result: null,
+        result: EMPTY_GOD_PROMPT_OUTPUT,
         runId: null,
         error: null,
       });
@@ -84,6 +133,11 @@ export function useDynamicAnalysis(videoId: string): UseDynamicAnalysisReturn {
                     ...prev,
                     phase: event.phase,
                     message: event.message,
+                  }));
+                } else if (event.type === "partial") {
+                  setState((prev) => ({
+                    ...prev,
+                    result: mergePartialResult(prev.result, event.data),
                   }));
                 } else if (event.type === "result") {
                   setState((prev) => ({
