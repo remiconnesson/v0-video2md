@@ -26,7 +26,6 @@ export function ProcessedVideosList() {
   useEffect(() => {
     async function fetchVideos() {
       try {
-        // TODO: must fetch already processed videos here
         const response = await fetch("/api/videos");
         if (!response.ok) {
           throw new Error("Failed to fetch videos");
