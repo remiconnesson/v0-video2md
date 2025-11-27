@@ -16,12 +16,12 @@ export default async function AnalyzePage({
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
-      <div className="container mx-auto px-4 py-6 max-w-7xl">
+      <div className="container mx-auto px-4 py-6 max-w-5xl">
         <div className="flex items-center gap-4 mb-6">
-          <Link href={`/video/youtube/${youtubeId}`}>
+          <Link href="/">
             <Button variant="ghost" size="sm" className="gap-2">
               <ArrowLeft className="h-4 w-4" />
-              Back to Video
+              Home
             </Button>
           </Link>
         </div>

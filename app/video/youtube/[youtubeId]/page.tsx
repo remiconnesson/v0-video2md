@@ -1,7 +1,4 @@
-import { ArrowLeft } from "lucide-react";
-import Link from "next/link";
-import { Button } from "@/components/ui/button";
-import { VideoTranscript } from "@/components/video-transcript";
+import { redirect } from "next/navigation";
 
 export default async function VideoPage({
   params,
@@ -9,19 +6,5 @@ export default async function VideoPage({
   params: Promise<{ youtubeId: string }>;
 }) {
   const { youtubeId } = await params;
-
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
-      <div className="container mx-auto px-4 py-6">
-        <Link href="/">
-          <Button variant="ghost" className="mb-4 gap-2">
-            <ArrowLeft className="h-4 w-4" />
-            Back to Home
-          </Button>
-        </Link>
-
-        <VideoTranscript youtubeId={youtubeId} />
-      </div>
-    </div>
-  );
+  redirect(`/video/youtube/${youtubeId}/analyze`);
 }
