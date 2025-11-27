@@ -3,7 +3,8 @@ import { getWritable } from "workflow";
 import { z } from "zod";
 import {
   type GodPromptOutput,
-  generateDynamicAnalysis,
+  type SectionDefinition,
+  streamDynamicAnalysis,
 } from "@/ai/dynamic-analysis";
 import { db } from "@/db";
 import {
@@ -19,9 +20,18 @@ import {
 
 export type AnalysisStreamEvent =
   | { type: "progress"; phase: string; message: string }
+  | { type: "partial"; data: PartialGodPromptOutput }
   | { type: "result"; data: GodPromptOutput }
   | { type: "complete"; runId: number }
   | { type: "error"; message: string };
+
+type PartialGodPromptOutput = {
+  reasoning?: string;
+  schema?: {
+    sections?: Record<string, Partial<SectionDefinition> | undefined>;
+  };
+  analysis?: Record<string, unknown>;
+};
 
 // ============================================================================
 // Transcript Schema (for validation)
@@ -79,6 +89,19 @@ async function emitResult(data: GodPromptOutput) {
   const writable = getWritable<AnalysisStreamEvent>();
   const writer = writable.getWriter();
   await writer.write({ type: "result", data });
+  writer.releaseLock();
+}
+
+// ============================================================================
+// Step: Emit partial result
+// ============================================================================
+
+async function emitPartialResult(data: PartialGodPromptOutput) {
+  "use step";
+
+  const writable = getWritable<AnalysisStreamEvent>();
+  const writer = writable.getWriter();
+  await writer.write({ type: "partial", data });
   writer.releaseLock();
 }
 
@@ -193,13 +216,21 @@ async function runGodPrompt(
 ): Promise<GodPromptOutput> {
   "use step";
 
-  return generateDynamicAnalysis({
+  const stream = streamDynamicAnalysis({
     title: data.title,
     channelName: data.channelName,
     description: data.description ?? undefined,
     transcript: data.transcript,
     additionalInstructions,
   });
+
+  for await (const partial of stream.partialObjectStream) {
+    await emitPartialResult(partial);
+  }
+
+  const result = await stream.object;
+  await emitResult(result);
+  return result;
 }
 
 // ============================================================================
@@ -259,9 +290,6 @@ export async function dynamicAnalysisWorkflow(
     "Analyzing transcript and generating extraction schema...",
   );
   const result = await runGodPrompt(transcriptData, additionalInstructions);
-
-  // Step 4: Emit result (for streaming UI updates)
-  await emitResult(result);
 
   // Step 5: Persist to DB
   await emitProgress("saving", "Saving analysis to database...");

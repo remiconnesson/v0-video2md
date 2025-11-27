@@ -1,4 +1,4 @@
-import { generateObject } from "ai";
+import { generateObject, streamObject } from "ai";
 import {
   buildDerivedAnalysisUserMessage,
   buildGodPromptUserMessage,
@@ -37,6 +37,17 @@ export async function generateDynamicAnalysis(
   });
 
   return result.object;
+}
+
+export function streamDynamicAnalysis(input: DynamicAnalysisInput) {
+  const userPrompt = buildGodPromptUserMessage(input);
+
+  return streamObject({
+    model: "openai/gpt-5-mini",
+    schema: godPromptOutputSchema,
+    system: DYNAMIC_ANALYSIS_SYSTEM_PROMPT,
+    prompt: userPrompt,
+  });
 }
 
 export interface DerivedAnalysisInput {
