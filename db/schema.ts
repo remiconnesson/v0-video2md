@@ -11,6 +11,10 @@ import {
   unique,
   varchar,
 } from "drizzle-orm/pg-core";
+import type {
+  AnalysisValue,
+  GodPromptResult,
+} from "@/ai/dynamic-analysis-prompt";
 
 // ============================================================================
 // Enums
@@ -87,44 +91,17 @@ export const scrapTranscriptV1 = pgTable(
 // Dynamic Analysis Tables (God Prompt + Derived)
 // ============================================================================
 
-/**
- * Schema section entry - describes what to extract
- */
-export interface SectionEntry {
-  key: string;
-  description: string;
-  type: "string" | "string[]" | "object";
-}
+// Re-export types from ai module for convenience
+export type {
+  AnalysisValue,
+  GeneratedSchema,
+  GodPromptAnalysis,
+  GodPromptResult,
+  SectionEntry,
+} from "@/ai/dynamic-analysis-prompt";
 
 /**
- * Generated schema from god prompt
- */
-export interface GeneratedSchema {
-  sections: SectionEntry[];
-}
-
-/**
- * Analysis value union type for additional sections
- */
-export type AnalysisValue =
-  | { key: string; kind: "string"; value: string }
-  | { key: string; kind: "array"; value: string[] }
-  | { key: string; kind: "object"; value: { key: string; value: string }[] };
-
-/**
- * God prompt analysis structure
- */
-export interface GodPromptAnalysis {
-  required_sections: {
-    tldr: string;
-    transcript_corrections: string;
-    detailed_summary: string;
-  };
-  additional_sections: AnalysisValue[];
-}
-
-/**
- * A god prompt run - reasoning + schema + analysis together
+ * A god prompt run - stores the complete AI output as JSONB
  * Each run is a version for a specific video
  */
 export const videoAnalysisRuns = pgTable(
@@ -136,10 +113,8 @@ export const videoAnalysisRuns = pgTable(
       .references(() => videos.videoId, { onDelete: "cascade" }),
     version: integer("version").notNull().default(1),
 
-    // God prompt output (all three parts)
-    reasoning: text("reasoning"),
-    generatedSchema: jsonb("generated_schema").$type<GeneratedSchema>(),
-    analysis: jsonb("analysis").$type<GodPromptAnalysis>(),
+    // God prompt output - unified JSONB column
+    result: jsonb("result").$type<GodPromptResult>(),
 
     // Context for rerolls - what instructions led to this version
     additionalInstructions: text("additional_instructions"),

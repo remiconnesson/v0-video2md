@@ -24,9 +24,7 @@ export async function GET(
       id: videoAnalysisRuns.id,
       version: videoAnalysisRuns.version,
       status: videoAnalysisRuns.status,
-      reasoning: videoAnalysisRuns.reasoning,
-      generatedSchema: videoAnalysisRuns.generatedSchema,
-      analysis: videoAnalysisRuns.analysis,
+      result: videoAnalysisRuns.result,
       additionalInstructions: videoAnalysisRuns.additionalInstructions,
       createdAt: videoAnalysisRuns.createdAt,
     })

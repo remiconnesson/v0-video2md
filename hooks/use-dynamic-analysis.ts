@@ -2,17 +2,30 @@ import { useCallback, useRef, useState } from "react";
 import type {
   AnalysisValue,
   GodPromptAnalysis,
-  GodPromptOutput,
+  GodPromptResult,
   SectionEntry,
 } from "@/ai/dynamic-analysis-prompt";
 import type { AnalysisStreamEvent } from "@/app/workflows/dynamic-analysis";
 
-type PartialGodPromptOutput = Extract<
-  AnalysisStreamEvent,
-  { type: "partial" }
->["data"];
+/**
+ * Partial result type for streaming - deeply partial version of GodPromptResult
+ */
+interface PartialGodPromptResult {
+  reasoning?: string;
+  schema?: {
+    sections?: Partial<SectionEntry>[];
+  };
+  analysis?: {
+    required_sections?: {
+      tldr?: string;
+      transcript_corrections?: string;
+      detailed_summary?: string;
+    };
+    additional_sections?: Partial<AnalysisValue>[];
+  };
+}
 
-const EMPTY_GOD_PROMPT_OUTPUT: GodPromptOutput = {
+const EMPTY_GOD_PROMPT_RESULT: GodPromptResult = {
   reasoning: "",
   schema: { sections: [] },
   analysis: {
@@ -56,10 +69,10 @@ function mergeSchemaSections(
 }
 
 function mergePartialResult(
-  current: GodPromptOutput | null,
-  partial: PartialGodPromptOutput,
-): GodPromptOutput {
-  const base = current ?? EMPTY_GOD_PROMPT_OUTPUT;
+  current: GodPromptResult | null,
+  partial: PartialGodPromptResult,
+): GodPromptResult {
+  const base = current ?? EMPTY_GOD_PROMPT_RESULT;
 
   // Merge schema sections (now array-based)
   const mergedSections = mergeSchemaSections(
@@ -134,7 +147,7 @@ export interface AnalysisState {
   status: AnalysisStatus;
   phase: string;
   message: string;
-  result: GodPromptOutput | null;
+  result: GodPromptResult | null;
   runId: number | null;
   error: string | null;
 }
@@ -170,7 +183,7 @@ export function useDynamicAnalysis(videoId: string): UseDynamicAnalysisReturn {
         status: "running",
         phase: "starting",
         message: "Starting analysis...",
-        result: EMPTY_GOD_PROMPT_OUTPUT,
+        result: EMPTY_GOD_PROMPT_RESULT,
         runId: null,
         error: null,
       });
@@ -214,12 +227,15 @@ export function useDynamicAnalysis(videoId: string): UseDynamicAnalysisReturn {
                 } else if (event.type === "partial") {
                   setState((prev) => ({
                     ...prev,
-                    result: mergePartialResult(prev.result, event.data),
+                    result: mergePartialResult(
+                      prev.result,
+                      event.data as PartialGodPromptResult,
+                    ),
                   }));
                 } else if (event.type === "result") {
                   setState((prev) => ({
                     ...prev,
-                    result: event.data,
+                    result: event.data as GodPromptResult,
                   }));
                 } else if (event.type === "complete") {
                   setState((prev) => ({

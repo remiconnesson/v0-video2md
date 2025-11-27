@@ -10,10 +10,7 @@ import {
 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
-import type {
-  GodPromptAnalysis,
-  GodPromptOutput,
-} from "@/ai/dynamic-analysis-prompt";
+import type { GodPromptResult } from "@/ai/dynamic-analysis-prompt";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -30,9 +27,7 @@ interface AnalysisRun {
   id: number;
   version: number;
   status: string;
-  reasoning: string | null;
-  generatedSchema: GodPromptOutput["schema"] | null;
-  analysis: GodPromptAnalysis | null;
+  result: GodPromptResult | null;
   additionalInstructions: string | null;
   createdAt: string;
 }
@@ -195,23 +190,21 @@ export function AnalyzeView({ youtubeId, initialVersion }: AnalyzeViewProps) {
   // Computed state
   const isAnalysisRunning = analysisState.status === "running";
   const hasRuns = runs.length > 0;
-  const emptyAnalysis: GodPromptAnalysis = {
-    required_sections: {
-      tldr: "",
-      transcript_corrections: "",
-      detailed_summary: "",
+  const emptyResult: GodPromptResult = {
+    reasoning: "",
+    schema: { sections: [] },
+    analysis: {
+      required_sections: {
+        tldr: "",
+        transcript_corrections: "",
+        detailed_summary: "",
+      },
+      additional_sections: [],
     },
-    additional_sections: [],
   };
   const displayResult = isAnalysisRunning
     ? analysisState.result
-    : selectedRun
-      ? {
-          reasoning: selectedRun.reasoning ?? "",
-          schema: selectedRun.generatedSchema ?? { sections: [] },
-          analysis: selectedRun.analysis ?? emptyAnalysis,
-        }
-      : null;
+    : (selectedRun?.result ?? (selectedRun ? emptyResult : null));
 
   // Loading state
   if (pageStatus === "loading") {
@@ -383,7 +376,7 @@ export function AnalyzeView({ youtubeId, initialVersion }: AnalyzeViewProps) {
             <AnalysisPanel
               analysis={displayResult.analysis}
               schema={displayResult.schema}
-              runId={selectedRun?.id ?? null}
+              runId={isAnalysisRunning ? null : (selectedRun?.id ?? null)}
               videoId={youtubeId}
             />
           </TabsContent>
@@ -398,7 +391,7 @@ export function AnalyzeView({ youtubeId, initialVersion }: AnalyzeViewProps) {
           <TabsContent value="schema">
             <SchemaPanel
               schema={displayResult.schema}
-              runId={selectedRun?.id ?? null}
+              runId={isAnalysisRunning ? null : (selectedRun?.id ?? null)}
               videoId={youtubeId}
             />
           </TabsContent>

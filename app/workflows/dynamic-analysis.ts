@@ -2,6 +2,7 @@ import { desc, eq } from "drizzle-orm";
 import { getWritable } from "workflow";
 import { z } from "zod";
 import { streamDynamicAnalysis } from "@/ai/dynamic-analysis";
+import type { GodPromptResult } from "@/ai/dynamic-analysis-prompt";
 import { db } from "@/db";
 import {
   channels,
@@ -201,7 +202,7 @@ async function getNextVersion(videoId: string): Promise<number> {
 async function runGodPrompt(
   data: TranscriptData,
   additionalInstructions?: string,
-): Promise<unknown> {
+): Promise<GodPromptResult> {
   "use step";
 
   const stream = streamDynamicAnalysis({
@@ -216,7 +217,7 @@ async function runGodPrompt(
     await emitPartialResult(partial);
   }
 
-  const result = await stream.object;
+  const result = (await stream.object) as unknown as GodPromptResult;
 
   await emitResult(result);
   return result;
@@ -229,7 +230,7 @@ async function runGodPrompt(
 async function persistRun(
   videoId: string,
   version: number,
-  result: unknown,
+  result: GodPromptResult,
   additionalInstructions?: string,
 ): Promise<number> {
   "use step";
@@ -239,10 +240,7 @@ async function persistRun(
     .values({
       videoId,
       version,
-      // TODO: must switch to jsonb for result
-      reasoning: result.reasoning,
-      generatedSchema: result.schema,
-      analysis: result.analysis,
+      result,
       additionalInstructions: additionalInstructions ?? null,
       status: "completed",
       updatedAt: new Date(),

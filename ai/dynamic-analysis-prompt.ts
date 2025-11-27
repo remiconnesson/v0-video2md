@@ -1,3 +1,61 @@
+// ============================================================================
+// Type Definitions
+// ============================================================================
+
+/**
+ * Section entry - describes what to extract
+ */
+export interface SectionEntry {
+  key: string;
+  description: string;
+  type: "string" | "string[]" | "object";
+}
+
+/**
+ * Generated schema from god prompt
+ */
+export interface GeneratedSchema {
+  sections: SectionEntry[];
+}
+
+/**
+ * Analysis value union type for additional sections
+ */
+export type AnalysisValue =
+  | { key: string; kind: "string"; value: string }
+  | { key: string; kind: "array"; value: string[] }
+  | { key: string; kind: "object"; value: { key: string; value: string }[] };
+
+/**
+ * God prompt analysis structure
+ */
+export interface GodPromptAnalysis {
+  required_sections: {
+    tldr: string;
+    transcript_corrections: string;
+    detailed_summary: string;
+  };
+  additional_sections: AnalysisValue[];
+}
+
+/**
+ * Complete god prompt output (stored as JSONB in DB)
+ */
+export interface GodPromptResult {
+  reasoning: string;
+  schema: GeneratedSchema;
+  analysis: GodPromptAnalysis;
+}
+
+/**
+ * Alias for backwards compatibility
+ */
+export type GodPromptOutput = GodPromptResult;
+
+// ============================================================================
+// System Prompts
+// ============================================================================
+
 export const DYNAMIC_ANALYSIS_SYSTEM_PROMPT = `
 type GodPromptOutput = z.infer<typeof godPromptOutputSchema>;
 export type GodPromptAnalysis = GodPromptOutput["analysis"];

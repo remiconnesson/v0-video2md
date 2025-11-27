@@ -2,7 +2,6 @@
 
 import { Code2, Loader2, Play } from "lucide-react";
 import { useState } from "react";
-import type { GeneratedSchema } from "@/ai/dynamic-analysis-prompt";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,6 +17,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import type { GeneratedSchema } from "@/db/schema";
 
 interface SchemaPanelProps {
   schema: GeneratedSchema;

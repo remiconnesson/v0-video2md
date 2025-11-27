@@ -43,6 +43,13 @@
       "when": 1764262126448,
       "tag": "0005_famous_miek",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1764300000000,
+      "tag": "0006_result_jsonb",
+      "breakpoints": true
     }
   ]
 }

@@ -2,12 +2,12 @@
 
 import { FileText } from "lucide-react";
 import { Streamdown } from "streamdown";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type {
   AnalysisValue,
   GeneratedSchema,
   GodPromptAnalysis,
-} from "@/ai/dynamic-analysis-prompt";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+} from "@/db/schema";
 import { SectionFeedback } from "./section-feedback";
 
 interface AnalysisPanelProps {

@@ -6,7 +6,6 @@ import { db } from "@/db";
 import {
   channels,
   derivedAnalysisRuns,
-  type GeneratedSchema,
   scrapTranscriptV1,
   videoAnalysisRuns,
   videos,
@@ -56,12 +55,12 @@ export async function POST(
     return NextResponse.json({ error: "Invalid run ID" }, { status: 400 });
   }
 
-  // Fetch the source run with its schema
+  // Fetch the source run with its result
   const [sourceRun] = await db
     .select({
       id: videoAnalysisRuns.id,
       videoId: videoAnalysisRuns.videoId,
-      generatedSchema: videoAnalysisRuns.generatedSchema,
+      result: videoAnalysisRuns.result,
     })
     .from(videoAnalysisRuns)
     .where(eq(videoAnalysisRuns.id, runIdNum))
@@ -81,7 +80,7 @@ export async function POST(
     );
   }
 
-  if (!sourceRun.generatedSchema) {
+  if (!sourceRun.result?.schema) {
     return NextResponse.json(
       { error: "Source run has no schema" },
       { status: 400 },
@@ -144,7 +143,7 @@ export async function POST(
     const result = await generateDerivedAnalysis({
       title: transcriptRow.title,
       transcript: formattedTranscript,
-      schema: sourceRun.generatedSchema as GeneratedSchema,
+      schema: sourceRun.result.schema,
     });
 
     // Save result
