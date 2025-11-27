@@ -78,4 +78,4 @@ export type {
   GeneratedSchema,
   GodPromptOutput,
   SectionDefinition,
-} from "./dynamic-analysis-schema";
+} from "./dynamic-analysis-prompt";

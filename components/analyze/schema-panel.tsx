@@ -2,7 +2,7 @@
 
 import { Code2, Loader2, Play } from "lucide-react";
 import { useState } from "react";
-import type { GeneratedSchema } from "@/ai/dynamic-analysis-schema";
+import type { GeneratedSchema } from "@/ai/dynamic-analysis-prompt";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
