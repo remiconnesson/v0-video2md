@@ -36,6 +36,13 @@
       "when": 1764256784900,
       "tag": "0004_sticky_jackal",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1764262126448,
+      "tag": "0005_famous_miek",
+      "breakpoints": true
     }
   ]
 }
