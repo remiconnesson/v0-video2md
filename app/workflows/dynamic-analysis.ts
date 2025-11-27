@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import { getWritable } from "workflow";
 import { z } from "zod";
 import {
@@ -176,7 +176,7 @@ async function getNextVersion(videoId: string): Promise<number> {
     .select({ version: videoAnalysisRuns.version })
     .from(videoAnalysisRuns)
     .where(eq(videoAnalysisRuns.videoId, videoId))
-    .orderBy(videoAnalysisRuns.version)
+    .orderBy(desc(videoAnalysisRuns.version))
     .limit(1);
 
   const maxVersion = result[0]?.version ?? 0;
