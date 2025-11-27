@@ -113,11 +113,7 @@ export function AnalysisPanel({
         </div>
 
         {runId && (
-          <SectionFeedback
-            videoId={videoId}
-            runId={runId}
-            sectionKey={key}
-          />
+          <SectionFeedback videoId={videoId} runId={runId} sectionKey={key} />
         )}
       </div>
 
@@ -170,10 +166,7 @@ export function AnalysisPanel({
         {required_sections.detailed_summary &&
           renderSection(
             "detailed_summary",
-            renderValue(
-              required_sections.detailed_summary,
-              "detailed_summary",
-            ),
+            renderValue(required_sections.detailed_summary, "detailed_summary"),
             "A detailed summary of the transcript",
           )}
 
