@@ -8,7 +8,7 @@
  */
 
 import { ApifyClient } from "apify-client";
-import 'dontenv/config'
+import "dontenv/config";
 import {
   saveTranscriptToDb,
   type TranscriptResult,
@@ -93,7 +93,7 @@ function displayResults(result: TranscriptResult) {
     console.log(`\n⚠️  No transcript available for this video`);
   }
 
-  console.log("\n" + "━".repeat(80));
+  console.log(`\n${"━".repeat(80)}`);
 }
 
 async function main() {
