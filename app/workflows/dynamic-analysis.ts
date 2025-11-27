@@ -25,12 +25,21 @@ export type AnalysisStreamEvent =
   | { type: "complete"; runId: number }
   | { type: "error"; message: string };
 
+import type { AnalysisValue } from "@/ai/dynamic-analysis-prompt";
+
 type PartialGodPromptOutput = {
   reasoning?: string;
   schema?: {
     sections?: Record<string, Partial<SectionDefinition> | undefined>;
   };
-  analysis?: Record<string, unknown>;
+  analysis?: {
+    required_sections?: {
+      tldr?: string;
+      transcript_corrections?: string;
+      detailed_summary?: string;
+    };
+    additional_sections?: Partial<AnalysisValue>[];
+  };
 };
 
 // ============================================================================
@@ -225,7 +234,8 @@ async function runGodPrompt(
   });
 
   for await (const partial of stream.partialObjectStream) {
-    await emitPartialResult(partial);
+    // Cast to PartialGodPromptOutput - the streaming library types include undefined in arrays
+    await emitPartialResult(partial as unknown as PartialGodPromptOutput);
   }
 
   const result = await stream.object;

@@ -50,13 +50,24 @@ const objectEntrySchema = z.object({
 });
 
 const analysisValueSchema = z.union([
-  z.object({ kind: z.literal("string"), value: z.string() }),
-  z.object({ kind: z.literal("array"), value: z.array(z.string()) }),
   z.object({
+    key: z.string().describe("Section key matching the schema"),
+    kind: z.literal("string"),
+    value: z.string(),
+  }),
+  z.object({
+    key: z.string().describe("Section key matching the schema"),
+    kind: z.literal("array"),
+    value: z.array(z.string()),
+  }),
+  z.object({
+    key: z.string().describe("Section key matching the schema"),
     kind: z.literal("object"),
     value: z.array(objectEntrySchema),
   }),
 ]);
+
+export type AnalysisValue = z.infer<typeof analysisValueSchema>;
 
 export const godPromptOutputSchema = z.object({
   reasoning: z
@@ -84,6 +95,7 @@ export const godPromptOutputSchema = z.object({
 });
 
 export type GodPromptOutput = z.infer<typeof godPromptOutputSchema>;
+export type GodPromptAnalysis = GodPromptOutput["analysis"];
 
 export const DYNAMIC_ANALYSIS_SYSTEM_PROMPT = `
 You are an expert at analyzing video transcripts and extracting genuinely USEFUL information.

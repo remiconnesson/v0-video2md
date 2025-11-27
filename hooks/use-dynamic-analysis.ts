@@ -1,5 +1,9 @@
 import { useCallback, useRef, useState } from "react";
-import type { GodPromptOutput } from "@/ai/dynamic-analysis-prompt";
+import type {
+  AnalysisValue,
+  GodPromptAnalysis,
+  GodPromptOutput,
+} from "@/ai/dynamic-analysis-prompt";
 import type { AnalysisStreamEvent } from "@/app/workflows/dynamic-analysis";
 
 type PartialGodPromptOutput = Extract<
@@ -26,6 +30,7 @@ function mergePartialResult(
 ): GodPromptOutput {
   const base = current ?? EMPTY_GOD_PROMPT_OUTPUT;
 
+  // Merge schema sections
   const mergedSections = { ...base.schema.sections };
   const partialSections = partial.schema?.sections ?? {};
 
@@ -43,6 +48,25 @@ function mergePartialResult(
     };
   }
 
+  // Merge analysis
+  const mergedAnalysis: GodPromptAnalysis = {
+    required_sections: {
+      tldr:
+        partial.analysis?.required_sections?.tldr ??
+        base.analysis.required_sections.tldr,
+      transcript_corrections:
+        partial.analysis?.required_sections?.transcript_corrections ??
+        base.analysis.required_sections.transcript_corrections,
+      detailed_summary:
+        partial.analysis?.required_sections?.detailed_summary ??
+        base.analysis.required_sections.detailed_summary,
+    },
+    additional_sections: mergeAdditionalSections(
+      base.analysis.additional_sections,
+      partial.analysis?.additional_sections,
+    ),
+  };
+
   return {
     reasoning:
       typeof partial.reasoning === "string"
@@ -51,11 +75,38 @@ function mergePartialResult(
     schema: {
       sections: mergedSections,
     },
-    analysis: {
-      ...base.analysis,
-      ...(partial.analysis ?? {}),
-    },
+    analysis: mergedAnalysis,
   };
+}
+
+function mergeAdditionalSections(
+  base: AnalysisValue[],
+  partial?: Partial<AnalysisValue>[] | undefined,
+): AnalysisValue[] {
+  if (!partial) return base;
+
+  const result = [...base];
+
+  for (const partialSection of partial) {
+    if (!partialSection?.key) continue;
+
+    const existingIdx = result.findIndex((s) => s.key === partialSection.key);
+
+    if (existingIdx >= 0) {
+      // Update existing
+      result[existingIdx] = {
+        ...result[existingIdx],
+        ...partialSection,
+      } as AnalysisValue;
+    } else {
+      // Add new (only if it has required fields)
+      if (partialSection.kind && partialSection.value !== undefined) {
+        result.push(partialSection as AnalysisValue);
+      }
+    }
+  }
+
+  return result;
 }
 
 export type AnalysisStatus = "idle" | "running" | "completed" | "error";
