@@ -88,6 +88,7 @@ export function AnalyzeView({ youtubeId, initialVersion }: AnalyzeViewProps) {
   // Check video status and fetch runs
   const checkVideoStatus = useCallback(async () => {
     try {
+      // TODO: route is missing
       const res = await fetch(`/api/video/${youtubeId}`);
       if (!res.ok) {
         setPageStatus("no_transcript");

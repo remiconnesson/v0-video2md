@@ -28,6 +28,7 @@ export function useTranscriptFetcher(youtubeId: string) {
     });
 
     try {
+      // TODO: route is missing
       const res = await fetch(`/api/video/${youtubeId}/fetch`, {
         method: "POST",
       });

@@ -1,6 +1,5 @@
 import { Youtube } from "lucide-react";
 import Link from "next/link";
-import { ProcessedVideosList } from "@/components/processed-videos-list";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -47,7 +46,8 @@ export default function Home() {
           </Link>
         </div>
 
-        <ProcessedVideosList />
+        {/* TODO: uncomment after implemeting the route*/}
+        {/* <ProcessedVideosList /> */}
       </div>
     </div>
   );
