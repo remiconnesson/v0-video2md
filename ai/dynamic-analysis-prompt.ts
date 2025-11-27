@@ -141,7 +141,7 @@ Please answer in JSON respecting the following schema:
     tldr: string;
     transcript_corrections: string;
     detailed_summary: string;
-    [key: string]: string | string[] | { key: string; value: string }[];
+    [key: string]: string | string[] | Record<string, string>;
   };
 }
 \`\`\`
