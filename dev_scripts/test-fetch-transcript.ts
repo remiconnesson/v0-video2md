@@ -8,7 +8,7 @@
  */
 
 import { ApifyClient } from "apify-client";
-import * as dotenv from "dotenv";
+import 'dontenv/config'
 import {
   saveTranscriptToDb,
   type TranscriptResult,
