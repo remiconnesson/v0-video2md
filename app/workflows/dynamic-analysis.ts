@@ -233,12 +233,37 @@ async function runGodPrompt(
     additionalInstructions,
   });
 
+  // Accumulate the last partial result in case stream.object fails
+  let lastPartial: PartialGodPromptOutput | undefined;
   for await (const partial of stream.partialObjectStream) {
     // Cast to PartialGodPromptOutput - the streaming library types include undefined in arrays
-    await emitPartialResult(partial as unknown as PartialGodPromptOutput);
+    lastPartial = partial as unknown as PartialGodPromptOutput;
+    await emitPartialResult(lastPartial);
   }
 
-  const result = await stream.object;
+  // stream.object can fail with AI_NoObjectGeneratedError
+  // https://ai-sdk.dev/docs/reference/ai-sdk-errors/ai-no-object-generated-error
+  // In that case, use the last partial result if it has the required fields
+  let result: GodPromptOutput;
+  try {
+    result = await stream.object;
+  } catch (error) {
+    if (
+      lastPartial?.reasoning &&
+      lastPartial?.schema?.sections &&
+      lastPartial?.analysis?.required_sections &&
+      lastPartial?.analysis?.additional_sections
+    ) {
+      console.warn(
+        "[DynamicAnalysis] stream.object failed, using last partial result as fallback",
+        error,
+      );
+      result = lastPartial as unknown as GodPromptOutput;
+    } else {
+      throw error;
+    }
+  }
+
   await emitResult(result);
   return result;
 }
