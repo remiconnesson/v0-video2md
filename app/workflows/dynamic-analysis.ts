@@ -1,5 +1,5 @@
 import { desc, eq } from "drizzle-orm";
-import { getWritable } from "workflow";
+import { FatalError, getWritable } from "workflow";
 import { z } from "zod";
 import {
   type GodPromptOutput,
@@ -260,7 +260,10 @@ async function runGodPrompt(
       );
       result = lastPartial as unknown as GodPromptOutput;
     } else {
-      throw error;
+      // Don't retry the god prompt - it's expensive and retrying likely won't help
+      throw new FatalError(
+        `God prompt failed: ${error instanceof Error ? error.message : error}`,
+      );
     }
   }
 
