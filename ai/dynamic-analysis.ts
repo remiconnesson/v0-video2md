@@ -30,7 +30,7 @@ export async function generateDynamicAnalysis(
   const userPrompt = buildGodPromptUserMessage(input);
 
   const result = await generateObject({
-    model: "openai/gpt-4o",
+    model: "openai/gpt-5-mini",
     schema: godPromptOutputSchema,
     system: DYNAMIC_ANALYSIS_SYSTEM_PROMPT,
     prompt: userPrompt,
@@ -54,7 +54,7 @@ export async function generateDerivedAnalysis(
   const userPrompt = buildDerivedAnalysisUserMessage(input);
 
   const result = await generateObject({
-    model: "openai/gpt-4o",
+    model: "openai/gpt-5-mini",
     schema: derivedAnalysisOutputSchema,
     system: DERIVED_ANALYSIS_SYSTEM_PROMPT,
     prompt: userPrompt,
