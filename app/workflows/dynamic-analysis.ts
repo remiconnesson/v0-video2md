@@ -214,7 +214,10 @@ async function persistRun(
 ): Promise<number> {
   "use step";
 
-  const [inserted] = await db
+  // Use upsert to make this step idempotent - if the step retries after a
+  // successful insert (e.g., network timeout before completion was recorded),
+  // it will update the existing row instead of failing on unique constraint.
+  const [upserted] = await db
     .insert(videoAnalysisRuns)
     .values({
       videoId,
@@ -226,9 +229,20 @@ async function persistRun(
       status: "completed",
       updatedAt: new Date(),
     })
+    .onConflictDoUpdate({
+      target: [videoAnalysisRuns.videoId, videoAnalysisRuns.version],
+      set: {
+        reasoning: result.reasoning,
+        generatedSchema: result.schema,
+        analysis: result.analysis,
+        additionalInstructions: additionalInstructions ?? null,
+        status: "completed",
+        updatedAt: new Date(),
+      },
+    })
     .returning({ id: videoAnalysisRuns.id });
 
-  return inserted.id;
+  return upserted.id;
 }
 
 // ============================================================================
