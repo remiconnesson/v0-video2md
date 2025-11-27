@@ -312,6 +312,17 @@ export function VideoChat({ youtubeId }: { youtubeId: string }) {
         }),
       });
 
+      // Handle conflict: extraction already in progress
+      if (response.status === 409) {
+        const data = await response.json();
+        // Resume the existing extraction instead
+        if (data.runId) {
+          resumeSlideExtraction(data.runId, []);
+          return;
+        }
+        throw new Error(data.error || "Extraction already in progress");
+      }
+
       if (!response.ok || !response.body) {
         throw new Error("Failed to start slide extraction");
       }
@@ -331,7 +342,7 @@ export function VideoChat({ youtubeId }: { youtubeId: string }) {
         progress: 0,
       });
     }
-  }, [youtubeId, bookContent, processSlideStream]);
+  }, [youtubeId, bookContent, processSlideStream, resumeSlideExtraction]);
 
   // Fetch existing slides and handle resumption
   const fetchExistingSlides = useCallback(async () => {
@@ -401,8 +412,9 @@ export function VideoChat({ youtubeId }: { youtubeId: string }) {
         setBookContent(videoData.bookContent);
         setVideoStatus("ready");
 
-        // Fetch existing slides
-        fetchExistingSlides();
+        // Fetch existing slides - await to prevent race condition
+        // where the Extract Slides button shows before checking existing extraction status
+        await fetchExistingSlides();
       } catch (err) {
         const errorMessage =
           err instanceof Error ? err.message : "Failed to fetch data";

@@ -74,9 +74,29 @@ export async function POST(
   const { chapters } = parsed.data;
 
   try {
-    // IMPORTANT: Create/update extraction record BEFORE starting the workflow
+    // Check if an extraction is already in progress for this video
+    const existingExtraction = await db
+      .select()
+      .from(videoSlideExtractions)
+      .where(eq(videoSlideExtractions.videoId, videoId))
+      .limit(1);
+
+    if (
+      existingExtraction.length > 0 &&
+      existingExtraction[0].status === "in_progress"
+    ) {
+      return NextResponse.json(
+        {
+          error: "Extraction already in progress",
+          runId: existingExtraction[0].runId,
+          message: "An extraction is already running for this video",
+        },
+        { status: 409 },
+      );
+    }
+
+    // Create/update extraction record BEFORE starting the workflow
     // to avoid race conditions where a fast workflow completes before this runs.
-    // We insert with status="in_progress" and a placeholder runId.
     await db
       .insert(videoSlideExtractions)
       .values({
