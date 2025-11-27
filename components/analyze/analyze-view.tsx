@@ -67,10 +67,10 @@ export function AnalyzeView({ youtubeId, initialVersion }: AnalyzeViewProps) {
     useTranscriptFetcher(youtubeId);
 
   // Fetch existing analysis runs
-  const fetchRuns = useCallback(async () => {
+  const fetchRuns = useCallback(async (): Promise<AnalysisRun[]> => {
     try {
       const res = await fetch(`/api/video/${youtubeId}/analyze`);
-      if (!res.ok) return;
+      if (!res.ok) return [];
       const data = await res.json();
       setRuns(data.runs);
 
@@ -81,8 +81,11 @@ export function AnalyzeView({ youtubeId, initialVersion }: AnalyzeViewProps) {
         );
         setSelectedRun(run ?? data.runs[0]);
       }
+
+      return data.runs;
     } catch (err) {
       console.error("Failed to fetch runs:", err);
+      return [];
     }
   }, [youtubeId, initialVersion]);
 
@@ -146,9 +149,9 @@ export function AnalyzeView({ youtubeId, initialVersion }: AnalyzeViewProps) {
   // When analysis completes, refresh runs
   useEffect(() => {
     if (analysisState.status === "completed" && analysisState.runId) {
-      fetchRuns().then(() => {
+      fetchRuns().then((updatedRuns) => {
         const params = new URLSearchParams(searchParams.toString());
-        const newVersion = runs.length + 1;
+        const newVersion = updatedRuns.length + 1;
         params.set("v", newVersion.toString());
         router.push(`?${params.toString()}`, { scroll: false });
       });
@@ -159,7 +162,6 @@ export function AnalyzeView({ youtubeId, initialVersion }: AnalyzeViewProps) {
     fetchRuns,
     router,
     searchParams,
-    runs.length,
   ]);
 
   // Handlers
