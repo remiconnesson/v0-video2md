@@ -1,70 +1,44 @@
-import { desc, eq } from "drizzle-orm";
+import { desc, eq, isNotNull } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { db } from "@/db";
-import {
-  channels,
-  scrapTranscriptV1,
-  videoBookContent,
-  videos,
-} from "@/db/schema";
+import { scrapTranscriptV1, videos } from "@/db/schema";
+import { formatDuration } from "@/lib/time-utils";
+
+// ============================================================================
+// GET - List all processed videos (with transcripts)
+// ============================================================================
 
 export async function GET() {
-  try {
-    // Query all videos that have been processed (have videoBookContent)
-    const result = await db
-      .select({
-        videoId: videos.videoId,
-        title: videos.title,
-        url: videos.url,
-        publishedAt: videos.publishedAt,
-        channelName: channels.channelName,
-        description: scrapTranscriptV1.description,
-        thumbnail: scrapTranscriptV1.thumbnail,
-        durationSeconds: scrapTranscriptV1.durationSeconds,
-        createdAt: videoBookContent.createdAt,
-      })
-      .from(videos)
-      .innerJoin(videoBookContent, eq(videos.videoId, videoBookContent.videoId))
-      .leftJoin(channels, eq(videos.channelId, channels.channelId))
-      .leftJoin(
-        scrapTranscriptV1,
-        eq(videos.videoId, scrapTranscriptV1.videoId),
-      )
-      .orderBy(desc(videoBookContent.createdAt));
+  // Query for all videos that have transcripts
+  const results = await db
+    .select({
+      videoId: videos.videoId,
+      title: videos.title,
+      description: scrapTranscriptV1.description,
+      durationSeconds: scrapTranscriptV1.durationSeconds,
+      thumbnail: scrapTranscriptV1.thumbnail,
+      createdAt: scrapTranscriptV1.createdAt,
+    })
+    .from(videos)
+    .innerJoin(scrapTranscriptV1, eq(videos.videoId, scrapTranscriptV1.videoId))
+    .where(isNotNull(scrapTranscriptV1.transcript))
+    .orderBy(desc(scrapTranscriptV1.createdAt))
+    .limit(50);
 
-    // Format the response to match the expected VideoData interface
-    const formattedVideos = result.map((row) => ({
-      videoId: row.videoId,
-      videoData: {
-        title: row.title,
-        description: row.description || "",
-        duration: formatDuration(row.durationSeconds),
-        thumbnail: row.thumbnail || "",
-      },
-      extractSlides: false, // We don't have this info in the schema yet
-      completedAt: row.createdAt?.toISOString(),
-    }));
+  // Transform to match the ProcessedVideosList expected format
+  const processedVideos = results.map((row) => ({
+    videoId: row.videoId,
+    videoData: {
+      title: row.title,
+      description: row.description ?? "",
+      duration: row.durationSeconds
+        ? formatDuration(row.durationSeconds)
+        : "N/A",
+      thumbnail: row.thumbnail ?? "",
+    },
+    extractSlides: false,
+    completedAt: row.createdAt?.toISOString(),
+  }));
 
-    return NextResponse.json(formattedVideos);
-  } catch (error) {
-    console.error("Error fetching processed videos:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch processed videos" },
-      { status: 500 },
-    );
-  }
-}
-
-// Helper function to format duration from seconds to human-readable format
-function formatDuration(seconds: number | null): string {
-  if (!seconds) return "N/A";
-
-  const hours = Math.floor(seconds / 3600);
-  const minutes = Math.floor((seconds % 3600) / 60);
-  const secs = seconds % 60;
-
-  if (hours > 0) {
-    return `${hours}:${minutes.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
-  }
-  return `${minutes}:${secs.toString().padStart(2, "0")}`;
+  return NextResponse.json(processedVideos);
 }

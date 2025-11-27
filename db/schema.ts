@@ -12,9 +12,10 @@ import {
   varchar,
 } from "drizzle-orm/pg-core";
 
-import type { Chapter } from "@/ai/transcript-to-book-schema";
+// ============================================================================
+// Enums
+// ============================================================================
 
-// Enum for slide extraction status
 export const extractionStatusEnum = pgEnum("extraction_status", [
   "pending",
   "in_progress",
@@ -23,6 +24,19 @@ export const extractionStatusEnum = pgEnum("extraction_status", [
 ]);
 
 export type ExtractionStatus = (typeof extractionStatusEnum.enumValues)[number];
+
+export const analysisStatusEnum = pgEnum("analysis_status", [
+  "pending",
+  "streaming",
+  "completed",
+  "failed",
+]);
+
+export type AnalysisStatus = (typeof analysisStatusEnum.enumValues)[number];
+
+// ============================================================================
+// Core Video Tables
+// ============================================================================
 
 export const channels = pgTable("channels", {
   channelId: varchar("channel_id", { length: 64 }).primaryKey(),
@@ -69,55 +83,127 @@ export const scrapTranscriptV1 = pgTable(
   (table) => [unique("unique_video_transcript").on(table.videoId)],
 );
 
-export const videoBookContent = pgTable("video_book_content", {
-  videoId: varchar("video_id", { length: 32 })
-    .primaryKey()
-    .references(() => videos.videoId, { onDelete: "cascade" }),
-  videoSummary: text("video_summary").notNull(),
-  chapters: jsonb("chapters").$type<Chapter[]>().notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
+// ============================================================================
+// Dynamic Analysis Tables (God Prompt + Derived)
+// ============================================================================
 
-export type VideoBookContent = typeof videoBookContent.$inferSelect;
-export type NewVideoBookContent = typeof videoBookContent.$inferInsert;
+/**
+ * Schema section definition - describes what to extract
+ */
+export interface SectionDefinition {
+  description: string;
+  type: "string" | "string[]" | "object";
+}
 
-export const videoSlides = pgTable(
-  "video_slides",
+/**
+ * Generated schema from god prompt
+ */
+export interface GeneratedSchema {
+  sections: Record<string, SectionDefinition>;
+}
+
+/**
+ * A god prompt run - reasoning + schema + analysis together
+ * Each run is a version for a specific video
+ */
+export const videoAnalysisRuns = pgTable(
+  "video_analysis_runs",
   {
     id: serial("id").primaryKey(),
     videoId: varchar("video_id", { length: 32 })
       .notNull()
       .references(() => videos.videoId, { onDelete: "cascade" }),
-    slideIndex: integer("slide_index").notNull(),
-    chapterIndex: integer("chapter_index").notNull(),
-    frameId: varchar("frame_id", { length: 64 }).notNull(),
-    startTime: integer("start_time").notNull(),
-    endTime: integer("end_time").notNull(),
-    imageUrl: text("image_url").notNull(),
-    hasText: boolean("has_text").notNull().default(false),
-    textConfidence: integer("text_confidence").default(0),
+    version: integer("version").notNull().default(1),
+
+    // God prompt output (all three parts)
+    reasoning: text("reasoning"),
+    generatedSchema: jsonb("generated_schema").$type<GeneratedSchema>(),
+    analysis: jsonb("analysis").$type<Record<string, unknown>>(),
+
+    // Context for rerolls - what instructions led to this version
+    additionalInstructions: text("additional_instructions"),
+
+    status: analysisStatusEnum("status").notNull().default("pending"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
   },
   (table) => [
-    index("video_slides_video_id_idx").on(table.videoId),
-    unique("unique_video_slide").on(table.videoId, table.frameId),
+    index("video_analysis_runs_video_idx").on(table.videoId),
+    unique("video_analysis_runs_version").on(table.videoId, table.version),
   ],
 );
 
-export type VideoSlide = typeof videoSlides.$inferSelect;
-export type NewVideoSlide = typeof videoSlides.$inferInsert;
+export type VideoAnalysisRun = typeof videoAnalysisRuns.$inferSelect;
+export type NewVideoAnalysisRun = typeof videoAnalysisRuns.$inferInsert;
 
-export const videoSlideExtractions = pgTable("video_slide_extractions", {
-  videoId: varchar("video_id", { length: 32 })
-    .primaryKey()
-    .references(() => videos.videoId, { onDelete: "cascade" }),
-  runId: varchar("run_id", { length: 64 }),
-  status: extractionStatusEnum("status").notNull().default("pending"),
-  totalSlides: integer("total_slides").default(0),
+/**
+ * Derived analysis runs - when user runs the schema as a separate prompt
+ * Triggered on-demand via "Run Schema" button
+ */
+export const derivedAnalysisRuns = pgTable(
+  "derived_analysis_runs",
+  {
+    id: serial("id").primaryKey(),
+    sourceRunId: integer("source_run_id")
+      .notNull()
+      .references(() => videoAnalysisRuns.id, { onDelete: "cascade" }),
+
+    // The analysis output from running the schema
+    analysis: jsonb("analysis").$type<Record<string, unknown>>(),
+
+    status: analysisStatusEnum("status").notNull().default("pending"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => [index("derived_analysis_source_idx").on(table.sourceRunId)],
+);
+
+export type DerivedAnalysisRun = typeof derivedAnalysisRuns.$inferSelect;
+export type NewDerivedAnalysisRun = typeof derivedAnalysisRuns.$inferInsert;
+
+/**
+ * Feedback on individual sections
+ * Can be from god prompt analysis or derived analysis
+ */
+export const sectionFeedback = pgTable(
+  "section_feedback",
+  {
+    id: serial("id").primaryKey(),
+    runId: integer("run_id")
+      .notNull()
+      .references(() => videoAnalysisRuns.id, { onDelete: "cascade" }),
+    // Optional: if feedback is specifically on a derived run's output
+    derivedRunId: integer("derived_run_id").references(
+      () => derivedAnalysisRuns.id,
+      { onDelete: "cascade" },
+    ),
+    sectionKey: varchar("section_key", { length: 128 }).notNull(),
+
+    // Feedback
+    rating: varchar("rating", { length: 16 }), // "useful" | "not_useful"
+    comment: text("comment"),
+
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("section_feedback_run_idx").on(table.runId),
+    index("section_feedback_derived_idx").on(table.derivedRunId),
+  ],
+);
+
+export type SectionFeedback = typeof sectionFeedback.$inferSelect;
+export type NewSectionFeedback = typeof sectionFeedback.$inferInsert;
+
+/**
+ * Overall run feedback / preference
+ */
+export const runFeedback = pgTable("run_feedback", {
+  id: serial("id").primaryKey(),
+  runId: integer("run_id")
+    .notNull()
+    .references(() => videoAnalysisRuns.id, { onDelete: "cascade" }),
+  overallRating: integer("overall_rating"), // 1-5 scale
   createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
-export type VideoSlideExtraction = typeof videoSlideExtractions.$inferSelect;
-export type NewVideoSlideExtraction = typeof videoSlideExtractions.$inferInsert;
+export type RunFeedback = typeof runFeedback.$inferSelect;
+export type NewRunFeedback = typeof runFeedback.$inferInsert;

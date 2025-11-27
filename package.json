@@ -12,7 +12,7 @@
     "start": "next start",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test-transcript": "tsx scripts/test-fetch-transcript.ts"
+    "test-transcript": "tsx dev_scripts/test-fetch-transcript.ts"
   },
   "dependencies": {
     "@ai-sdk/react": "latest",

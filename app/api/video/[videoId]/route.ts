@@ -1,12 +1,11 @@
 import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { db } from "@/db";
-import {
-  channels,
-  scrapTranscriptV1,
-  videoBookContent,
-  videos,
-} from "@/db/schema";
+import { channels, scrapTranscriptV1, videos } from "@/db/schema";
+
+// ============================================================================
+// GET - Check video status and get basic info
+// ============================================================================
 
 export async function GET(
   _request: Request,
@@ -14,35 +13,26 @@ export async function GET(
 ) {
   const { videoId } = await params;
 
-  // Query video with related data
+  // Validate videoId format
+  if (!/^[a-zA-Z0-9_-]{11}$/.test(videoId)) {
+    return NextResponse.json(
+      { error: "Invalid YouTube video ID format" },
+      { status: 400 },
+    );
+  }
+
+  // Query for video info and transcript
   const result = await db
     .select({
-      video: {
-        videoId: videos.videoId,
-        url: videos.url,
-        title: videos.title,
-        publishedAt: videos.publishedAt,
-      },
-      channel: {
-        channelId: channels.channelId,
-        channelName: channels.channelName,
-      },
-      transcript: {
-        description: scrapTranscriptV1.description,
-        thumbnail: scrapTranscriptV1.thumbnail,
-        viewCount: scrapTranscriptV1.viewCount,
-        likeCount: scrapTranscriptV1.likeCount,
-        durationSeconds: scrapTranscriptV1.durationSeconds,
-      },
-      bookContent: {
-        videoSummary: videoBookContent.videoSummary,
-        chapters: videoBookContent.chapters,
-      },
+      videoId: videos.videoId,
+      title: videos.title,
+      channelName: channels.channelName,
+      thumbnail: scrapTranscriptV1.thumbnail,
+      transcript: scrapTranscriptV1.transcript,
     })
     .from(videos)
     .leftJoin(channels, eq(videos.channelId, channels.channelId))
     .leftJoin(scrapTranscriptV1, eq(videos.videoId, scrapTranscriptV1.videoId))
-    .leftJoin(videoBookContent, eq(videos.videoId, videoBookContent.videoId))
     .where(eq(videos.videoId, videoId))
     .limit(1);
 
@@ -50,39 +40,31 @@ export async function GET(
 
   // Video not found in database
   if (!row) {
-    return NextResponse.json({ status: "not_found" as const, videoId });
+    return NextResponse.json({
+      status: "not_found",
+      video: null,
+    });
   }
 
-  // Video exists but book content not yet generated
-  if (!row.bookContent?.videoSummary) {
+  // Video exists but no transcript yet
+  if (!row.transcript) {
     return NextResponse.json({
-      status: "processing" as const,
-      videoId,
+      status: "processing",
       video: {
-        ...row.video,
-        channelName: row.channel?.channelName,
-        description: row.transcript?.description,
-        thumbnail: row.transcript?.thumbnail,
+        title: row.title,
+        channelName: row.channelName,
+        thumbnail: row.thumbnail,
       },
     });
   }
 
-  // Video and book content both exist - ready to use
+  // Video has transcript
   return NextResponse.json({
-    status: "ready" as const,
-    videoId,
+    status: "ready",
     video: {
-      ...row.video,
-      channelName: row.channel?.channelName,
-      description: row.transcript?.description,
-      thumbnail: row.transcript?.thumbnail,
-      viewCount: row.transcript?.viewCount,
-      likeCount: row.transcript?.likeCount,
-      durationSeconds: row.transcript?.durationSeconds,
-    },
-    bookContent: {
-      videoSummary: row.bookContent.videoSummary,
-      chapters: row.bookContent.chapters,
+      title: row.title,
+      channelName: row.channelName,
+      thumbnail: row.thumbnail,
     },
   });
 }

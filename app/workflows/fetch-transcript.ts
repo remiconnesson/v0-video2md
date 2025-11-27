@@ -2,22 +2,17 @@ import { ApifyClient } from "apify-client";
 import { eq } from "drizzle-orm";
 import { getWritable } from "workflow";
 import { z } from "zod";
-import { generateTranscriptToBook } from "@/ai/transcript-to-book";
-import type { TranscriptToBook } from "@/ai/transcript-to-book-schema";
 import { db } from "@/db";
 import {
   saveTranscriptToDb,
   type TranscriptResult,
-  type TranscriptSegment,
 } from "@/db/save-transcript";
-import {
-  channels,
-  scrapTranscriptV1,
-  videoBookContent,
-  videos,
-} from "@/db/schema";
+import { channels, scrapTranscriptV1, videos } from "@/db/schema";
 
+// ============================================================================
 // Zod schema for validating Apify API response (snake_case as returned by API)
+// ============================================================================
+
 const TranscriptSegmentSchema = z.object({
   start: z.number(),
   end: z.number(),
@@ -41,7 +36,10 @@ const ApifyTranscriptResponseSchema = z.object({
   transcript: z.array(TranscriptSegmentSchema),
 });
 
+// ============================================================================
 // Transform snake_case API response to camelCase internal format
+// ============================================================================
+
 function transformApifyResponse(
   data: z.infer<typeof ApifyTranscriptResponseSchema>,
 ): TranscriptResult {
@@ -75,56 +73,59 @@ function formatDurationFromSeconds(seconds: number): string {
   return `${mins}:${secs.toString().padStart(2, "0")}`;
 }
 
-// Types for streaming progress events
-export type TranscriptWorkflowEvent =
-  | { type: "progress"; step: string; message: string }
-  | { type: "complete"; bookContent: TranscriptToBook }
-  | { type: "error"; message: string };
+// ============================================================================
+// Stream Event Types
+// ============================================================================
 
-async function emitProgress(step: string, message: string) {
+export type TranscriptStreamEvent =
+  | { type: "progress"; progress: number; message: string }
+  | { type: "complete"; video: { title: string; channelName: string } }
+  | { type: "error"; error: string };
+
+// ============================================================================
+// Step: Emit progress
+// ============================================================================
+
+async function emitProgress(progress: number, message: string) {
   "use step";
 
-  const writable = getWritable<TranscriptWorkflowEvent>();
+  const writable = getWritable<TranscriptStreamEvent>();
   const writer = writable.getWriter();
-  await writer.write({ type: "progress", step, message });
+  await writer.write({ type: "progress", progress, message });
   writer.releaseLock();
 }
 
-async function emitComplete(bookContent: TranscriptToBook) {
+// ============================================================================
+// Step: Emit completion
+// ============================================================================
+
+async function emitComplete(video: { title: string; channelName: string }) {
   "use step";
 
-  const writable = getWritable<TranscriptWorkflowEvent>();
+  const writable = getWritable<TranscriptStreamEvent>();
   const writer = writable.getWriter();
-  await writer.write({ type: "complete", bookContent });
+  await writer.write({ type: "complete", video });
   writer.releaseLock();
   await writable.close();
 }
 
-async function emitError(message: string) {
+// ============================================================================
+// Step: Emit error
+// ============================================================================
+
+async function emitError(error: string) {
   "use step";
 
-  const writable = getWritable<TranscriptWorkflowEvent>();
+  const writable = getWritable<TranscriptStreamEvent>();
   const writer = writable.getWriter();
-  await writer.write({ type: "error", message });
+  await writer.write({ type: "error", error });
   writer.releaseLock();
   await writable.close();
 }
 
-const formatTimestamp = (seconds: number): string => {
-  const hours = Math.floor(seconds / 3600);
-  const mins = Math.floor((seconds % 3600) / 60);
-  const secs = Math.floor(seconds % 60);
-
-  if (hours > 0) {
-    return `${hours}:${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
-  }
-  return `${mins}:${secs.toString().padStart(2, "0")}`;
-};
-
-const formatTranscriptString = (segments: TranscriptSegment[]): string =>
-  segments
-    .map((segment) => `[${formatTimestamp(segment.start)}] ${segment.text}`)
-    .join("\n");
+// ============================================================================
+// Step: Check DB for existing transcript
+// ============================================================================
 
 async function stepCheckDbForTranscript(
   videoId: string,
@@ -202,70 +203,13 @@ async function stepCheckDbForTranscript(
   };
 }
 
-export async function fetchAndStoreTranscriptWorkflow(videoId: string) {
-  "use workflow";
+// ============================================================================
+// Step: Fetch from Apify
+// ============================================================================
 
-  // First, check if we already have the transcript in the database
-  await emitProgress(
-    "checking",
-    "Checking database for existing transcript...",
-  );
-
-  const cachedResult = await stepCheckDbForTranscript(videoId);
-
-  let apifyResult: TranscriptResult;
-
-  if (cachedResult) {
-    await emitProgress(
-      "cache-hit",
-      "Transcript found in database, skipping API call...",
-    );
-    apifyResult = cachedResult;
-  } else {
-    await emitProgress("fetching", "Fetching transcript from YouTube...");
-
-    const fetchedResult = await stepFetchFromApify(videoId);
-
-    if (!fetchedResult) {
-      await emitError(`No results found for video ID: ${videoId}`);
-      throw new Error(`Apify returned no results for video ID: ${videoId}`);
-    }
-
-    await emitProgress("saving", "Saving video data to database...");
-
-    await stepSaveToDb(fetchedResult);
-    apifyResult = fetchedResult;
-  }
-
-  let bookContent: TranscriptToBook | null = null;
-
-  if (apifyResult.transcript && apifyResult.transcript.length > 0) {
-    await emitProgress("analyzing", "Generating chapter analysis...");
-
-    bookContent = await stepGenerateBookContent({
-      transcript: apifyResult.transcript,
-      title: apifyResult.title,
-      description: apifyResult.description,
-      channelName: apifyResult.channelName,
-    });
-
-    if (bookContent) {
-      await emitProgress("finalizing", "Saving analysis results...");
-      await stepSaveBookContent(apifyResult.id, bookContent);
-      await emitComplete(bookContent);
-    }
-  }
-
-  return {
-    success: true,
-    videoId: apifyResult.id,
-    title: apifyResult.title,
-    hasBookContent: bookContent !== null,
-    chapters: bookContent?.chapters || [],
-  };
-}
-
-async function stepFetchFromApify(videoId: string) {
+async function stepFetchFromApify(
+  videoId: string,
+): Promise<TranscriptResult | null> {
   "use step";
 
   if (!process.env.APIFY_API_TOKEN) {
@@ -305,50 +249,70 @@ async function stepFetchFromApify(videoId: string) {
   return transformApifyResponse(parseResult.data);
 }
 
+// ============================================================================
+// Step: Save to database
+// ============================================================================
+
 async function stepSaveToDb(data: TranscriptResult) {
   "use step";
 
   await saveTranscriptToDb(data);
 }
 
-async function stepGenerateBookContent(input: {
-  transcript: TranscriptSegment[];
-  title: string;
-  description?: string;
-  channelName?: string;
-}): Promise<TranscriptToBook> {
-  "use step";
+// ============================================================================
+// Main Workflow
+// ============================================================================
 
-  // Note: Steps have full Node.js access with native fetch.
-  // Do NOT set globalThis.fetch to workflow's fetch here - it creates
-  // infinite recursion since workflow's fetch calls globalThis.fetch.
+export async function fetchTranscriptWorkflow(videoId: string) {
+  "use workflow";
 
-  const transcriptString = formatTranscriptString(input.transcript);
+  try {
+    // Step 1: Check if we already have the transcript in the database
+    await emitProgress(10, "Checking database for existing transcript...");
 
-  return generateTranscriptToBook({
-    transcriptString,
-    title: input.title,
-    description: input.description,
-    channelName: input.channelName,
-  });
-}
+    const cachedResult = await stepCheckDbForTranscript(videoId);
 
-async function stepSaveBookContent(videoId: string, content: TranscriptToBook) {
-  "use step";
+    let transcriptData: TranscriptResult;
 
-  await db
-    .insert(videoBookContent)
-    .values({
-      videoId,
-      videoSummary: content.videoSummary,
-      chapters: content.chapters,
-    })
-    .onConflictDoUpdate({
-      target: videoBookContent.videoId,
-      set: {
-        videoSummary: content.videoSummary,
-        chapters: content.chapters,
-        updatedAt: new Date(),
-      },
+    if (cachedResult) {
+      await emitProgress(
+        50,
+        "Transcript found in database, skipping API call...",
+      );
+      transcriptData = cachedResult;
+    } else {
+      // Step 2: Fetch from Apify
+      await emitProgress(20, "Fetching transcript from YouTube...");
+
+      const fetchedResult = await stepFetchFromApify(videoId);
+
+      if (!fetchedResult) {
+        await emitError(`No results found for video ID: ${videoId}`);
+        throw new Error(`Apify returned no results for video ID: ${videoId}`);
+      }
+
+      // Step 3: Save to database
+      await emitProgress(80, "Saving video data to database...");
+      await stepSaveToDb(fetchedResult);
+
+      transcriptData = fetchedResult;
+    }
+
+    // Step 4: Complete
+    await emitComplete({
+      title: transcriptData.title,
+      channelName: transcriptData.channelName,
     });
+
+    return {
+      success: true,
+      videoId: transcriptData.id,
+      title: transcriptData.title,
+    };
+  } catch (error) {
+    const errorMessage =
+      error instanceof Error ? error.message : "Unknown error occurred";
+    await emitError(errorMessage);
+    throw error;
+  }
 }

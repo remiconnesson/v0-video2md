@@ -1,8 +1,6 @@
 "use server";
 
-import { start } from "workflow/api";
 import { z } from "zod";
-import { fetchAndStoreTranscriptWorkflow } from "@/app/workflows/fetch-transcript";
 import { extractYoutubeVideoId } from "@/lib/youtube-utils";
 
 const schema = z.object({
@@ -30,18 +28,8 @@ export async function triggerTranscript(
     };
   }
 
-  try {
-    const run = await start(fetchAndStoreTranscriptWorkflow, [
-      parsed.data.videoId,
-    ]);
-
-    return {
-      success: true,
-      runId: run.runId,
-      videoId: parsed.data.videoId,
-    };
-  } catch (error) {
-    console.error("Failed to start workflow", error);
-    return { success: false, error: "Failed to start workflow" };
-  }
+  return {
+    success: true,
+    videoId: parsed.data.videoId,
+  };
 }
