@@ -44,7 +44,7 @@ This being said, ALWAYS include a detailed summary of the video as one of the fi
 - Only include sections that are genuinely valuable for THIS content
 - Quality over quantity - 5 great sections beats 15 mediocre ones
 - The description field should be clear instructions for extraction
-- Type can be "string", "string[]", or "object"
+- Type can be "string", "string[]", or "Record<string, string>", in strings, you can use markdown extensively.
 
 ## Analysis Rules
 
