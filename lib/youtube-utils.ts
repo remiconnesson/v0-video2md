@@ -241,10 +241,7 @@ export async function resolveShortUrl(input: string): Promise<string | null> {
       // Resolve relative redirect against current URL
       let absoluteRedirectUrl: string;
       try {
-        absoluteRedirectUrl = new URL(
-          redirectLocation,
-          currentUrl,
-        ).toString();
+        absoluteRedirectUrl = new URL(redirectLocation, currentUrl).toString();
       } catch (err) {
         console.error("Invalid redirect URL:", err);
         return null;

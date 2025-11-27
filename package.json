@@ -12,7 +12,10 @@
     "start": "next start",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test-transcript": "tsx scripts/test-fetch-transcript.ts"
+    "test-transcript": "tsx scripts/test-fetch-transcript.ts",
+    "db:push": "drizzle-kit push",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate"
   },
   "dependencies": {
     "@ai-sdk/react": "latest",
