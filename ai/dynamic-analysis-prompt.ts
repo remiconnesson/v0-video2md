@@ -1,123 +1,8 @@
-import { z } from "zod";
-
-/**
- * A section entry with its key - describes what to extract
- */
-export const sectionEntrySchema = z.object({
-  key: z.string().describe("Section key in snake_case (e.g., 'key_takeaways')"),
-  description: z
-    .string()
-    .describe("Clear instructions for what to extract in this section"),
-  type: z
-    .enum(["string", "string[]", "object"])
-    .describe(
-      "The data type: string for prose, string[] for lists, object for structured data",
-    ),
-});
-
-export type SectionEntry = z.infer<typeof sectionEntrySchema>;
-
-/**
- * Generated schema - the extraction blueprint
- */
-export const generatedSchemaSchema = z.object({
-  sections: z
-    .array(sectionEntrySchema)
-    .describe("Array of section definitions. Use snake_case for keys."),
-});
-
-export type GeneratedSchema = z.infer<typeof generatedSchemaSchema>;
-/**
- * Derived analysis output - just the analysis part
- * Used when running a schema separately
- * Note: Uses the same analysisValueSchema array format as godPromptOutputSchema
- */
-export const derivedAnalysisOutputSchema = z.object({
-  sections: z
-    .array(
-      z.union([
-        z.object({
-          key: z.string().describe("Section key matching the schema"),
-          kind: z.literal("string"),
-          value: z.string(),
-        }),
-        z.object({
-          key: z.string().describe("Section key matching the schema"),
-          kind: z.literal("array"),
-          value: z.array(z.string()),
-        }),
-        z.object({
-          key: z.string().describe("Section key matching the schema"),
-          kind: z.literal("object"),
-          value: z.array(z.object({ key: z.string(), value: z.string() })),
-        }),
-      ]),
-    )
-    .describe("Extracted content following the provided schema"),
-});
-
-export type DerivedAnalysisOutput = z.infer<typeof derivedAnalysisOutputSchema>;
-/**
- * The god prompt outputs everything at once:
- * 1. Reasoning - why these sections were chosen
- * 2. Schema - the extraction blueprint
- * 3. Analysis - the actual extracted content
- */
-const objectEntrySchema = z.object({
-  key: z.string(),
-  value: z.string(),
-});
-
-const analysisValueSchema = z.union([
-  z.object({
-    key: z.string().describe("Section key matching the schema"),
-    kind: z.literal("string"),
-    value: z.string(),
-  }),
-  z.object({
-    key: z.string().describe("Section key matching the schema"),
-    kind: z.literal("array"),
-    value: z.array(z.string()),
-  }),
-  z.object({
-    key: z.string().describe("Section key matching the schema"),
-    kind: z.literal("object"),
-    value: z.array(objectEntrySchema),
-  }),
-]);
-
-export type AnalysisValue = z.infer<typeof analysisValueSchema>;
-
-export const godPromptOutputSchema = z.object({
-  reasoning: z
-    .string()
-    .describe(
-      "Your analysis: What makes this transcript unique? What would be genuinely useful to extract? Why did you choose these sections?",
-    ),
-  schema: generatedSchemaSchema.describe(
-    "The extraction schema you designed for this specific content",
-  ),
-  analysis: z.object({
-    required_sections: z.object({
-      tldr: z.string().describe("A short summary of the transcript"),
-      transcript_corrections: z
-        .string()
-        .describe("Corrections to the transcript"),
-      detailed_summary: z
-        .string()
-        .describe("A detailed summary of the transcript"),
-    }),
-    additional_sections: z
-      .array(analysisValueSchema)
-      .describe("Additional sections that are genuinely useful to extract"),
-  }),
-});
-
-export type GodPromptOutput = z.infer<typeof godPromptOutputSchema>;
+export const DYNAMIC_ANALYSIS_SYSTEM_PROMPT = `
+type GodPromptOutput = z.infer<typeof godPromptOutputSchema>;
 export type GodPromptAnalysis = GodPromptOutput["analysis"];
 
-export const DYNAMIC_ANALYSIS_SYSTEM_PROMPT = `
-You are an expert at analyzing video transcripts and extracting genuinely USEFUL information.
+export You are an expert at analyzing video transcripts and extracting genuinely USEFUL information.
 
 Your task is to:
 1. **REASON**: Analyze this specific transcript. What makes it unique? What would actually be valuable to someone who watched this?
@@ -174,6 +59,34 @@ This being said, ALWAYS include a detailed summary of the video as one of the fi
 - For object types, provide a structured object
 - Preserve the voice/personality of the speaker where it adds value
 - Include timestamps (MM:SS or HH:MM:SS) where relevant
+
+## Output Schema
+
+\`\`\`ts
+{
+  reasoning: string; // Format in markdown
+  // The extraction schema you designed for this specific content
+  schema: {
+    sections: {
+      // Map of section_key to section definition. Use snake_case for keys
+      [key: string]: {
+        // Clear instructions for what to extract in this section
+        description: string; 
+        // The data type: string for prose, string[] for lists, object for structured data
+        type: "string" | "string[]" | "object";
+      };
+    };
+  };
+  // The actual extracted content, following your schema. Keys must match schema section keys exactly
+  analysis: {
+    tldr: string;
+    transcript_corrections: string;
+    detailed_summary: string;
+    [key: string]: string | string[] | { key: string; value: string }[];
+  };
+}
+\`\`\`
+
 `.trim();
 
 /**
@@ -240,15 +153,10 @@ Your task: Extract the content according to the schema. Follow each section's de
 export function buildDerivedAnalysisUserMessage(input: {
   title: string;
   transcript: string;
-  schema: GeneratedSchema;
 }): string {
   const parts: string[] = [];
 
   parts.push(`# Video: ${input.title}`);
-
-  parts.push(
-    `## Extraction Schema\n\`\`\`json\n${JSON.stringify(input.schema, null, 2)}\n\`\`\``,
-  );
 
   parts.push(`## Transcript\n\`\`\`\n${input.transcript}\n\`\`\``);
 

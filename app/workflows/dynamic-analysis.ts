@@ -1,11 +1,7 @@
 import { desc, eq } from "drizzle-orm";
-import { FatalError, getWritable } from "workflow";
+import { getWritable } from "workflow";
 import { z } from "zod";
-import {
-  type GodPromptOutput,
-  type SectionEntry,
-  streamDynamicAnalysis,
-} from "@/ai/dynamic-analysis";
+import { streamDynamicAnalysis } from "@/ai/dynamic-analysis";
 import { db } from "@/db";
 import {
   channels,
@@ -20,27 +16,10 @@ import {
 
 export type AnalysisStreamEvent =
   | { type: "progress"; phase: string; message: string }
-  | { type: "partial"; data: PartialGodPromptOutput }
-  | { type: "result"; data: GodPromptOutput }
+  | { type: "partial"; data: unknown }
+  | { type: "result"; data: unknown }
   | { type: "complete"; runId: number }
   | { type: "error"; message: string };
-
-import type { AnalysisValue } from "@/ai/dynamic-analysis-prompt";
-
-type PartialGodPromptOutput = {
-  reasoning?: string;
-  schema?: {
-    sections?: Partial<SectionEntry>[];
-  };
-  analysis?: {
-    required_sections?: {
-      tldr?: string;
-      transcript_corrections?: string;
-      detailed_summary?: string;
-    };
-    additional_sections?: Partial<AnalysisValue>[];
-  };
-};
 
 // ============================================================================
 // Transcript Schema (for validation)
@@ -92,7 +71,7 @@ async function emitProgress(phase: string, message: string) {
 // Step: Emit result
 // ============================================================================
 
-async function emitResult(data: GodPromptOutput) {
+async function emitResult(data: unknown) {
   "use step";
 
   const writable = getWritable<AnalysisStreamEvent>();
@@ -105,7 +84,7 @@ async function emitResult(data: GodPromptOutput) {
 // Step: Emit partial result
 // ============================================================================
 
-async function emitPartialResult(data: PartialGodPromptOutput) {
+async function emitPartialResult(data: unknown) {
   "use step";
 
   const writable = getWritable<AnalysisStreamEvent>();
@@ -222,7 +201,7 @@ async function getNextVersion(videoId: string): Promise<number> {
 async function runGodPrompt(
   data: TranscriptData,
   additionalInstructions?: string,
-): Promise<GodPromptOutput> {
+): Promise<unknown> {
   "use step";
 
   const stream = streamDynamicAnalysis({
@@ -233,39 +212,11 @@ async function runGodPrompt(
     additionalInstructions,
   });
 
-  // Accumulate the last partial result in case stream.object fails
-  let lastPartial: PartialGodPromptOutput | undefined;
   for await (const partial of stream.partialObjectStream) {
-    // Cast to PartialGodPromptOutput - the streaming library types include undefined in arrays
-    lastPartial = partial as unknown as PartialGodPromptOutput;
-    await emitPartialResult(lastPartial);
+    await emitPartialResult(partial);
   }
 
-  // stream.object can fail with AI_NoObjectGeneratedError
-  // https://ai-sdk.dev/docs/reference/ai-sdk-errors/ai-no-object-generated-error
-  // In that case, use the last partial result if it has the required fields
-  let result: GodPromptOutput;
-  try {
-    result = await stream.object;
-  } catch (error) {
-    if (
-      lastPartial?.reasoning &&
-      lastPartial?.schema?.sections &&
-      lastPartial?.analysis?.required_sections &&
-      lastPartial?.analysis?.additional_sections
-    ) {
-      console.warn(
-        "[DynamicAnalysis] stream.object failed, using last partial result as fallback",
-        error,
-      );
-      result = lastPartial as unknown as GodPromptOutput;
-    } else {
-      // Don't retry the god prompt - it's expensive and retrying likely won't help
-      throw new FatalError(
-        `God prompt failed: ${error instanceof Error ? error.message : error}`,
-      );
-    }
-  }
+  const result = await stream.object;
 
   await emitResult(result);
   return result;
@@ -278,7 +229,7 @@ async function runGodPrompt(
 async function persistRun(
   videoId: string,
   version: number,
-  result: GodPromptOutput,
+  result: unknown,
   additionalInstructions?: string,
 ): Promise<number> {
   "use step";
@@ -288,6 +239,7 @@ async function persistRun(
     .values({
       videoId,
       version,
+      // TODO: must switch to jsonb for result
       reasoning: result.reasoning,
       generatedSchema: result.schema,
       analysis: result.analysis,
