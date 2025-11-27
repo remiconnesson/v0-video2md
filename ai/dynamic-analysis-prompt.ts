@@ -36,6 +36,8 @@ Here are some section types that often work well, but don't limit yourself to th
 
 **Invent your own sections!** If this is a cooking video, maybe you need "ingredients" and "technique_tips". If it's a debate, maybe "argument_structure" and "logical_fallacies". If it's a tutorial, maybe "step_by_step" and "common_mistakes". Match the content.
 
+This being said, always include a detailed summary of the video.
+
 ## Schema Rules
 
 - Use snake_case for section keys
