@@ -1,16 +1,16 @@
 import { generateObject } from "ai";
 import {
-  buildGodPromptUserMessage,
-  DYNAMIC_ANALYSIS_SYSTEM_PROMPT,
   buildDerivedAnalysisUserMessage,
+  buildGodPromptUserMessage,
   DERIVED_ANALYSIS_SYSTEM_PROMPT,
+  DYNAMIC_ANALYSIS_SYSTEM_PROMPT,
 } from "./dynamic-analysis-prompt";
 import {
+  type DerivedAnalysisOutput,
+  derivedAnalysisOutputSchema,
+  type GeneratedSchema,
   type GodPromptOutput,
   godPromptOutputSchema,
-  derivedAnalysisOutputSchema,
-  type DerivedAnalysisOutput,
-  type GeneratedSchema,
 } from "./dynamic-analysis-schema";
 
 export interface DynamicAnalysisInput {
@@ -25,7 +25,7 @@ export interface DynamicAnalysisInput {
  * Runs the god prompt to generate reasoning + schema + analysis
  */
 export async function generateDynamicAnalysis(
-  input: DynamicAnalysisInput
+  input: DynamicAnalysisInput,
 ): Promise<GodPromptOutput> {
   const userPrompt = buildGodPromptUserMessage(input);
 
@@ -49,7 +49,7 @@ export interface DerivedAnalysisInput {
  * Runs a derived analysis using a pre-defined schema
  */
 export async function generateDerivedAnalysis(
-  input: DerivedAnalysisInput
+  input: DerivedAnalysisInput,
 ): Promise<DerivedAnalysisOutput> {
   const userPrompt = buildDerivedAnalysisUserMessage(input);
 
@@ -65,8 +65,8 @@ export async function generateDerivedAnalysis(
 
 // Re-export types
 export type {
-  GodPromptOutput,
   DerivedAnalysisOutput,
   GeneratedSchema,
+  GodPromptOutput,
   SectionDefinition,
 } from "./dynamic-analysis-schema";

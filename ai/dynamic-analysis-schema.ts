@@ -7,9 +7,11 @@ export const sectionDefinitionSchema = z.object({
   description: z
     .string()
     .describe("Clear instructions for what to extract in this section"),
-  type: z.enum(["string", "string[]", "object"]).describe(
-    "The data type: string for prose, string[] for lists, object for structured data"
-  ),
+  type: z
+    .enum(["string", "string[]", "object"])
+    .describe(
+      "The data type: string for prose, string[] for lists, object for structured data",
+    ),
 });
 
 export type SectionDefinition = z.infer<typeof sectionDefinitionSchema>;
@@ -21,7 +23,7 @@ export const generatedSchemaSchema = z.object({
   sections: z
     .record(z.string(), sectionDefinitionSchema)
     .describe(
-      "Map of section_key to section definition. Use snake_case for keys."
+      "Map of section_key to section definition. Use snake_case for keys.",
     ),
 });
 
@@ -37,15 +39,15 @@ export const godPromptOutputSchema = z.object({
   reasoning: z
     .string()
     .describe(
-      "Your analysis: What makes this transcript unique? What would be genuinely useful to extract? Why did you choose these sections?"
+      "Your analysis: What makes this transcript unique? What would be genuinely useful to extract? Why did you choose these sections?",
     ),
   schema: generatedSchemaSchema.describe(
-    "The extraction schema you designed for this specific content"
+    "The extraction schema you designed for this specific content",
   ),
   analysis: z
     .record(z.string(), z.unknown())
     .describe(
-      "The actual extracted content, following your schema. Keys must match schema section keys exactly."
+      "The actual extracted content, following your schema. Keys must match schema section keys exactly.",
     ),
 });
 

@@ -81,12 +81,12 @@ export function buildGodPromptUserMessage(input: {
 
   if (input.additionalInstructions) {
     parts.push(
-      `## Additional Instructions from User\n${input.additionalInstructions}`
+      `## Additional Instructions from User\n${input.additionalInstructions}`,
     );
   }
 
   parts.push(
-    `\nAnalyze this transcript. Think about what would be genuinely USEFUL to extract, design a custom schema for this specific content, and perform the extraction.`
+    `\nAnalyze this transcript. Think about what would be genuinely USEFUL to extract, design a custom schema for this specific content, and perform the extraction.`,
   );
 
   return parts.join("\n\n");
@@ -125,7 +125,9 @@ export function buildDerivedAnalysisUserMessage(input: {
 
   parts.push(`# Video: ${input.title}`);
 
-  parts.push(`## Extraction Schema\n\`\`\`json\n${JSON.stringify(input.schema, null, 2)}\n\`\`\``);
+  parts.push(
+    `## Extraction Schema\n\`\`\`json\n${JSON.stringify(input.schema, null, 2)}\n\`\`\``,
+  );
 
   parts.push(`## Transcript\n\`\`\`\n${input.transcript}\n\`\`\``);
 
