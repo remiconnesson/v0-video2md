@@ -389,11 +389,7 @@ export function AnalyzeView({ youtubeId, initialVersion }: AnalyzeViewProps) {
           </TabsContent>
 
           <TabsContent value="schema">
-            <SchemaPanel
-              schema={displayResult.schema}
-              runId={isAnalysisRunning ? null : (selectedRun?.id ?? null)}
-              videoId={youtubeId}
-            />
+            <SchemaPanel schema={displayResult.schema} />
           </TabsContent>
         </Tabs>
       )}

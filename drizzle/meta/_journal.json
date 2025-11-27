@@ -50,6 +50,13 @@
       "when": 1764300000000,
       "tag": "0006_result_jsonb",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1764281763331,
+      "tag": "0007_demonic_roulette",
+      "breakpoints": true
     }
   ]
 }

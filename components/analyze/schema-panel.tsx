@@ -1,9 +1,7 @@
 "use client";
 
-import { Code2, Loader2, Play } from "lucide-react";
-import { useState } from "react";
+import { Code2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -11,52 +9,14 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import type { GeneratedSchema } from "@/db/schema";
 
 interface SchemaPanelProps {
   schema: GeneratedSchema;
-  runId: number | null;
-  videoId: string;
 }
 
-export function SchemaPanel({ schema, runId, videoId }: SchemaPanelProps) {
-  const [isRunningDerived, setIsRunningDerived] = useState(false);
-  const [derivedResult, setDerivedResult] = useState<Record<
-    string,
-    unknown
-  > | null>(null);
-
+export function SchemaPanel({ schema }: SchemaPanelProps) {
   const sections = schema.sections ?? [];
-
-  const handleRunSchema = async () => {
-    if (!runId) return;
-
-    setIsRunningDerived(true);
-    setDerivedResult(null);
-
-    try {
-      const res = await fetch(`/api/video/${videoId}/analyze/${runId}/derive`, {
-        method: "POST",
-      });
-
-      if (!res.ok) {
-        throw new Error("Failed to run derived analysis");
-      }
-
-      const data = await res.json();
-      setDerivedResult(data.analysis);
-    } catch (err) {
-      console.error("Derived analysis failed:", err);
-    } finally {
-      setIsRunningDerived(false);
-    }
-  };
 
   const typeColors: Record<string, string> = {
     string: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
@@ -80,30 +40,6 @@ export function SchemaPanel({ schema, runId, videoId }: SchemaPanelProps) {
               designed for this content
             </CardDescription>
           </div>
-
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleRunSchema}
-                  disabled={!runId || isRunningDerived}
-                  className="gap-2"
-                >
-                  {isRunningDerived ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Play className="h-4 w-4" />
-                  )}
-                  Run Schema
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Run this schema as a separate extraction prompt</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
         </div>
       </CardHeader>
 
@@ -139,16 +75,6 @@ export function SchemaPanel({ schema, runId, videoId }: SchemaPanelProps) {
                 </div>
               </div>
             ))}
-          </div>
-        )}
-
-        {/* Derived result preview */}
-        {derivedResult && (
-          <div className="mt-6 pt-6 border-t">
-            <h4 className="font-medium mb-3">Derived Analysis Result</h4>
-            <pre className="text-xs bg-muted p-4 rounded-lg overflow-auto max-h-96">
-              {JSON.stringify(derivedResult, null, 2)}
-            </pre>
           </div>
         )}
       </CardContent>

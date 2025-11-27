@@ -1,7 +1,7 @@
 "use client";
 
 import { MessageSquare, ThumbsDown, ThumbsUp } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Popover,
@@ -21,7 +21,6 @@ interface SectionFeedbackProps {
   videoId: string;
   runId: number;
   sectionKey: string;
-  derivedRunId?: number;
 }
 
 type Rating = "useful" | "not_useful" | null;
@@ -30,7 +29,6 @@ export function SectionFeedback({
   videoId,
   runId,
   sectionKey,
-  derivedRunId,
 }: SectionFeedbackProps) {
   const [rating, setRating] = useState<Rating>(null);
   const [comment, setComment] = useState("");
@@ -51,7 +49,6 @@ export function SectionFeedback({
             sectionKey,
             rating: newRating ?? rating,
             comment: newComment ?? comment,
-            derivedRunId,
           }),
         });
       } catch (err) {
@@ -60,7 +57,7 @@ export function SectionFeedback({
         setIsSaving(false);
       }
     },
-    [videoId, runId, sectionKey, derivedRunId, rating, comment],
+    [videoId, runId, sectionKey, rating, comment],
   );
 
   // Handle rating click
@@ -75,11 +72,6 @@ export function SectionFeedback({
     submitFeedback(rating, comment);
     setCommentOpen(false);
   };
-
-  // Fetch existing feedback on mount
-  useEffect(() => {
-    // Could fetch existing feedback here if needed
-  }, []);
 
   return (
     <div className="flex items-center gap-1">

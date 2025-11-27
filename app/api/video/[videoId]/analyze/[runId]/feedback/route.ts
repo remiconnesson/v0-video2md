@@ -13,7 +13,6 @@ const sectionFeedbackSchema = z.object({
   sectionKey: z.string().min(1),
   rating: z.enum(["useful", "not_useful"]).optional(),
   comment: z.string().optional(),
-  derivedRunId: z.number().optional(),
 });
 
 const overallFeedbackSchema = z.object({
@@ -115,9 +114,6 @@ export async function POST(
         and(
           eq(sectionFeedback.runId, runIdNum),
           eq(sectionFeedback.sectionKey, feedback.sectionKey),
-          feedback.derivedRunId
-            ? eq(sectionFeedback.derivedRunId, feedback.derivedRunId)
-            : undefined,
         ),
       )
       .limit(1);
@@ -133,7 +129,6 @@ export async function POST(
     } else {
       await db.insert(sectionFeedback).values({
         runId: runIdNum,
-        derivedRunId: feedback.derivedRunId ?? null,
         sectionKey: feedback.sectionKey,
         rating: feedback.rating ?? null,
         comment: feedback.comment ?? null,

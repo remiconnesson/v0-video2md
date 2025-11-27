@@ -11,10 +11,7 @@ import {
   unique,
   varchar,
 } from "drizzle-orm/pg-core";
-import type {
-  AnalysisValue,
-  GodPromptResult,
-} from "@/ai/dynamic-analysis-prompt";
+import type { GodPromptResult } from "@/ai/dynamic-analysis-prompt";
 
 // ============================================================================
 // Enums
@@ -133,32 +130,7 @@ export type VideoAnalysisRun = typeof videoAnalysisRuns.$inferSelect;
 export type NewVideoAnalysisRun = typeof videoAnalysisRuns.$inferInsert;
 
 /**
- * Derived analysis runs - when user runs the schema as a separate prompt
- * Triggered on-demand via "Run Schema" button
- */
-export const derivedAnalysisRuns = pgTable(
-  "derived_analysis_runs",
-  {
-    id: serial("id").primaryKey(),
-    sourceRunId: integer("source_run_id")
-      .notNull()
-      .references(() => videoAnalysisRuns.id, { onDelete: "cascade" }),
-
-    // The analysis output from running the schema - array of analysis values
-    analysis: jsonb("analysis").$type<AnalysisValue[]>(),
-
-    status: analysisStatusEnum("status").notNull().default("pending"),
-    createdAt: timestamp("created_at").defaultNow().notNull(),
-  },
-  (table) => [index("derived_analysis_source_idx").on(table.sourceRunId)],
-);
-
-export type DerivedAnalysisRun = typeof derivedAnalysisRuns.$inferSelect;
-export type NewDerivedAnalysisRun = typeof derivedAnalysisRuns.$inferInsert;
-
-/**
  * Feedback on individual sections
- * Can be from god prompt analysis or derived analysis
  */
 export const sectionFeedback = pgTable(
   "section_feedback",
@@ -167,11 +139,6 @@ export const sectionFeedback = pgTable(
     runId: integer("run_id")
       .notNull()
       .references(() => videoAnalysisRuns.id, { onDelete: "cascade" }),
-    // Optional: if feedback is specifically on a derived run's output
-    derivedRunId: integer("derived_run_id").references(
-      () => derivedAnalysisRuns.id,
-      { onDelete: "cascade" },
-    ),
     sectionKey: varchar("section_key", { length: 128 }).notNull(),
 
     // Feedback
@@ -180,10 +147,7 @@ export const sectionFeedback = pgTable(
 
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
-  (table) => [
-    index("section_feedback_run_idx").on(table.runId),
-    index("section_feedback_derived_idx").on(table.derivedRunId),
-  ],
+  (table) => [index("section_feedback_run_idx").on(table.runId)],
 );
 
 export type SectionFeedback = typeof sectionFeedback.$inferSelect;
