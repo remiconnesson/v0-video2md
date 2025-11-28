@@ -177,6 +177,11 @@ async function checkJobStatus(videoId: string): Promise<{
     headers: { Authorization: `Bearer ${CONFIG.SLIDES_API_PASSWORD}` },
   });
 
+  console.log("⚡ response ❌❌❌❌❌❌❌");
+  console.dir(response, { depth: null });
+  console.dir(response.body, { depth: null });
+  console.log("⚡ response ❌❌❌❌❌❌❌");
+
   if (response.status === 404) {
     console.error(`🔍 checkJobStatus: Job not found for video ${videoId}`, {
       videoId,
@@ -229,7 +234,8 @@ async function checkJobStatus(videoId: string): Promise<{
     let eventCount = 0;
     const parser = createParser({
       onEvent: (event) => {
-        if (event.event === "event" && event.data) {
+        console.dir(event);
+        if (event.data) {
           eventCount++;
           try {
             const update: JobUpdate = JSON.parse(event.data);
@@ -239,12 +245,13 @@ async function checkJobStatus(videoId: string): Promise<{
             console.log("⚡⚡⚡⚡⚡⚡⚡⚡⚡\n\n");
 
             console.log(
-              `🔍 checkJobStatus: Job event ${eventCount} for video ${videoId}:`,
+              `🔍⚠️⚠️⚠️ checkJobStatus: Job event ${eventCount} for video ${videoId}:`,
               {
                 status: update.status,
                 progress: update.progress,
                 message: update.message,
                 hasMetadataUri: !!update.metadata_uri,
+                metadataUri: update.metadata_uri,
               },
             );
 
@@ -291,6 +298,7 @@ async function checkJobStatus(videoId: string): Promise<{
 
     while (true) {
       const { done, value } = await reader.read();
+      // DISplays false, true
       console.log("⚡ In the while loop: is done", done);
       if (done) break;
       parser.feed(decoder.decode(value));
