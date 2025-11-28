@@ -57,7 +57,7 @@ This being said, ALWAYS include a detailed summary of the video as one of the fi
 - Include timestamps (MM:SS or HH:MM:SS) where relevant
 - Please be generous on markdown formatting. Use markdown extensively, like bold and italic, and headers.
 - Use backticks to emphasize code related concepts.
-- You have to make the detailed summary super readable. Not a soup of text. Use markdown extensively.
+- You have to make the detailed summary super readable. Not a soup of text. Use markdown extensively. Use markdown headers.
 
 ## Output Schema
 
