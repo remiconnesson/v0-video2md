@@ -1,6 +1,7 @@
 import {
   boolean,
   index,
+  real,
   integer,
   jsonb,
   pgEnum,
@@ -191,9 +192,9 @@ export const videoSlides = pgTable(
     frameId: varchar("frame_id", { length: 100 }),
 
     // Timing
-    startTime: integer("start_time").notNull(), // seconds
-    endTime: integer("end_time").notNull(),
-    duration: integer("duration").notNull(),
+    startTime: real("start_time").notNull(), // seconds with floating point precision
+    endTime: real("end_time").notNull(),
+    duration: real("duration").notNull(),
 
     // First frame data
     firstFrameS3Uri: text("first_frame_s3_uri"),
