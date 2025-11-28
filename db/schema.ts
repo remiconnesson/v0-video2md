@@ -11,7 +11,6 @@ import {
   unique,
   varchar,
 } from "drizzle-orm/pg-core";
-import type { GodPromptResult } from "@/ai/dynamic-analysis-prompt";
 
 // ============================================================================
 // Enums
@@ -84,19 +83,6 @@ export const scrapTranscriptV1 = pgTable(
   (table) => [unique("unique_video_transcript").on(table.videoId)],
 );
 
-// ============================================================================
-// Dynamic Analysis Tables (God Prompt + Derived)
-// ============================================================================
-
-// Re-export types from ai module for convenience
-export type {
-  AnalysisValue,
-  GeneratedSchema,
-  GodPromptAnalysis,
-  GodPromptResult,
-  SectionEntry,
-} from "@/ai/dynamic-analysis-prompt";
-
 /**
  * A god prompt run - stores the complete AI output as JSONB
  * Each run is a version for a specific video
@@ -111,7 +97,7 @@ export const videoAnalysisRuns = pgTable(
     version: integer("version").notNull().default(1),
 
     // God prompt output - unified JSONB column
-    result: jsonb("result").$type<GodPromptResult>(),
+    result: jsonb("result").$type<Record<string, unknown>>(),
 
     // Context for rerolls - what instructions led to this version
     additionalInstructions: text("additional_instructions"),

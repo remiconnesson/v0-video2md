@@ -10,24 +10,21 @@ import {
 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
-import type { GodPromptResult } from "@/ai/dynamic-analysis-prompt";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useDynamicAnalysis } from "@/hooks/use-dynamic-analysis";
 import { useTranscriptFetcher } from "@/hooks/use-transcript-fetcher";
+import { isRecord } from "@/lib/type-utils";
 import { AnalysisPanel } from "./analysis-panel";
-import { ReasoningPanel } from "./reasoning-panel";
 import { RerollDialog } from "./reroll-dialog";
-import { SchemaPanel } from "./schema-panel";
-import { VersionSelector } from "./version-selector";
 
 interface AnalysisRun {
   id: number;
   version: number;
   status: string;
-  result: GodPromptResult | null;
+  result: unknown;
   additionalInstructions: string | null;
   createdAt: string;
 }
@@ -190,21 +187,9 @@ export function AnalyzeView({ youtubeId, initialVersion }: AnalyzeViewProps) {
   // Computed state
   const isAnalysisRunning = analysisState.status === "running";
   const hasRuns = runs.length > 0;
-  const emptyResult: GodPromptResult = {
-    reasoning: "",
-    schema: { sections: [] },
-    analysis: {
-      required_sections: {
-        tldr: "",
-        transcript_corrections: "",
-        detailed_summary: "",
-      },
-      additional_sections: [],
-    },
-  };
-  const displayResult = isAnalysisRunning
+  const displayResult: unknown = isAnalysisRunning
     ? analysisState.result
-    : (selectedRun?.result ?? (selectedRun ? emptyResult : null));
+    : (selectedRun?.result ?? null);
 
   // Loading state
   if (pageStatus === "loading") {
@@ -322,46 +307,13 @@ export function AnalyzeView({ youtubeId, initialVersion }: AnalyzeViewProps) {
         </div>
       </div>
 
-      {/* Progress indicator when running */}
-      {isAnalysisRunning && (
-        <Card className="p-4 border-primary/20 bg-primary/5">
-          <div className="flex items-center gap-4">
-            <div className="relative">
-              <Sparkles className="h-6 w-6 text-primary" />
-              <Loader2 className="h-4 w-4 animate-spin text-primary absolute -bottom-1 -right-1" />
-            </div>
-            <div>
-              <p className="font-medium">Analyzing transcript...</p>
-              <p className="text-sm text-muted-foreground">
-                {analysisState.message}
-              </p>
-            </div>
-          </div>
-        </Card>
+      {!hasRuns && !isAnalysisRunning && (
+        <EmptyState handleStartAnalysis={handleStartAnalysis} />
       )}
 
-      {/* Empty state */}
-      {!hasRuns && !isAnalysisRunning && (
-        <Card className="p-12">
-          <div className="text-center space-y-4">
-            <div className="mx-auto w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
-              <Sparkles className="h-8 w-8 text-primary" />
-            </div>
-            <div>
-              <h2 className="text-xl font-semibold">Ready to Analyze</h2>
-              <p className="text-muted-foreground mt-1 max-w-md mx-auto">
-                Run the dynamic analysis to have AI reason about this video and
-                extract the most useful information tailored to this specific
-                content.
-              </p>
-            </div>
-            <Button onClick={handleStartAnalysis} size="lg" className="gap-2">
-              <Play className="h-4 w-4" />
-              Start Analysis
-            </Button>
-          </div>
-        </Card>
-      )}
+      {isAnalysisRunning ? (
+        <ProgressIndicator message={analysisState.message} />
+      ) : undefined}
 
       {/* Results */}
       {displayResult && (
@@ -373,23 +325,15 @@ export function AnalyzeView({ youtubeId, initialVersion }: AnalyzeViewProps) {
           </TabsList>
 
           <TabsContent value="analysis">
-            <AnalysisPanel
-              analysis={displayResult.analysis}
-              schema={displayResult.schema}
-              runId={isAnalysisRunning ? null : (selectedRun?.id ?? null)}
-              videoId={youtubeId}
-            />
-          </TabsContent>
-
-          <TabsContent value="reasoning">
-            <ReasoningPanel
-              reasoning={displayResult.reasoning}
-              isStreaming={isAnalysisRunning}
-            />
-          </TabsContent>
-
-          <TabsContent value="schema">
-            <SchemaPanel schema={displayResult.schema} />
+            {isRecord(displayResult) &&
+              "analysis" in displayResult &&
+              isRecord(displayResult.analysis) && (
+                <AnalysisPanel
+                  analysis={displayResult.analysis}
+                  runId={isAnalysisRunning ? null : (selectedRun?.id ?? null)}
+                  videoId={youtubeId}
+                />
+              )}
           </TabsContent>
         </Tabs>
       )}
@@ -402,5 +346,50 @@ export function AnalyzeView({ youtubeId, initialVersion }: AnalyzeViewProps) {
         previousInstructions={selectedRun?.additionalInstructions ?? undefined}
       />
     </div>
+  );
+}
+
+function ProgressIndicator({ message }: { message: string }) {
+  return (
+    <Card className="p-4 border-primary/20 bg-primary/5">
+      <div className="flex items-center gap-4">
+        <div className="relative">
+          <Sparkles className="h-6 w-6 text-primary" />
+          <Loader2 className="h-4 w-4 animate-spin text-primary absolute -bottom-1 -right-1" />
+        </div>
+        <div>
+          <p className="font-medium">Analyzing transcript...</p>
+          <p className="text-sm text-muted-foreground">{message}</p>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+function EmptyState({
+  handleStartAnalysis,
+}: {
+  handleStartAnalysis: () => void;
+}) {
+  return (
+    <Card className="p-12">
+      <div className="text-center space-y-4">
+        <div className="mx-auto w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
+          <Sparkles className="h-8 w-8 text-primary" />
+        </div>
+        <div>
+          <h2 className="text-xl font-semibold">Ready to Analyze</h2>
+          <p className="text-muted-foreground mt-1 max-w-md mx-auto">
+            Run the dynamic analysis to have AI reason about this video and
+            extract the most useful information tailored to this specific
+            content.
+          </p>
+        </div>
+        <Button onClick={handleStartAnalysis} size="lg" className="gap-2">
+          <Play className="h-4 w-4" />
+          Start Analysis
+        </Button>
+      </div>
+    </Card>
   );
 }

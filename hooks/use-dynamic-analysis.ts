@@ -1,145 +1,5 @@
 import { useCallback, useRef, useState } from "react";
-import type {
-  AnalysisValue,
-  GodPromptAnalysis,
-  GodPromptResult,
-  SectionEntry,
-} from "@/ai/dynamic-analysis-prompt";
 import type { AnalysisStreamEvent } from "@/app/workflows/dynamic-analysis";
-
-/**
- * Partial result type for streaming - deeply partial version of GodPromptResult
- */
-interface PartialGodPromptResult {
-  reasoning?: string;
-  schema?: {
-    sections?: Partial<SectionEntry>[];
-  };
-  analysis?: {
-    required_sections?: {
-      tldr?: string;
-      transcript_corrections?: string;
-      detailed_summary?: string;
-    };
-    additional_sections?: Partial<AnalysisValue>[];
-  };
-}
-
-const EMPTY_GOD_PROMPT_RESULT: GodPromptResult = {
-  reasoning: "",
-  schema: { sections: [] },
-  analysis: {
-    required_sections: {
-      tldr: "",
-      transcript_corrections: "",
-      detailed_summary: "",
-    },
-    additional_sections: [],
-  },
-};
-
-function mergeSchemaSections(
-  base: SectionEntry[],
-  partial?: Partial<SectionEntry>[] | undefined,
-): SectionEntry[] {
-  if (!partial) return base;
-
-  const result = [...base];
-
-  for (const partialSection of partial) {
-    if (!partialSection?.key) continue;
-
-    const existingIdx = result.findIndex((s) => s.key === partialSection.key);
-
-    if (existingIdx >= 0) {
-      // Update existing
-      result[existingIdx] = {
-        ...result[existingIdx],
-        ...partialSection,
-      } as SectionEntry;
-    } else {
-      // Add new (only if it has required fields)
-      if (partialSection.description && partialSection.type) {
-        result.push(partialSection as SectionEntry);
-      }
-    }
-  }
-
-  return result;
-}
-
-function mergePartialResult(
-  current: GodPromptResult | null,
-  partial: PartialGodPromptResult,
-): GodPromptResult {
-  const base = current ?? EMPTY_GOD_PROMPT_RESULT;
-
-  // Merge schema sections (now array-based)
-  const mergedSections = mergeSchemaSections(
-    base.schema.sections,
-    partial.schema?.sections,
-  );
-
-  // Merge analysis
-  const mergedAnalysis: GodPromptAnalysis = {
-    required_sections: {
-      tldr:
-        partial.analysis?.required_sections?.tldr ??
-        base.analysis.required_sections.tldr,
-      transcript_corrections:
-        partial.analysis?.required_sections?.transcript_corrections ??
-        base.analysis.required_sections.transcript_corrections,
-      detailed_summary:
-        partial.analysis?.required_sections?.detailed_summary ??
-        base.analysis.required_sections.detailed_summary,
-    },
-    additional_sections: mergeAdditionalSections(
-      base.analysis.additional_sections,
-      partial.analysis?.additional_sections,
-    ),
-  };
-
-  return {
-    reasoning:
-      typeof partial.reasoning === "string"
-        ? partial.reasoning
-        : base.reasoning,
-    schema: {
-      sections: mergedSections,
-    },
-    analysis: mergedAnalysis,
-  };
-}
-
-function mergeAdditionalSections(
-  base: AnalysisValue[],
-  partial?: Partial<AnalysisValue>[] | undefined,
-): AnalysisValue[] {
-  if (!partial) return base;
-
-  const result = [...base];
-
-  for (const partialSection of partial) {
-    if (!partialSection?.key) continue;
-
-    const existingIdx = result.findIndex((s) => s.key === partialSection.key);
-
-    if (existingIdx >= 0) {
-      // Update existing
-      result[existingIdx] = {
-        ...result[existingIdx],
-        ...partialSection,
-      } as AnalysisValue;
-    } else {
-      // Add new (only if it has required fields)
-      if (partialSection.kind && partialSection.value !== undefined) {
-        result.push(partialSection as AnalysisValue);
-      }
-    }
-  }
-
-  return result;
-}
 
 export type AnalysisStatus = "idle" | "running" | "completed" | "error";
 
@@ -147,7 +7,7 @@ export interface AnalysisState {
   status: AnalysisStatus;
   phase: string;
   message: string;
-  result: GodPromptResult | null;
+  result: unknown | null;
   runId: number | null;
   error: string | null;
 }
@@ -183,7 +43,7 @@ export function useDynamicAnalysis(videoId: string): UseDynamicAnalysisReturn {
         status: "running",
         phase: "starting",
         message: "Starting analysis...",
-        result: EMPTY_GOD_PROMPT_RESULT,
+        result: null,
         runId: null,
         error: null,
       });
@@ -227,15 +87,12 @@ export function useDynamicAnalysis(videoId: string): UseDynamicAnalysisReturn {
                 } else if (event.type === "partial") {
                   setState((prev) => ({
                     ...prev,
-                    result: mergePartialResult(
-                      prev.result,
-                      event.data as PartialGodPromptResult,
-                    ),
+                    result: event.data,
                   }));
                 } else if (event.type === "result") {
                   setState((prev) => ({
                     ...prev,
-                    result: event.data as GodPromptResult,
+                    result: event.data,
                   }));
                 } else if (event.type === "complete") {
                   setState((prev) => ({

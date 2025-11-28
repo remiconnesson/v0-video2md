@@ -3,104 +3,91 @@
 import { FileText } from "lucide-react";
 import { Streamdown } from "streamdown";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import type {
-  AnalysisValue,
-  GeneratedSchema,
-  GodPromptAnalysis,
-} from "@/db/schema";
+import { isRecord } from "@/lib/type-utils";
 import { SectionFeedback } from "./section-feedback";
 
 interface AnalysisPanelProps {
-  analysis: GodPromptAnalysis;
-  schema: GeneratedSchema;
+  analysis: Record<string, unknown>;
   runId: number | null;
   videoId: string;
 }
 
 export function AnalysisPanel({
   analysis,
-  schema,
   runId,
   videoId,
 }: AnalysisPanelProps) {
-  const { required_sections, additional_sections } = analysis;
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-lg">
+          <FileText className="h-5 w-5" />
+          Extracted Analysis
+        </CardTitle>
+      </CardHeader>
 
-  // Helper to render different value types
-  const renderValue = (value: unknown, sectionKey: string): React.ReactNode => {
-    if (value === null || value === undefined || value === "") {
-      return <p className="text-muted-foreground italic">No content</p>;
+      <CardContent>
+        {Object.entries(analysis).map(([key, value]) => (
+          <Section key={key} content={value} runId={runId} videoId={videoId} />
+        ))}
+      </CardContent>
+    </Card>
+  );
+}
+
+function SectionContent({ content }: { content: unknown }): React.ReactNode {
+  if (content === null || content === undefined || content === "") {
+    return <p className="text-muted-foreground italic">No content</p>;
+  }
+
+  if (typeof content === "string") {
+    return (
+      <div className="prose prose-sm dark:prose-invert max-w-none">
+        <Streamdown>{content}</Streamdown>
+      </div>
+    );
+  }
+
+  if (Array.isArray(content)) {
+    if (content.length === 0) {
+      return <p className="text-muted-foreground italic">No items</p>;
     }
+    return (
+      <ul className="space-y-2">
+        {content.map((item, idx) => (
+          // biome-ignore lint/suspicious/noArrayIndexKey: using index is intentional here
+          <li key={idx} className="flex gap-2">
+            <span className="text-muted-foreground">•</span>
+            <span>
+              {typeof item === "string" ? item : JSON.stringify(item)}
+            </span>
+          </li>
+        ))}
+      </ul>
+    );
+  }
 
-    if (typeof value === "string") {
-      return (
-        <div className="prose prose-sm dark:prose-invert max-w-none">
-          <Streamdown>{value}</Streamdown>
-        </div>
-      );
-    }
+  if (isRecord(content)) {
+    return <ObjectSection data={content} />;
+  }
 
-    if (Array.isArray(value)) {
-      if (value.length === 0) {
-        return <p className="text-muted-foreground italic">No items</p>;
-      }
-      return (
-        <ul className="space-y-2">
-          {value.map((item, idx) => (
-            // biome-ignore lint/suspicious/noArrayIndexKey: using index is intentional here
-            <li key={`${sectionKey}-${idx}`} className="flex gap-2">
-              <span className="text-muted-foreground">•</span>
-              <span>
-                {typeof item === "string" ? item : JSON.stringify(item)}
-              </span>
-            </li>
-          ))}
-        </ul>
-      );
-    }
+  return <p>{String(content)}</p>;
+}
 
-    if (typeof value === "object") {
-      return (
-        <pre className="text-xs bg-muted p-3 rounded-lg overflow-auto">
-          {JSON.stringify(value, null, 2)}
-        </pre>
-      );
-    }
-
-    return <p>{String(value)}</p>;
-  };
-
-  // Render analysis value based on kind
-  const renderAnalysisValue = (section: AnalysisValue): React.ReactNode => {
-    switch (section.kind) {
-      case "string":
-        return renderValue(section.value, section.key);
-      case "array":
-        return renderValue(section.value, section.key);
-      case "object":
-        // Object values are array of {key, value} pairs
-        if (section.value.length === 0) {
-          return <p className="text-muted-foreground italic">No entries</p>;
-        }
-        return (
-          <dl className="space-y-2">
-            {section.value.map((entry) => (
-              <div key={entry.key} className="grid grid-cols-[auto,1fr] gap-2">
-                <dt className="font-medium text-muted-foreground">
-                  {entry.key}:
-                </dt>
-                <dd>{entry.value}</dd>
-              </div>
-            ))}
-          </dl>
-        );
-    }
-  };
-
-  const renderSection = (
-    key: string,
-    content: React.ReactNode,
-    description?: string,
-  ) => (
+function Section({
+  key,
+  content,
+  runId,
+  videoId,
+  description,
+}: {
+  key: string;
+  content: unknown;
+  runId: number | null;
+  videoId: string;
+  description?: string;
+}) {
+  return (
     <div key={key} className="pb-6 border-b last:border-0 last:pb-0">
       <div className="flex items-start justify-between gap-4 mb-3">
         <div>
@@ -117,82 +104,10 @@ export function AnalysisPanel({
         )}
       </div>
 
-      <div className="mt-2">{content}</div>
+      <div className="mt-2">
+        <SectionContent content={content} />
+      </div>
     </div>
-  );
-
-  const hasRequiredContent =
-    required_sections.tldr ||
-    required_sections.transcript_corrections ||
-    required_sections.detailed_summary;
-  const hasAdditionalContent = additional_sections.length > 0;
-
-  if (!hasRequiredContent && !hasAdditionalContent) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <FileText className="h-5 w-5" />
-            Extracted Analysis
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-muted-foreground text-sm">
-            No analysis content yet.
-          </p>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-lg">
-          <FileText className="h-5 w-5" />
-          Extracted Analysis
-        </CardTitle>
-      </CardHeader>
-
-      <CardContent className="space-y-6">
-        {/* Required sections */}
-        {required_sections.tldr &&
-          renderSection(
-            "tldr",
-            renderValue(required_sections.tldr, "tldr"),
-            "A short summary of the transcript",
-          )}
-
-        {required_sections.detailed_summary &&
-          renderSection(
-            "detailed_summary",
-            renderValue(required_sections.detailed_summary, "detailed_summary"),
-            "A detailed summary of the transcript",
-          )}
-
-        {required_sections.transcript_corrections &&
-          renderSection(
-            "transcript_corrections",
-            renderValue(
-              required_sections.transcript_corrections,
-              "transcript_corrections",
-            ),
-            "Corrections to the transcript",
-          )}
-
-        {/* Additional sections */}
-        {additional_sections.map((section) => {
-          const sectionDef = schema.sections?.find(
-            (s) => s.key === section.key,
-          );
-          return renderSection(
-            section.key,
-            renderAnalysisValue(section),
-            sectionDef?.description,
-          );
-        })}
-      </CardContent>
-    </Card>
   );
 }
 
@@ -202,4 +117,31 @@ function formatSectionTitle(key: string): string {
     .split("_")
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(" ");
+}
+
+export function ObjectSection({ data }: { data: Record<string, unknown> }) {
+  return (
+    <dl className="divide-y divide-gray-100">
+      {Object.entries(data).map(([key, value]) => {
+        const markdown =
+          typeof value === "string"
+            ? value
+            : `\`\`\`json\n${
+                JSON.stringify(value, null, 2) ?? String(value)
+              }\n\`\`\``;
+
+        return (
+          <div
+            key={key}
+            className="px-4 py-6 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0"
+          >
+            <dt className="text-sm/6 font-medium text-gray-900">{key}</dt>
+            <dd className="mt-1 text-sm/6 text-gray-700 sm:col-span-2 sm:mt-0">
+              <Streamdown>{markdown}</Streamdown>
+            </dd>
+          </div>
+        );
+      })}
+    </dl>
+  );
 }

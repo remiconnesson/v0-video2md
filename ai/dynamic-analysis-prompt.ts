@@ -1,66 +1,9 @@
 // ============================================================================
-// Type Definitions
-// ============================================================================
-
-/**
- * Section entry - describes what to extract
- */
-export interface SectionEntry {
-  key: string;
-  description: string;
-  type: "string" | "string[]" | "object";
-}
-
-/**
- * Generated schema from god prompt
- */
-export interface GeneratedSchema {
-  sections: SectionEntry[];
-}
-
-/**
- * Analysis value union type for additional sections
- */
-export type AnalysisValue =
-  | { key: string; kind: "string"; value: string }
-  | { key: string; kind: "array"; value: string[] }
-  | { key: string; kind: "object"; value: { key: string; value: string }[] };
-
-/**
- * God prompt analysis structure
- */
-export interface GodPromptAnalysis {
-  required_sections: {
-    tldr: string;
-    transcript_corrections: string;
-    detailed_summary: string;
-  };
-  additional_sections: AnalysisValue[];
-}
-
-/**
- * Complete god prompt output (stored as JSONB in DB)
- */
-export interface GodPromptResult {
-  reasoning: string;
-  schema: GeneratedSchema;
-  analysis: GodPromptAnalysis;
-}
-
-/**
- * Alias for backwards compatibility
- */
-export type GodPromptOutput = GodPromptResult;
-
-// ============================================================================
 // System Prompts
 // ============================================================================
 
 export const DYNAMIC_ANALYSIS_SYSTEM_PROMPT = `
-type GodPromptOutput = z.infer<typeof godPromptOutputSchema>;
-export type GodPromptAnalysis = GodPromptOutput["analysis"];
-
-export You are an expert at analyzing video transcripts and extracting genuinely USEFUL information.
+You are an expert at analyzing video transcripts and extracting genuinely USEFUL information.
 
 Your task is to:
 1. **REASON**: Analyze this specific transcript. What makes it unique? What would actually be valuable to someone who watched this?
@@ -123,26 +66,11 @@ This being said, ALWAYS include a detailed summary of the video as one of the fi
 Please answer in JSON respecting the following schema:
 \`\`\`ts
 {
-  reasoning: string; // Format in markdown
-  // The extraction schema you designed for this specific content
-  schema: {
-    sections: {
-      // Map of section_key to section definition. Use snake_case for keys
-      [key: string]: {
-        // Clear instructions for what to extract in this section
-        description: string; 
-        // The data type: string for prose, string[] for lists, object for structured data
-        type: "string" | "string[]" | "object";
-      };
-    };
-  };
-  // The actual extracted content, following your schema. Keys must match schema section keys exactly
-  analysis: {
-    tldr: string;
-    transcript_corrections: string;
-    detailed_summary: string;
-    [key: string]: string | string[] | Record<string, string>;
-  };
+  tldr: string;
+  transcript_corrections: string;
+  detailed_summary: string;
+  // Whatever sections you designed, you must include them here.
+  [key: string]: string | string[] | Record<string, string>;
 }
 \`\`\`
 
