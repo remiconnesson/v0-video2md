@@ -59,17 +59,18 @@ function SectionContent({ content }: { content: unknown }): React.ReactNode {
       return <p className="text-muted-foreground italic">No items</p>;
     }
     return (
-      <ul className="space-y-2">
-        {content.map((item, idx) => (
-          // biome-ignore lint/suspicious/noArrayIndexKey: using index is intentional here
-          <li key={idx} className="flex gap-2">
-            <span className="text-muted-foreground">•</span>
-            <span>
-              {typeof item === "string" ? item : JSON.stringify(item)}
-            </span>
-          </li>
-        ))}
-      </ul>
+      <Streamdown>
+        {content
+          .map((item) =>
+            typeof item === "string"
+              ? // Check if already starts with - * or numbered list (1. 2. etc.), if so, don't add a -
+                item.match(/^\s*[-*]\s+|^\s*\d+\.\s+/)
+                ? item
+                : `- ${item}`
+              : `\n\`\`\`json\n${JSON.stringify(item, null, 2)}\n\`\`\`\n`,
+          )
+          .join("\n")}
+      </Streamdown>
     );
   }
 

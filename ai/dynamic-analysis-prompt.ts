@@ -55,6 +55,8 @@ This being said, ALWAYS include a detailed summary of the video as one of the fi
 - For object types, provide a structured object
 - Preserve the voice/personality of the speaker where it adds value
 - Include timestamps (MM:SS or HH:MM:SS) where relevant
+- Please be generous on markdown formatting. Use markdown extensively, like bold and italic, and headers.
+- Use backticks to emphasize code related concepts.
 
 ## Output Schema
 
