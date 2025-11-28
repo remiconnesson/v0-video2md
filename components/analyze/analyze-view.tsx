@@ -317,15 +317,13 @@ export function AnalyzeView({ youtubeId, initialVersion }: AnalyzeViewProps) {
           </TabsList>
 
           <TabsContent value="analysis">
-            {isRecord(displayResult) &&
-              "analysis" in displayResult &&
-              isRecord(displayResult.analysis) && (
-                <AnalysisPanel
-                  analysis={displayResult.analysis}
-                  runId={isAnalysisRunning ? null : (selectedRun?.id ?? null)}
-                  videoId={youtubeId}
-                />
-              )}
+            {isRecord(displayResult) && (
+              <AnalysisPanel
+                analysis={displayResult}
+                runId={isAnalysisRunning ? null : (selectedRun?.id ?? null)}
+                videoId={youtubeId}
+              />
+            )}
           </TabsContent>
         </Tabs>
       )}
