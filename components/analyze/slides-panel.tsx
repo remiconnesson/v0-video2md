@@ -1,28 +1,41 @@
-"use client";
+"use client"
 
-import { ImageIcon, Loader2, Play } from "lucide-react";
-import Image from "next/image";
-import { useEffect } from "react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { useSlideExtraction } from "@/hooks/use-slides-extraction";
-import type { SlideData } from "@/lib/slides-types";
-import { formatTime } from "@/lib/time-utils";
+import {
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  Copy,
+  ImageIcon,
+  Loader2,
+  Play,
+  ThumbsDown,
+  ThumbsUp,
+  X,
+  ZoomIn,
+} from "lucide-react"
+import Image from "next/image"
+import { useCallback, useEffect, useState } from "react"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
+import { Progress } from "@/components/ui/progress"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { useSlideExtraction } from "@/hooks/use-slides-extraction"
+import type { SlideData } from "@/lib/slides-types"
+import { formatTime } from "@/lib/time-utils"
+import { cn } from "@/lib/utils"
 
 interface SlidesPanelProps {
-  videoId: string;
+  videoId: string
 }
 
 export function SlidesPanel({ videoId }: SlidesPanelProps) {
-  const { state, slides, startExtraction, loadExistingSlides } =
-    useSlideExtraction(videoId);
+  const { state, slides, startExtraction, loadExistingSlides } = useSlideExtraction(videoId)
 
   // Load existing slides on mount
   useEffect(() => {
-    loadExistingSlides();
-  }, [loadExistingSlides]);
+    loadExistingSlides()
+  }, [loadExistingSlides])
 
   // Idle state - show extract button
   if (state.status === "idle") {
@@ -35,9 +48,7 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
             </div>
             <div>
               <h3 className="text-lg font-semibold">Extract Slides</h3>
-              <p className="text-sm text-muted-foreground mt-1">
-                Analyze the video to extract presentation slides
-              </p>
+              <p className="text-sm text-muted-foreground mt-1">Analyze the video to extract presentation slides</p>
             </div>
             <Button onClick={startExtraction} className="gap-2">
               <Play className="h-4 w-4" />
@@ -46,7 +57,7 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
           </div>
         </CardContent>
       </Card>
-    );
+    )
   }
 
   // Loading state
@@ -60,7 +71,7 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
           </div>
         </CardContent>
       </Card>
-    );
+    )
   }
 
   // Extracting state
@@ -79,15 +90,13 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
 
           {slides.length > 0 && (
             <div className="mt-6">
-              <p className="text-sm font-medium mb-3">
-                {slides.length} slides found so far
-              </p>
-              <SlideGrid slides={slides} />
+              <p className="text-sm font-medium mb-3">{slides.length} slides found so far</p>
+              <SlideGrid slides={slides} allSlides={slides} />
             </div>
           )}
         </CardContent>
       </Card>
-    );
+    )
   }
 
   // Error state
@@ -103,7 +112,7 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
           </div>
         </CardContent>
       </Card>
-    );
+    )
   }
 
   // Completed state - show slides
@@ -122,164 +131,406 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
       </CardHeader>
       <CardContent>
         <ScrollArea className="h-[600px]">
-          <SlideGrid slides={slides} />
+          <SlideGrid slides={slides} allSlides={slides} />
         </ScrollArea>
       </CardContent>
     </Card>
-  );
+  )
 }
 
 // ============================================================================
 // Slide Grid
 // ============================================================================
 
-function SlideGrid({ slides }: { slides: SlideData[] }) {
+function SlideGrid({
+  slides,
+  allSlides,
+}: {
+  slides: SlideData[]
+  allSlides: SlideData[]
+}) {
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+    <div className="flex flex-col gap-6">
       {slides.map((slide) => (
-        <SlideCard key={slide.slideIndex} slide={slide} />
+        <SlideCard key={slide.slideIndex} slide={slide} allSlides={allSlides} />
       ))}
     </div>
-  );
+  )
+}
+
+// ============================================================================
+// Zoom Dialog
+// ============================================================================
+
+function ZoomDialog({
+  open,
+  onOpenChange,
+  imageUrl,
+  title,
+  allImages,
+  currentIndex,
+}: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  imageUrl: string | null
+  title: string
+  allImages?: { url: string | null; title: string }[]
+  currentIndex?: number
+}) {
+  const [viewingIndex, setViewingIndex] = useState(currentIndex ?? 0)
+
+  useEffect(() => {
+    if (currentIndex !== undefined) {
+      setViewingIndex(currentIndex)
+    }
+  }, [currentIndex])
+
+  const hasPrev = allImages && viewingIndex > 0
+  const hasNext = allImages && viewingIndex < allImages.length - 1
+
+  const currentImage = allImages ? allImages[viewingIndex] : { url: imageUrl, title }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-[90vw] max-h-[90vh] p-0 overflow-hidden">
+        <DialogTitle className="sr-only">{currentImage.title}</DialogTitle>
+        <div className="relative w-full h-full flex items-center justify-center bg-black/95">
+          {/* Navigation buttons */}
+          {hasPrev && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute left-2 top-1/2 -translate-y-1/2 z-10 text-white hover:bg-white/20"
+              onClick={() => setViewingIndex((i) => i - 1)}
+            >
+              <ChevronLeft className="h-8 w-8" />
+            </Button>
+          )}
+          {hasNext && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute right-2 top-1/2 -translate-y-1/2 z-10 text-white hover:bg-white/20"
+              onClick={() => setViewingIndex((i) => i + 1)}
+            >
+              <ChevronRight className="h-8 w-8" />
+            </Button>
+          )}
+
+          {/* Image */}
+          {currentImage.url ? (
+            <div className="relative w-full h-[85vh]">
+              <Image
+                src={currentImage.url || "/placeholder.svg"}
+                alt={currentImage.title}
+                fill
+                className="object-contain"
+                sizes="90vw"
+                priority
+              />
+            </div>
+          ) : (
+            <div className="flex items-center justify-center h-[50vh]">
+              <ImageIcon className="h-16 w-16 text-muted-foreground" />
+            </div>
+          )}
+
+          {/* Title overlay */}
+          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4">
+            <p className="text-white text-center">{currentImage.title}</p>
+            {allImages && (
+              <p className="text-white/60 text-center text-sm mt-1">
+                {viewingIndex + 1} / {allImages.length}
+              </p>
+            )}
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+// ============================================================================
+// Frame Card (individual frame with side annotation)
+// ============================================================================
+
+interface FrameValidation {
+  hasTextValidated?: boolean | null // null = not validated, true = correct, false = incorrect
+  isDuplicateValidated?: boolean | null
+}
+
+function FrameCard({
+  label,
+  imageUrl,
+  hasText,
+  textConfidence,
+  isDuplicate,
+  duplicateOfSegmentId,
+  skipReason,
+  allSlides,
+  onZoom,
+  validation,
+  onValidate,
+}: {
+  label: "First" | "Last"
+  imageUrl: string | null
+  hasText: boolean
+  textConfidence: number
+  isDuplicate: boolean
+  duplicateOfSegmentId: number | null
+  skipReason: string | null
+  allSlides: SlideData[]
+  onZoom: () => void
+  validation: FrameValidation
+  onValidate: (field: "hasText" | "isDuplicate", value: boolean | null) => void
+}) {
+  // Find duplicate slide if exists
+  const duplicateSlide =
+    isDuplicate && duplicateOfSegmentId !== null ? allSlides.find((s) => s.slideIndex === duplicateOfSegmentId) : null
+
+  const duplicateImageUrl = duplicateSlide
+    ? label === "First"
+      ? duplicateSlide.firstFrameImageUrl
+      : duplicateSlide.lastFrameImageUrl
+    : null
+
+  return (
+    <div className="flex gap-3">
+      {/* Image container - preserves aspect ratio */}
+      <div className="relative flex-shrink-0 w-48 group">
+        <div className="relative bg-muted rounded-lg overflow-hidden cursor-zoom-in" onClick={onZoom}>
+          {imageUrl ? (
+            <Image
+              src={imageUrl || "/placeholder.svg"}
+              alt={`${label} frame`}
+              width={384}
+              height={216}
+              className="w-full h-auto object-contain"
+            />
+          ) : (
+            <div className="aspect-video flex items-center justify-center">
+              <ImageIcon className="h-8 w-8 text-muted-foreground" />
+            </div>
+          )}
+
+          {/* Zoom hint overlay */}
+          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
+            <ZoomIn className="h-6 w-6 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+          </div>
+
+          {/* Frame label */}
+          <div className="absolute top-1 left-1 bg-black/70 text-white text-xs px-1.5 py-0.5 rounded">{label}</div>
+        </div>
+
+        {/* Mini duplicate preview */}
+        {isDuplicate && duplicateImageUrl && (
+          <div className="mt-2 flex items-center gap-2">
+            <Copy className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+            <div className="relative w-16 rounded overflow-hidden border">
+              <Image
+                src={duplicateImageUrl || "/placeholder.svg"}
+                alt={`Duplicate of slide ${duplicateOfSegmentId}`}
+                width={64}
+                height={36}
+                className="w-full h-auto object-contain"
+              />
+            </div>
+            <span className="text-xs text-muted-foreground">#{(duplicateOfSegmentId ?? 0) + 1}</span>
+          </div>
+        )}
+      </div>
+
+      {/* Side annotation panel */}
+      <div className="flex-1 space-y-3 text-sm">
+        {/* Has Text annotation with validation */}
+        <div className="flex items-center justify-between gap-2 p-2 rounded-md bg-muted/50">
+          <div className="flex items-center gap-2">
+            <span className={cn("font-medium", hasText ? "text-green-600" : "text-muted-foreground")}>
+              Has Text: {hasText ? `Yes (${textConfidence}%)` : "No"}
+            </span>
+          </div>
+          <div className="flex items-center gap-1">
+            <Button
+              variant={validation.hasTextValidated === true ? "default" : "ghost"}
+              size="icon"
+              className="h-6 w-6"
+              onClick={() => onValidate("hasText", validation.hasTextValidated === true ? null : true)}
+            >
+              <Check className="h-3 w-3" />
+            </Button>
+            <Button
+              variant={validation.hasTextValidated === false ? "destructive" : "ghost"}
+              size="icon"
+              className="h-6 w-6"
+              onClick={() => onValidate("hasText", validation.hasTextValidated === false ? null : false)}
+            >
+              <X className="h-3 w-3" />
+            </Button>
+          </div>
+        </div>
+
+        {/* Duplicate annotation with validation */}
+        <div className="flex items-center justify-between gap-2 p-2 rounded-md bg-muted/50">
+          <div className="flex items-center gap-2">
+            <span className={cn("font-medium", isDuplicate ? "text-orange-600" : "text-muted-foreground")}>
+              Duplicate: {isDuplicate ? `Yes (of #${(duplicateOfSegmentId ?? 0) + 1})` : "No"}
+            </span>
+          </div>
+          <div className="flex items-center gap-1">
+            <Button
+              variant={validation.isDuplicateValidated === true ? "default" : "ghost"}
+              size="icon"
+              className="h-6 w-6"
+              onClick={() => onValidate("isDuplicate", validation.isDuplicateValidated === true ? null : true)}
+            >
+              <Check className="h-3 w-3" />
+            </Button>
+            <Button
+              variant={validation.isDuplicateValidated === false ? "destructive" : "ghost"}
+              size="icon"
+              className="h-6 w-6"
+              onClick={() => onValidate("isDuplicate", validation.isDuplicateValidated === false ? null : false)}
+            >
+              <X className="h-3 w-3" />
+            </Button>
+          </div>
+        </div>
+
+        {/* Skip reason if present */}
+        {skipReason && (
+          <div className="p-2 rounded-md bg-yellow-50 dark:bg-yellow-950/30 text-yellow-700 dark:text-yellow-400 text-xs">
+            Skip: {skipReason}
+          </div>
+        )}
+      </div>
+    </div>
+  )
 }
 
 // ============================================================================
 // Slide Card
 // ============================================================================
 
-function SlideCard({ slide }: { slide: SlideData }) {
+type SamenessFeedback = "same" | "different" | null
+
+function SlideCard({
+  slide,
+  allSlides,
+}: {
+  slide: SlideData
+  allSlides: SlideData[]
+}) {
+  const [zoomOpen, setZoomOpen] = useState(false)
+  const [zoomFrame, setZoomFrame] = useState<"first" | "last">("first")
+
+  const [firstValidation, setFirstValidation] = useState<FrameValidation>({})
+  const [lastValidation, setLastValidation] = useState<FrameValidation>({})
+  const [samenessFeedback, setSamenessFeedback] = useState<SamenessFeedback>(null)
+
+  const handleZoom = useCallback((frame: "first" | "last") => {
+    setZoomFrame(frame)
+    setZoomOpen(true)
+  }, [])
+
+  const handleFirstValidate = useCallback((field: "hasText" | "isDuplicate", value: boolean | null) => {
+    setFirstValidation((prev) => ({
+      ...prev,
+      [field === "hasText" ? "hasTextValidated" : "isDuplicateValidated"]: value,
+    }))
+  }, [])
+
+  const handleLastValidate = useCallback((field: "hasText" | "isDuplicate", value: boolean | null) => {
+    setLastValidation((prev) => ({
+      ...prev,
+      [field === "hasText" ? "hasTextValidated" : "isDuplicateValidated"]: value,
+    }))
+  }, [])
+
+  // Build images array for zoom navigation
+  const zoomImages = [
+    { url: slide.firstFrameImageUrl, title: `Slide ${slide.slideIndex + 1} - First Frame` },
+    { url: slide.lastFrameImageUrl, title: `Slide ${slide.slideIndex + 1} - Last Frame` },
+  ]
+
   return (
-    <div className="group relative rounded-lg border bg-card overflow-hidden">
-      {/* Side-by-side image display */}
-      <div className="aspect-video bg-muted flex">
-        {/* First frame */}
-        <div className="flex-1 bg-muted flex items-center justify-center relative">
-          {slide.firstFrameImageUrl ? (
-            <Image
-              src={slide.firstFrameImageUrl}
-              alt={`Slide ${slide.slideIndex + 1} - First Frame`}
-              fill
-              className="object-cover"
-              sizes="(max-width: 768px) 25vw, (max-width: 1024px) 16.5vw, 12.5vw"
-            />
-          ) : (
-            <ImageIcon className="h-6 w-6 text-muted-foreground" />
-          )}
-          {/* First frame label */}
-          <div className="absolute top-1 left-1 bg-black/70 text-white text-xs px-1 py-0.5 rounded">
-            First
-          </div>
-          {/* Indicators for first frame */}
-          <div className="absolute top-1 right-1 flex flex-col gap-0.5">
-            {slide.firstFrameHasText && (
-              <div className="bg-blue-500/80 text-white text-xs px-1 py-0.5 rounded">
-                T:{slide.firstFrameTextConfidence}%
-              </div>
-            )}
-            {slide.firstFrameIsDuplicate && (
-              <div className="bg-red-500/80 text-white text-xs px-1 py-0.5 rounded">
-                DUP
-              </div>
-            )}
-            {slide.firstFrameSkipReason && (
-              <div
-                className="bg-yellow-500/80 text-white text-xs px-1 py-0.5 rounded"
-                title={slide.firstFrameSkipReason}
-              >
-                SKIP
-              </div>
-            )}
-          </div>
+    <div className="rounded-lg border bg-card overflow-hidden">
+      {/* Header */}
+      <div className="flex items-center justify-between px-4 py-2 bg-muted/30 border-b">
+        <div className="flex items-center gap-3">
+          <span className="font-semibold">Slide #{slide.slideIndex + 1}</span>
+          <span className="text-sm text-muted-foreground">
+            {formatTime(slide.startTime)} - {formatTime(slide.endTime)}
+          </span>
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="p-4 space-y-4">
+        {/* First and Last frames side by side */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <FrameCard
+            label="First"
+            imageUrl={slide.firstFrameImageUrl}
+            hasText={slide.firstFrameHasText}
+            textConfidence={slide.firstFrameTextConfidence}
+            isDuplicate={slide.firstFrameIsDuplicate}
+            duplicateOfSegmentId={slide.firstFrameDuplicateOfSegmentId}
+            skipReason={slide.firstFrameSkipReason}
+            allSlides={allSlides}
+            onZoom={() => handleZoom("first")}
+            validation={firstValidation}
+            onValidate={handleFirstValidate}
+          />
+          <FrameCard
+            label="Last"
+            imageUrl={slide.lastFrameImageUrl}
+            hasText={slide.lastFrameHasText}
+            textConfidence={slide.lastFrameTextConfidence}
+            isDuplicate={slide.lastFrameIsDuplicate}
+            duplicateOfSegmentId={slide.lastFrameDuplicateOfSegmentId}
+            skipReason={slide.lastFrameSkipReason}
+            allSlides={allSlides}
+            onZoom={() => handleZoom("last")}
+            validation={lastValidation}
+            onValidate={handleLastValidate}
+          />
         </div>
 
-        {/* Last frame */}
-        <div className="flex-1 bg-muted flex items-center justify-center relative border-l">
-          {slide.lastFrameImageUrl ? (
-            <Image
-              src={slide.lastFrameImageUrl}
-              alt={`Slide ${slide.slideIndex + 1} - Last Frame`}
-              fill
-              className="object-cover"
-              sizes="(max-width: 768px) 25vw, (max-width: 1024px) 16.5vw, 12.5vw"
-            />
-          ) : (
-            <ImageIcon className="h-6 w-6 text-muted-foreground" />
-          )}
-          {/* Last frame label */}
-          <div className="absolute top-1 left-1 bg-black/70 text-white text-xs px-1 py-0.5 rounded">
-            Last
-          </div>
-          {/* Indicators for last frame */}
-          <div className="absolute top-1 right-1 flex flex-col gap-0.5">
-            {slide.lastFrameHasText && (
-              <div className="bg-green-500/80 text-white text-xs px-1 py-0.5 rounded">
-                T:{slide.lastFrameTextConfidence}%
-              </div>
-            )}
-            {slide.lastFrameIsDuplicate && (
-              <div className="bg-red-500/80 text-white text-xs px-1 py-0.5 rounded">
-                DUP
-              </div>
-            )}
-            {slide.lastFrameSkipReason && (
-              <div
-                className="bg-orange-500/80 text-white text-xs px-1 py-0.5 rounded"
-                title={slide.lastFrameSkipReason}
-              >
-                SKIP
-              </div>
-            )}
+        {/* Sameness feedback section */}
+        <div className="flex items-center justify-between p-3 rounded-md bg-muted/30 border">
+          <span className="text-sm font-medium">Are First and Last frames the same content?</span>
+          <div className="flex items-center gap-2">
+            <Button
+              variant={samenessFeedback === "same" ? "default" : "outline"}
+              size="sm"
+              className="gap-1"
+              onClick={() => setSamenessFeedback(samenessFeedback === "same" ? null : "same")}
+            >
+              <ThumbsUp className="h-3 w-3" />
+              Same
+            </Button>
+            <Button
+              variant={samenessFeedback === "different" ? "destructive" : "outline"}
+              size="sm"
+              className="gap-1"
+              onClick={() => setSamenessFeedback(samenessFeedback === "different" ? null : "different")}
+            >
+              <ThumbsDown className="h-3 w-3" />
+              Different
+            </Button>
           </div>
         </div>
       </div>
 
-      {/* Metadata overlay */}
-      <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
-        <div className="absolute bottom-0 left-0 right-0 p-2 text-white text-xs">
-          <div className="space-y-1">
-            {/* Timing */}
-            <div className="flex justify-between items-center">
-              <span>
-                {formatTime(slide.startTime)} - {formatTime(slide.endTime)}
-              </span>
-              <div className="flex gap-1">
-                {slide.firstFrameHasText && slide.lastFrameHasText && (
-                  <span className="bg-purple-500/80 px-1.5 rounded">
-                    Both have text
-                  </span>
-                )}
-                {slide.firstFrameIsDuplicate && slide.lastFrameIsDuplicate && (
-                  <span className="bg-red-500/80 px-1.5 rounded">
-                    Both duplicate
-                  </span>
-                )}
-                {(slide.firstFrameSkipReason || slide.lastFrameSkipReason) && (
-                  <span className="bg-yellow-500/80 px-1.5 rounded">
-                    Has skips
-                  </span>
-                )}
-              </div>
-            </div>
-
-            {/* Skip reasons */}
-            {(slide.firstFrameSkipReason || slide.lastFrameSkipReason) && (
-              <div className="text-xs text-yellow-200">
-                {slide.firstFrameSkipReason && (
-                  <div>First: {slide.firstFrameSkipReason}</div>
-                )}
-                {slide.lastFrameSkipReason && (
-                  <div>Last: {slide.lastFrameSkipReason}</div>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Slide number */}
-      <div className="absolute top-2 left-2 bg-black/50 text-white text-xs px-1.5 py-0.5 rounded">
-        #{slide.slideIndex + 1}
-      </div>
+      {/* Zoom Dialog */}
+      <ZoomDialog
+        open={zoomOpen}
+        onOpenChange={setZoomOpen}
+        imageUrl={zoomFrame === "first" ? slide.firstFrameImageUrl : slide.lastFrameImageUrl}
+        title={`Slide ${slide.slideIndex + 1} - ${zoomFrame === "first" ? "First" : "Last"} Frame`}
+        allImages={zoomImages}
+        currentIndex={zoomFrame === "first" ? 0 : 1}
+      />
     </div>
-  );
+  )
 }
