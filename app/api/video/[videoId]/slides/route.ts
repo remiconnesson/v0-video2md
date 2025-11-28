@@ -31,10 +31,16 @@ export async function GET(
       startTime: videoSlides.startTime,
       endTime: videoSlides.endTime,
       duration: videoSlides.duration,
-      imageUrl: videoSlides.imageUrl,
-      hasText: videoSlides.hasText,
-      textConfidence: videoSlides.textConfidence,
-      isDuplicate: videoSlides.isDuplicate,
+      // First frame data
+      firstFrameImageUrl: videoSlides.firstFrameImageUrl,
+      firstFrameHasText: videoSlides.firstFrameHasText,
+      firstFrameTextConfidence: videoSlides.firstFrameTextConfidence,
+      firstFrameIsDuplicate: videoSlides.firstFrameIsDuplicate,
+      // Last frame data
+      lastFrameImageUrl: videoSlides.lastFrameImageUrl,
+      lastFrameHasText: videoSlides.lastFrameHasText,
+      lastFrameTextConfidence: videoSlides.lastFrameTextConfidence,
+      lastFrameIsDuplicate: videoSlides.lastFrameIsDuplicate,
     })
     .from(videoSlides)
     .where(eq(videoSlides.videoId, videoId))
@@ -50,10 +56,18 @@ export async function GET(
       startTime: s.startTime,
       endTime: s.endTime,
       duration: s.duration,
-      imageUrl: s.imageUrl,
-      hasText: s.hasText,
-      textConfidence: s.textConfidence,
-      isDuplicate: s.isDuplicate,
+      firstFrame: {
+        imageUrl: s.firstFrameImageUrl,
+        hasText: s.firstFrameHasText,
+        textConfidence: s.firstFrameTextConfidence,
+        isDuplicate: s.firstFrameIsDuplicate,
+      },
+      lastFrame: {
+        imageUrl: s.lastFrameImageUrl,
+        hasText: s.lastFrameHasText,
+        textConfidence: s.lastFrameTextConfidence,
+        isDuplicate: s.lastFrameIsDuplicate,
+      },
     })),
   });
 }
