@@ -50,7 +50,8 @@ const SegmentSchema = z.discriminatedUnion("kind", [
 
 const VideoDataSchema = z.object({
   segments: z.array(SegmentSchema),
-  updated_at: z.string().datetime(),
+  // Allow datetime with offset (e.g., +00:00) or Z suffix, and local times without timezone
+  updated_at: z.string().datetime({ offset: true, local: true }),
 });
 
 export const VideoManifestSchema = z.record(z.string(), VideoDataSchema);
