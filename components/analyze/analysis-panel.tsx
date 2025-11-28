@@ -19,26 +19,17 @@ export function AnalysisPanel({
 }: AnalysisPanelProps) {
   console.log(analysis);
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-lg">
-          <FileText className="h-5 w-5" />
-          Extracted Analysis
-        </CardTitle>
-      </CardHeader>
-
-      <CardContent>
-        {Object.entries(analysis).map(([key, value]) => (
-          <Section
-            key={key}
-            title={key}
-            content={value}
-            runId={runId}
-            videoId={videoId}
-          />
-        ))}
-      </CardContent>
-    </Card>
+    <div className="space-y-4">
+      {Object.entries(analysis).map(([key, value]) => (
+        <Section
+          key={key}
+          title={key}
+          content={value}
+          runId={runId}
+          videoId={videoId}
+        />
+      ))}
+    </div>
   );
 }
 
@@ -98,28 +89,30 @@ function Section({
 }) {
   const key = title;
   return (
-    <div key={key} className="pb-6 border-b last:border-0 last:pb-0 pt-4">
-      <div className="flex items-start justify-between gap-4 mb-3">
-        <div>
-          <h3 className="font-semibold text-base">
-            {formatSectionTitle(title) || title}
-          </h3>
-          {description && (
-            <p className="text-xs text-muted-foreground mt-0.5">
-              {description}
-            </p>
+    <Card key={key}>
+      <CardHeader>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <CardTitle className="text-base">
+              {formatSectionTitle(title) || title}
+            </CardTitle>
+            {description && (
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {description}
+              </p>
+            )}
+          </div>
+
+          {runId && (
+            <SectionFeedback videoId={videoId} runId={runId} sectionKey={key} />
           )}
         </div>
+      </CardHeader>
 
-        {runId && (
-          <SectionFeedback videoId={videoId} runId={runId} sectionKey={key} />
-        )}
-      </div>
-
-      <div className="mt-2">
+      <CardContent>
         <SectionContent content={content} />
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 }
 
