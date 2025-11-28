@@ -19,6 +19,7 @@ import { useTranscriptFetcher } from "@/hooks/use-transcript-fetcher";
 import { isRecord } from "@/lib/type-utils";
 import { AnalysisPanel } from "./analysis-panel";
 import { RerollDialog } from "./reroll-dialog";
+import { VersionSelector } from "./version-selector";
 
 interface AnalysisRun {
   id: number;
