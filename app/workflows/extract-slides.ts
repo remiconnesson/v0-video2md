@@ -24,8 +24,16 @@ function getEnv(key: string, fallback?: string): string {
   return value;
 }
 
+function normalizeUrl(url: string): string {
+  if (url.startsWith("http://") || url.startsWith("https://")) {
+    return url;
+  }
+  // Default to https if no protocol specified
+  return `https://${url}`;
+}
+
 const CONFIG = {
-  SLIDES_EXTRACTOR_URL: getEnv("SLIDES_EXTRACTOR_URL"),
+  SLIDES_EXTRACTOR_URL: normalizeUrl(getEnv("SLIDES_EXTRACTOR_URL")),
   S3_REGION: getEnv("S3_REGION", "us-east-1"),
   S3_ACCESS_KEY: getEnv("S3_ACCESS_KEY"),
   S3_SECRET_KEY: getEnv("S3_ACCESS_KEY"), // on purpose, not an issue, see the doc of our private s3 for more details
@@ -305,8 +313,8 @@ export async function extractSlidesWorkflow(videoId: string) {
 
 function makeAwsClient(): AwsClient {
   return new AwsClient({
-    accessKeyId: CONFIG.S3_ACCESS_KEY_ID,
-    secretAccessKey: CONFIG.S3_SECRET_ACCESS_KEY,
+    accessKeyId: CONFIG.S3_ACCESS_KEY,
+    secretAccessKey: CONFIG.S3_SECRET_KEY,
     region: CONFIG.S3_REGION,
   });
 }
