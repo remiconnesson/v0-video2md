@@ -1,8 +1,7 @@
-import { put } from "@vercel/blob"; // <--- NEW: Install this package if missing
 import { AwsClient } from "aws4fetch";
 import { eq } from "drizzle-orm";
 import { createParser } from "eventsource-parser";
-import { fetch, getWritable } from "workflow";
+import { fetch, getWritable, sleep } from "workflow";
 import { db } from "@/db";
 import { videoSlideExtractions, videoSlides } from "@/db/schema";
 import {
@@ -16,7 +15,7 @@ import {
 } from "@/lib/slides-types";
 
 // ============================================================================
-// Config
+// Config (Restored from Old Code)
 // ============================================================================
 
 function getEnv(key: string, fallback?: string): string {
@@ -25,40 +24,41 @@ function getEnv(key: string, fallback?: string): string {
   return value;
 }
 
-function normalizeUrl(url: string): string {
-  if (url.startsWith("http://") || url.startsWith("https://")) {
-    return url;
-  }
-  // Default to https if no protocol specified
-  return `https://${url}`;
-}
-
 const CONFIG = {
-  SLIDES_EXTRACTOR_URL: normalizeUrl(getEnv("SLIDES_EXTRACTOR_URL")),
-  S3_REGION: getEnv("S3_REGION", "us-east-1"),
+  SLIDES_EXTRACTOR_URL: getEnv("SLIDES_EXTRACTOR_URL"),
+  // RESTORED: Specific endpoint for your private S3
+  S3_BASE_URL: getEnv("S3_BASE_URL", "https://s3.remtoolz.ai"),
   S3_ACCESS_KEY: getEnv("S3_ACCESS_KEY"),
-  S3_SECRET_KEY: getEnv("S3_ACCESS_KEY"), // on purpose, not an issue, see the doc of our private s3 for more details
+  S3_SECRET_KEY: getEnv("S3_ACCESS_KEY"), // Your specific setup
   SLIDES_API_PASSWORD: getEnv("SLIDES_API_PASSWORD"),
+  // RESTORED: Needed for manual Blob upload
+  BLOB_READ_WRITE_TOKEN: getEnv("BLOB_READ_WRITE_TOKEN"),
 };
 
 // ============================================================================
-// Helper: S3 URL Handling
+// Helpers
 // ============================================================================
 
-// NEW: aws4fetch needs a real HTTP URL, not s3://
-function getS3DownloadUrl(s3Uri: string): string {
-  const match = s3Uri.match(/^s3:\/\/([^/]+)\/(.+)$/);
-  if (!match) throw new Error(`Invalid S3 URI: ${s3Uri}`);
+function makeAwsClient(): AwsClient {
+  return new AwsClient({
+    accessKeyId: CONFIG.S3_ACCESS_KEY,
+    secretAccessKey: CONFIG.S3_SECRET_KEY,
+    service: "s3", // Explicitly set service
+    region: "us-east-1",
+  });
+}
 
-  const [, bucket, key] = match;
-  // Assumes path-style access for private S3: https://endpoint/bucket/key
-  // Remove trailing slash from base URL if present
-  const baseUrl = CONFIG.SLIDES_EXTRACTOR_URL.replace(/\/$/, "");
-  return `${baseUrl}/${bucket}/${key}`;
+// RESTORED: Your custom S3 URL parser
+function parseS3Uri(s3Uri: string) {
+  const urlParts = s3Uri.replace("s3://", "").split("/");
+  const bucket = urlParts.shift();
+  const key = urlParts.join("/");
+  if (!bucket || !key) throw new Error(`Invalid S3 URI: ${s3Uri}`);
+  return { bucket, key };
 }
 
 // ============================================================================
-// Stream Helpers
+// Stream Emitters
 // ============================================================================
 
 async function emitProgress(status: string, progress: number, message: string) {
@@ -96,20 +96,18 @@ async function emitError(message: string) {
 }
 
 // ============================================================================
-// Step: Trigger extraction on VPS
+// Step: Trigger extraction
 // ============================================================================
 
 async function triggerExtraction(videoId: string): Promise<void> {
   "use step";
 
-  // Endpoint is /process/youtube/{video_id} with Bearer auth
+  // Use CONFIG.SLIDES_EXTRACTOR_URL (likely https://slides-extractor.remtoolz.ai)
   const response = await fetch(
     `${CONFIG.SLIDES_EXTRACTOR_URL}/process/youtube/${videoId}`,
     {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${CONFIG.SLIDES_API_PASSWORD}`,
-      },
+      headers: { Authorization: `Bearer ${CONFIG.SLIDES_API_PASSWORD}` },
     },
   );
 
@@ -120,88 +118,110 @@ async function triggerExtraction(videoId: string): Promise<void> {
 }
 
 // ============================================================================
-// Step: Monitor job progress via SSE
+// Step: Monitor job progress (Robust with Retry)
 // ============================================================================
 
 async function monitorJobProgress(videoId: string): Promise<string> {
   "use step";
 
-  const response = await fetch(
-    `${CONFIG.SLIDES_EXTRACTOR_URL}/jobs/${videoId}/stream`,
-    {
-      headers: {
-        Authorization: `Bearer ${CONFIG.SLIDES_API_PASSWORD}`,
-      },
-    },
-  );
+  const MAX_TIME_MS = 20 * 60 * 1000;
+  const startTime = Date.now();
 
-  if (!response.ok || !response.body) {
-    throw new Error("Failed to connect to job stream");
-  }
+  while (Date.now() - startTime < MAX_TIME_MS) {
+    let manifestUri: string | null = null;
+    let jobFailed = false;
+    let failureReason = "";
 
-  let manifestUri: string | null = null;
+    try {
+      const response = await fetch(
+        `${CONFIG.SLIDES_EXTRACTOR_URL}/jobs/${videoId}/stream`,
+        {
+          headers: { Authorization: `Bearer ${CONFIG.SLIDES_API_PASSWORD}` },
+        },
+      );
 
-  const parser = createParser({
-    onEvent: async (event) => {
-      if (event.event === "event" && event.data) {
-        try {
-          const update: JobUpdate = JSON.parse(event.data);
+      if (response.status === 404) throw new Error("Job not found");
 
-          // Forward progress to frontend
-          await emitProgress(update.status, update.progress, update.message);
+      if (response.ok && response.body) {
+        const parser = createParser({
+          onEvent: (event) => {
+            if (event.event === "event" && event.data) {
+              try {
+                const update: JobUpdate = JSON.parse(event.data);
 
-          if (update.status === JobStatus.COMPLETED && update.metadata_uri) {
-            manifestUri = update.metadata_uri;
-          }
+                // Capture state
+                if (
+                  update.status === JobStatus.COMPLETED &&
+                  update.metadata_uri
+                ) {
+                  manifestUri = update.metadata_uri;
+                }
+                if (update.status === JobStatus.FAILED) {
+                  jobFailed = true;
+                  failureReason = update.error ?? "Extraction failed";
+                }
 
-          if (update.status === JobStatus.FAILED) {
-            throw new Error(update.error ?? "Extraction failed");
-          }
-        } catch (_e) {
-          // Ignore parse errors, continue streaming
+                // Emit progress (fire and forget inside sync callback is safer in loop)
+                if (!jobFailed && !manifestUri) {
+                  // We don't await here to avoid blocking parser, but in WDK this is tricky.
+                  // Ideally we'd buffer events. For now, we accept we might miss a progress update visually.
+                  emitProgress(
+                    update.status,
+                    update.progress,
+                    update.message,
+                  ).catch(() => {});
+                }
+              } catch {}
+            }
+          },
+        });
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          parser.feed(decoder.decode(value, { stream: true }));
+          if (manifestUri || jobFailed) break;
         }
       }
-    },
-  });
+    } catch (err) {
+      console.warn("Stream connection dropped, retrying...", err);
+    }
 
-  const reader = response.body.getReader();
-  const decoder = new TextDecoder();
+    if (jobFailed) throw new Error(failureReason);
+    if (manifestUri) return manifestUri;
 
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    parser.feed(decoder.decode(value, { stream: true }));
+    await sleep("2s");
   }
 
-  if (!manifestUri) {
-    throw new Error("Job completed but no manifest URI received");
-  }
-
-  return manifestUri;
+  throw new Error("Job timed out");
 }
 
 // ============================================================================
-// Step: Fetch manifest from S3
+// Step: Fetch manifest (Restored Old URL Logic)
 // ============================================================================
 
 async function fetchManifest(s3Uri: string): Promise<VideoManifest> {
   "use step";
 
   const client = makeAwsClient();
-  const httpUrl = getS3DownloadUrl(s3Uri); // <--- FIX: Convert s3:// to https://
+  const { bucket, key } = parseS3Uri(s3Uri);
+
+  // RESTORED: Using your custom S3 domain
+  const httpUrl = `${CONFIG.S3_BASE_URL}/${bucket}/${key}`;
 
   const response = await client.fetch(httpUrl);
-
-  if (!response.ok) {
+  if (!response.ok)
     throw new Error(`Failed to fetch manifest: ${response.status}`);
-  }
 
   const json = await response.json();
   return VideoManifestSchema.parse(json);
 }
 
 // ============================================================================
-// Step: Process and save slides
+// Step: Process slides (Restored Manual Blob Upload)
 // ============================================================================
 
 async function processSlidesFromManifest(
@@ -211,60 +231,67 @@ async function processSlidesFromManifest(
   "use step";
 
   const videoData = manifest[videoId];
-  if (!videoData) {
-    throw new Error(`No data for video ${videoId} in manifest`);
-  }
+  if (!videoData) throw new Error(`No data for video ${videoId}`);
 
-  // Filter to static segments only
   const staticSegments = videoData.segments.filter(
     (s): s is StaticSegment => s.kind === "static",
   );
 
   let slideIndex = 0;
-  const client = makeAwsClient(); // <--- FIX: We need client to download images
+  const client = makeAwsClient();
 
   for (const segment of staticSegments) {
-    // FIX: Access data via first_frame based on your new Schema
     const frame = segment.first_frame;
-
-    // Skip if no frame data or missing S3 info
     if (!frame || !frame.s3_uri) continue;
 
-    let finalImageUrl = "";
+    let publicImageUrl = "";
 
     try {
-      // 1. Download image from Private S3
-      const s3Url = getS3DownloadUrl(frame.s3_uri);
-      const imageRes = await client.fetch(s3Url);
+      // 1. Download from Private S3 (Custom Endpoint)
+      const { bucket, key } = parseS3Uri(frame.s3_uri);
+      const s3Url = `${CONFIG.S3_BASE_URL}/${bucket}/${key}`;
 
-      if (imageRes.ok && imageRes.body) {
-        // 2. Upload to Vercel Blob (Public)
-        // We use the response body stream directly
-        const blob = await put(
-          frame.s3_key || `slide-${videoId}-${slideIndex}.jpg`,
-          imageRes.body,
+      const imageResponse = await client.fetch(s3Url);
+
+      if (imageResponse.ok) {
+        const imageBuffer = await imageResponse.arrayBuffer();
+
+        // 2. Upload to Vercel Blob (MANUAL FETCH - RESTORED)
+        const blobPath = `slides/${videoId}/${frame.frame_id || slideIndex}.webp`;
+
+        const blobResponse = await fetch(
+          `https://blob.vercel-storage.com/${blobPath}`,
           {
-            access: "public",
+            method: "PUT",
+            headers: {
+              Authorization: `Bearer ${CONFIG.BLOB_READ_WRITE_TOKEN}`,
+              "Content-Type": "image/webp",
+              "x-api-version": "7",
+            },
+            body: imageBuffer,
           },
         );
-        finalImageUrl = blob.url;
-      } else {
-        console.error(`Failed to download slide image: ${s3Url}`);
+
+        if (blobResponse.ok) {
+          const blobResult = (await blobResponse.json()) as { url: string };
+          publicImageUrl = blobResult.url;
+        } else {
+          console.error("Blob upload failed:", await blobResponse.text());
+        }
       }
     } catch (e) {
-      console.error("Failed to process slide image", e);
+      console.error(`Failed to process image for slide ${slideIndex}`, e);
     }
 
     const isDuplicate = frame.duplicate_of !== null;
 
-    // Build slide data
     const slideData: SlideData = {
       slideIndex,
       frameId: frame.frame_id,
       startTime: segment.start_time,
       endTime: segment.end_time,
       duration: segment.duration,
-      s3Uri: finalImageUrl, // <--- FIX: Send the public Blob URL to frontend
+      s3Uri: publicImageUrl || frame.s3_uri,
       hasText: frame.has_text,
       textConfidence: Math.round(frame.text_confidence * 100),
       isDuplicate,
@@ -280,7 +307,8 @@ async function processSlidesFromManifest(
         startTime: segment.start_time,
         endTime: segment.end_time,
         duration: segment.duration,
-        s3Uri: frame.s3_uri, // Keep original ref if needed
+        imageUrl: publicImageUrl,
+        s3Uri: frame.s3_uri,
         s3Bucket: frame.s3_bucket,
         s3Key: frame.s3_key,
         hasText: frame.has_text,
@@ -291,9 +319,7 @@ async function processSlidesFromManifest(
       })
       .onConflictDoNothing();
 
-    // Stream to frontend
     await emitSlide(slideData);
-
     slideIndex++;
   }
 
@@ -301,7 +327,7 @@ async function processSlidesFromManifest(
 }
 
 // ============================================================================
-// Step: Update extraction status
+// Status Helper
 // ============================================================================
 
 async function updateExtractionStatus(
@@ -311,7 +337,6 @@ async function updateExtractionStatus(
   errorMessage?: string,
 ) {
   "use step";
-
   await db
     .update(videoSlideExtractions)
     .set({
@@ -331,23 +356,18 @@ export async function extractSlidesWorkflow(videoId: string) {
   "use workflow";
 
   try {
-    // Step 1: Trigger extraction on VPS
     await emitProgress("starting", 0, "Starting slide extraction...");
     await triggerExtraction(videoId);
 
-    // Step 2: Monitor progress (streams to frontend)
     await emitProgress("monitoring", 10, "Processing video on server...");
     const manifestUri = await monitorJobProgress(videoId);
 
-    // Step 3: Fetch manifest from S3
     await emitProgress("fetching", 80, "Fetching slide manifest...");
     const manifest = await fetchManifest(manifestUri);
 
-    // Step 4: Process and save slides
     await emitProgress("saving", 90, "Saving slides to database...");
     const totalSlides = await processSlidesFromManifest(videoId, manifest);
 
-    // Step 5: Mark complete
     await updateExtractionStatus(videoId, "completed", totalSlides);
     await emitComplete(totalSlides);
 
@@ -358,16 +378,4 @@ export async function extractSlidesWorkflow(videoId: string) {
     await emitError(message);
     throw error;
   }
-}
-
-// ============================================================================
-// Utilities
-// ============================================================================
-
-function makeAwsClient(): AwsClient {
-  return new AwsClient({
-    accessKeyId: CONFIG.S3_ACCESS_KEY,
-    secretAccessKey: CONFIG.S3_SECRET_KEY,
-    region: CONFIG.S3_REGION,
-  });
 }

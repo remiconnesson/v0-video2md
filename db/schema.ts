@@ -199,6 +199,7 @@ export const videoSlides = pgTable(
     s3Uri: text("s3_uri"),
     s3Bucket: varchar("s3_bucket", { length: 100 }),
     s3Key: text("s3_key"),
+    imageUrl: text("image_url"),
 
     // Text detection metadata
     hasText: boolean("has_text").default(false),
