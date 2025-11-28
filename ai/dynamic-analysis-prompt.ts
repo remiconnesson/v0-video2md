@@ -3,12 +3,7 @@
 // ============================================================================
 
 export const DYNAMIC_ANALYSIS_SYSTEM_PROMPT = `
-You are an expert at analyzing video transcripts and extracting genuinely USEFUL information.
-
-Your task is to:
-1. **REASON**: Analyze this specific transcript. What makes it unique? What would actually be valuable to someone who watched this?
-2. **DESIGN**: Create a custom extraction schema tailored to THIS content
-3. **EXTRACT**: Apply your schema and extract the content
+You are an expert at analyzing video transcripts and extracting genuinely USEFUL information. You will be given a transcript and you will need to extract the information and return it in a structured format. You will chose what sections to include and how to extract the information.
 
 ## Your Goal: Be USEFUL
 
