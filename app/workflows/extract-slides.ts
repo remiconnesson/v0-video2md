@@ -462,7 +462,10 @@ async function processSlidesFromManifest(
     const lastFrame = segment.last_frame;
 
     // Skip if no frames available
-    if ((!firstFrame || !firstFrame.s3_uri) && (!lastFrame || !lastFrame.s3_uri)) {
+    if (
+      (!firstFrame || !firstFrame.s3_uri) &&
+      (!lastFrame || !lastFrame.s3_uri)
+    ) {
       console.warn(
         `💾 processSlidesFromManifest: Skipping segment ${slideIndex} for video ${videoId}: missing frames or S3 URIs`,
         {
@@ -482,7 +485,10 @@ async function processSlidesFromManifest(
     let imageProcessingError: string | null = null;
 
     // Helper function to process a single frame
-    async function processFrame(frame: FrameMetadata, frameType: 'first' | 'last'): Promise<string> {
+    async function processFrame(
+      frame: FrameMetadata,
+      frameType: "first" | "last",
+    ): Promise<string> {
       try {
         console.log(
           `💾 processSlidesFromManifest: Processing ${frameType} frame for slide ${slideIndex} (frame: ${frame.frame_id})`,
@@ -500,7 +506,9 @@ async function processSlidesFromManifest(
 
         if (!imageResponse.ok) {
           const errorText = await imageResponse.text();
-          throw new Error(`S3 download failed: HTTP ${imageResponse.status} ${imageResponse.statusText} - ${errorText}`);
+          throw new Error(
+            `S3 download failed: HTTP ${imageResponse.status} ${imageResponse.statusText} - ${errorText}`,
+          );
         }
 
         const imageBuffer = await imageResponse.arrayBuffer();
@@ -524,7 +532,9 @@ async function processSlidesFromManifest(
 
         if (!blobResponse.ok) {
           const blobErrorText = await blobResponse.text();
-          throw new Error(`Blob upload failed: HTTP ${blobResponse.status} ${blobResponse.statusText} - ${blobErrorText}`);
+          throw new Error(
+            `Blob upload failed: HTTP ${blobResponse.status} ${blobResponse.statusText} - ${blobErrorText}`,
+          );
         }
 
         const blobResult = (await blobResponse.json()) as { url: string };
@@ -535,31 +545,44 @@ async function processSlidesFromManifest(
 
         return publicImageUrl;
       } catch (e) {
-        throw new Error(`${frameType} frame processing failed: ${e instanceof Error ? e.message : "Unknown error"}`);
+        throw new Error(
+          `${frameType} frame processing failed: ${e instanceof Error ? e.message : "Unknown error"}`,
+        );
       }
     }
 
     // Process first frame
-    if (firstFrame && firstFrame.s3_uri) {
+    if (firstFrame?.s3_uri) {
       try {
-        firstFrameImageUrl = await processFrame(firstFrame, 'first');
+        firstFrameImageUrl = await processFrame(firstFrame, "first");
       } catch (e) {
-        console.error(`💾 processSlidesFromManifest: Failed to process first frame for slide ${slideIndex}:`, e);
-        imageProcessingError = (imageProcessingError ? imageProcessingError + "; " : "") + (e instanceof Error ? e.message : "Unknown error");
+        console.error(
+          `💾 processSlidesFromManifest: Failed to process first frame for slide ${slideIndex}:`,
+          e,
+        );
+        imageProcessingError =
+          (imageProcessingError ? `${imageProcessingError}; ` : "") +
+          (e instanceof Error ? e.message : "Unknown error");
       }
     }
 
     // Process last frame
-    if (lastFrame && lastFrame.s3_uri) {
+    if (lastFrame?.s3_uri) {
       try {
-        lastFrameImageUrl = await processFrame(lastFrame, 'last');
+        lastFrameImageUrl = await processFrame(lastFrame, "last");
       } catch (e) {
-        console.error(`💾 processSlidesFromManifest: Failed to process last frame for slide ${slideIndex}:`, e);
-        imageProcessingError = (imageProcessingError ? imageProcessingError + "; " : "") + (e instanceof Error ? e.message : "Unknown error");
+        console.error(
+          `💾 processSlidesFromManifest: Failed to process last frame for slide ${slideIndex}:`,
+          e,
+        );
+        imageProcessingError =
+          (imageProcessingError ? `${imageProcessingError}; ` : "") +
+          (e instanceof Error ? e.message : "Unknown error");
       }
     }
 
-    const isDuplicate = (firstFrame?.duplicate_of !== null) || (lastFrame?.duplicate_of !== null);
+    const isDuplicate =
+      firstFrame?.duplicate_of !== null || lastFrame?.duplicate_of !== null;
 
     const slideData: SlideData = {
       slideIndex,
@@ -569,22 +592,28 @@ async function processSlidesFromManifest(
       duration: segment.duration,
       firstFrameImageUrl: firstFrameImageUrl || null,
       firstFrameHasText: firstFrame?.has_text || false,
-      firstFrameTextConfidence: firstFrame ? Math.round(firstFrame.text_confidence * 100) : 0,
+      firstFrameTextConfidence: firstFrame
+        ? Math.round(firstFrame.text_confidence * 100)
+        : 0,
       firstFrameIsDuplicate: firstFrame?.duplicate_of !== null,
-      firstFrameDuplicateOfSegmentId: firstFrame?.duplicate_of?.segment_id ?? null,
+      firstFrameDuplicateOfSegmentId:
+        firstFrame?.duplicate_of?.segment_id ?? null,
       firstFrameSkipReason: firstFrame?.skip_reason ?? null,
       lastFrameImageUrl: lastFrameImageUrl || null,
       lastFrameHasText: lastFrame?.has_text || false,
-      lastFrameTextConfidence: lastFrame ? Math.round(lastFrame.text_confidence * 100) : 0,
+      lastFrameTextConfidence: lastFrame
+        ? Math.round(lastFrame.text_confidence * 100)
+        : 0,
       lastFrameIsDuplicate: lastFrame?.duplicate_of !== null,
-      lastFrameDuplicateOfSegmentId: lastFrame?.duplicate_of?.segment_id ?? null,
+      lastFrameDuplicateOfSegmentId:
+        lastFrame?.duplicate_of?.segment_id ?? null,
       lastFrameSkipReason: lastFrame?.skip_reason ?? null,
       // Legacy fields for backward compatibility
       imageUrl: firstFrameImageUrl || lastFrameImageUrl || null, // Use first frame as primary for legacy
-      hasText: (firstFrame?.has_text || lastFrame?.has_text) || false,
+      hasText: firstFrame?.has_text || lastFrame?.has_text || false,
       textConfidence: Math.max(
         firstFrame ? Math.round(firstFrame.text_confidence * 100) : 0,
-        lastFrame ? Math.round(lastFrame.text_confidence * 100) : 0
+        lastFrame ? Math.round(lastFrame.text_confidence * 100) : 0,
       ),
       isDuplicate,
       imageProcessingError,
@@ -611,10 +640,13 @@ async function processSlidesFromManifest(
           firstFrameS3Key: firstFrame?.s3_key || null,
           firstFrameImageUrl: firstFrameImageUrl || null,
           firstFrameHasText: firstFrame?.has_text || false,
-          firstFrameTextConfidence: firstFrame ? Math.round(firstFrame.text_confidence * 100) : null,
+          firstFrameTextConfidence: firstFrame
+            ? Math.round(firstFrame.text_confidence * 100)
+            : null,
           firstFrameTextBoxCount: firstFrame?.text_box_count || null,
           firstFrameIsDuplicate: firstFrame?.duplicate_of !== null,
-          firstFrameDuplicateOfSegmentId: firstFrame?.duplicate_of?.segment_id ?? null,
+          firstFrameDuplicateOfSegmentId:
+            firstFrame?.duplicate_of?.segment_id ?? null,
           firstFrameSkipReason: firstFrame?.skip_reason ?? null,
 
           // Last frame data
@@ -623,10 +655,13 @@ async function processSlidesFromManifest(
           lastFrameS3Key: lastFrame?.s3_key || null,
           lastFrameImageUrl: lastFrameImageUrl || null,
           lastFrameHasText: lastFrame?.has_text || false,
-          lastFrameTextConfidence: lastFrame ? Math.round(lastFrame.text_confidence * 100) : null,
+          lastFrameTextConfidence: lastFrame
+            ? Math.round(lastFrame.text_confidence * 100)
+            : null,
           lastFrameTextBoxCount: lastFrame?.text_box_count || null,
           lastFrameIsDuplicate: lastFrame?.duplicate_of !== null,
-          lastFrameDuplicateOfSegmentId: lastFrame?.duplicate_of?.segment_id ?? null,
+          lastFrameDuplicateOfSegmentId:
+            lastFrame?.duplicate_of?.segment_id ?? null,
           lastFrameSkipReason: lastFrame?.skip_reason ?? null,
 
           // Legacy columns (use first frame data for backward compatibility)
@@ -634,15 +669,19 @@ async function processSlidesFromManifest(
           s3Uri: firstFrame?.s3_uri || lastFrame?.s3_uri || null,
           s3Bucket: firstFrame?.s3_bucket || lastFrame?.s3_bucket || null,
           s3Key: firstFrame?.s3_key || lastFrame?.s3_key || null,
-          hasText: (firstFrame?.has_text || lastFrame?.has_text) || false,
+          hasText: firstFrame?.has_text || lastFrame?.has_text || false,
           textConfidence: Math.max(
             firstFrame ? Math.round(firstFrame.text_confidence * 100) : 0,
-            lastFrame ? Math.round(lastFrame.text_confidence * 100) : 0
+            lastFrame ? Math.round(lastFrame.text_confidence * 100) : 0,
           ),
-          textBoxCount: firstFrame?.text_box_count || lastFrame?.text_box_count || null,
+          textBoxCount:
+            firstFrame?.text_box_count || lastFrame?.text_box_count || null,
 
           isDuplicate,
-          duplicateOfSegmentId: firstFrame?.duplicate_of?.segment_id || lastFrame?.duplicate_of?.segment_id || null,
+          duplicateOfSegmentId:
+            firstFrame?.duplicate_of?.segment_id ||
+            lastFrame?.duplicate_of?.segment_id ||
+            null,
         })
         .onConflictDoNothing();
 

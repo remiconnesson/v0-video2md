@@ -204,7 +204,9 @@ export const videoSlides = pgTable(
     firstFrameTextConfidence: integer("first_frame_text_confidence"), // 0-100
     firstFrameTextBoxCount: integer("first_frame_text_box_count"),
     firstFrameIsDuplicate: boolean("first_frame_is_duplicate").default(false),
-    firstFrameDuplicateOfSegmentId: integer("first_frame_duplicate_of_segment_id"),
+    firstFrameDuplicateOfSegmentId: integer(
+      "first_frame_duplicate_of_segment_id",
+    ),
     firstFrameSkipReason: text("first_frame_skip_reason"),
 
     // Last frame data
@@ -216,7 +218,9 @@ export const videoSlides = pgTable(
     lastFrameTextConfidence: integer("last_frame_text_confidence"), // 0-100
     lastFrameTextBoxCount: integer("last_frame_text_box_count"),
     lastFrameIsDuplicate: boolean("last_frame_is_duplicate").default(false),
-    lastFrameDuplicateOfSegmentId: integer("last_frame_duplicate_of_segment_id"),
+    lastFrameDuplicateOfSegmentId: integer(
+      "last_frame_duplicate_of_segment_id",
+    ),
     lastFrameSkipReason: text("last_frame_skip_reason"),
 
     // Legacy columns (kept for backward compatibility)

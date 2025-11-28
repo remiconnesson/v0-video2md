@@ -185,7 +185,10 @@ function SlideCard({ slide }: { slide: SlideData }) {
               </div>
             )}
             {slide.firstFrameSkipReason && (
-              <div className="bg-yellow-500/80 text-white text-xs px-1 py-0.5 rounded" title={slide.firstFrameSkipReason}>
+              <div
+                className="bg-yellow-500/80 text-white text-xs px-1 py-0.5 rounded"
+                title={slide.firstFrameSkipReason}
+              >
                 SKIP
               </div>
             )}
@@ -222,7 +225,10 @@ function SlideCard({ slide }: { slide: SlideData }) {
               </div>
             )}
             {slide.lastFrameSkipReason && (
-              <div className="bg-orange-500/80 text-white text-xs px-1 py-0.5 rounded" title={slide.lastFrameSkipReason}>
+              <div
+                className="bg-orange-500/80 text-white text-xs px-1 py-0.5 rounded"
+                title={slide.lastFrameSkipReason}
+              >
                 SKIP
               </div>
             )}
@@ -245,11 +251,13 @@ function SlideCard({ slide }: { slide: SlideData }) {
                     Both have text
                   </span>
                 )}
-                {!slide.firstFrameHasText && !slide.lastFrameHasText && slide.hasText && (
-                  <span className="bg-gray-500/80 px-1.5 rounded">
-                    Legacy text
-                  </span>
-                )}
+                {!slide.firstFrameHasText &&
+                  !slide.lastFrameHasText &&
+                  slide.hasText && (
+                    <span className="bg-gray-500/80 px-1.5 rounded">
+                      Legacy text
+                    </span>
+                  )}
                 {slide.firstFrameIsDuplicate && slide.lastFrameIsDuplicate && (
                   <span className="bg-red-500/80 px-1.5 rounded">
                     Both duplicate
