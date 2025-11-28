@@ -5,6 +5,7 @@ import { FatalError, fetch, getWritable } from "workflow";
 import { db } from "@/db";
 import { videoSlideExtractions, videoSlides } from "@/db/schema";
 import {
+  type FrameMetadata,
   JobStatus,
   type JobUpdate,
   type SlideData,
@@ -495,6 +496,9 @@ async function processSlidesFromManifest(
         );
 
         // 1. Download from Private S3 (Custom Endpoint)
+        if (!frame.s3_uri) {
+          throw new Error(`${frameType} frame missing S3 URI`);
+        }
         const { bucket, key } = parseS3Uri(frame.s3_uri);
         const s3Url = `${CONFIG.S3_BASE_URL}/${bucket}/${key}`;
 
@@ -581,9 +585,6 @@ async function processSlidesFromManifest(
       }
     }
 
-    const isDuplicate =
-      firstFrame?.duplicate_of !== null || lastFrame?.duplicate_of !== null;
-
     const slideData: SlideData = {
       slideIndex,
       frameId: firstFrame?.frame_id || lastFrame?.frame_id || null,
@@ -608,14 +609,6 @@ async function processSlidesFromManifest(
       lastFrameDuplicateOfSegmentId:
         lastFrame?.duplicate_of?.segment_id ?? null,
       lastFrameSkipReason: lastFrame?.skip_reason ?? null,
-      // Legacy fields for backward compatibility
-      imageUrl: firstFrameImageUrl || lastFrameImageUrl || null, // Use first frame as primary for legacy
-      hasText: firstFrame?.has_text || lastFrame?.has_text || false,
-      textConfidence: Math.max(
-        firstFrame ? Math.round(firstFrame.text_confidence * 100) : 0,
-        lastFrame ? Math.round(lastFrame.text_confidence * 100) : 0,
-      ),
-      isDuplicate,
       imageProcessingError,
     };
 
@@ -663,25 +656,6 @@ async function processSlidesFromManifest(
           lastFrameDuplicateOfSegmentId:
             lastFrame?.duplicate_of?.segment_id ?? null,
           lastFrameSkipReason: lastFrame?.skip_reason ?? null,
-
-          // Legacy columns (use first frame data for backward compatibility)
-          imageUrl: firstFrameImageUrl || lastFrameImageUrl || null,
-          s3Uri: firstFrame?.s3_uri || lastFrame?.s3_uri || null,
-          s3Bucket: firstFrame?.s3_bucket || lastFrame?.s3_bucket || null,
-          s3Key: firstFrame?.s3_key || lastFrame?.s3_key || null,
-          hasText: firstFrame?.has_text || lastFrame?.has_text || false,
-          textConfidence: Math.max(
-            firstFrame ? Math.round(firstFrame.text_confidence * 100) : 0,
-            lastFrame ? Math.round(lastFrame.text_confidence * 100) : 0,
-          ),
-          textBoxCount:
-            firstFrame?.text_box_count || lastFrame?.text_box_count || null,
-
-          isDuplicate,
-          duplicateOfSegmentId:
-            firstFrame?.duplicate_of?.segment_id ||
-            lastFrame?.duplicate_of?.segment_id ||
-            null,
         })
         .onConflictDoNothing();
 
@@ -713,7 +687,6 @@ async function processSlidesFromManifest(
       // But emit the slide with error info
       slideData.firstFrameImageUrl = null;
       slideData.lastFrameImageUrl = null;
-      slideData.imageUrl = null;
       slideData.dbError = dbErrorMessage;
     }
 

@@ -134,12 +134,9 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
 // ============================================================================
 
 function SlideGrid({ slides }: { slides: SlideData[] }) {
-  // Filter out duplicates for display
-  const uniqueSlides = slides.filter((s) => !s.isDuplicate);
-
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-      {uniqueSlides.map((slide) => (
+      {slides.map((slide) => (
         <SlideCard key={slide.slideIndex} slide={slide} />
       ))}
     </div>
@@ -251,13 +248,6 @@ function SlideCard({ slide }: { slide: SlideData }) {
                     Both have text
                   </span>
                 )}
-                {!slide.firstFrameHasText &&
-                  !slide.lastFrameHasText &&
-                  slide.hasText && (
-                    <span className="bg-gray-500/80 px-1.5 rounded">
-                      Legacy text
-                    </span>
-                  )}
                 {slide.firstFrameIsDuplicate && slide.lastFrameIsDuplicate && (
                   <span className="bg-red-500/80 px-1.5 rounded">
                     Both duplicate

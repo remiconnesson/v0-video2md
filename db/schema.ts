@@ -223,19 +223,6 @@ export const videoSlides = pgTable(
     ),
     lastFrameSkipReason: text("last_frame_skip_reason"),
 
-    // Legacy columns (kept for backward compatibility)
-    s3Uri: text("s3_uri"),
-    s3Bucket: varchar("s3_bucket", { length: 100 }),
-    s3Key: text("s3_key"),
-    imageUrl: text("image_url"),
-    hasText: boolean("has_text").default(false),
-    textConfidence: integer("text_confidence"), // 0-100
-    textBoxCount: integer("text_box_count"),
-
-    // Deduplication
-    isDuplicate: boolean("is_duplicate").default(false),
-    duplicateOfSegmentId: integer("duplicate_of_segment_id"),
-
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
   (table) => [

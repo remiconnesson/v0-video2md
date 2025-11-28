@@ -94,12 +94,6 @@ export interface SlideData {
   lastFrameDuplicateOfSegmentId: number | null;
   lastFrameSkipReason: string | null;
 
-  // Legacy fields (kept for backward compatibility)
-  imageUrl: string | null;
-  hasText: boolean;
-  textConfidence: number;
-
-  isDuplicate: boolean;
   imageProcessingError?: string | null;
   dbError?: string | null;
 }
