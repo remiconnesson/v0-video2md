@@ -17,6 +17,7 @@ export function AnalysisPanel({
   runId,
   videoId,
 }: AnalysisPanelProps) {
+  console.log(analysis);
   return (
     <Card>
       <CardHeader>
@@ -63,8 +64,8 @@ function SectionContent({ content }: { content: unknown }): React.ReactNode {
         {content
           .map((item) =>
             typeof item === "string"
-              ? // Check if already starts with - * or numbered list (1. 2. etc.), if so, don't add a -
-                item.match(/^\s*[-*]\s+|^\s*\d+\.\s+/)
+              ? // Check if already starts with - * or numbered list (1. 2. etc.) or 1), 2), if so, don't add a -
+                item.trim().match(/^\s*[-*]\s+|^\s*\d+\.\s+|^\s*\d+\)\s+/)
                 ? item
                 : `- ${item}`
               : `\n\`\`\`json\n${JSON.stringify(item, null, 2)}\n\`\`\`\n`,
