@@ -107,7 +107,7 @@ async function monitorJobProgress(videoId: string): Promise<string> {
 
   const parser = createParser({
     onEvent: async (event) => {
-      if (event.type === "event" && event.data) {
+      if (event.event === "event" && event.data) {
         try {
           const update: JobUpdate = JSON.parse(event.data);
 
@@ -121,7 +121,7 @@ async function monitorJobProgress(videoId: string): Promise<string> {
           if (update.status === JobStatus.FAILED) {
             throw new Error(update.error ?? "Extraction failed");
           }
-        } catch (e) {
+        } catch (_e) {
           // Ignore parse errors, continue streaming
         }
       }
