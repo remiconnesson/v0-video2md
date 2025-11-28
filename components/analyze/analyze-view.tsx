@@ -298,13 +298,6 @@ export function AnalyzeView({ youtubeId, initialVersion }: AnalyzeViewProps) {
               Reroll
             </Button>
           ) : null}
-
-          {!isAnalysisRunning && !hasRuns && (
-            <Button onClick={handleStartAnalysis} className="gap-2">
-              <Sparkles className="h-4 w-4" />
-              Start Analysis
-            </Button>
-          )}
         </div>
       </div>
 
@@ -317,7 +310,7 @@ export function AnalyzeView({ youtubeId, initialVersion }: AnalyzeViewProps) {
       ) : undefined}
 
       {/* Results */}
-      {displayResult && (
+      {displayResult !== null && (
         <Tabs defaultValue="analysis" className="space-y-4">
           <TabsList>
             <TabsTrigger value="analysis">Analysis</TabsTrigger>
