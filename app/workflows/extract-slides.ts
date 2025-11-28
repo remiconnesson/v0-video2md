@@ -27,8 +27,8 @@ function getEnv(key: string, fallback?: string): string {
 const CONFIG = {
   SLIDES_EXTRACTOR_URL: getEnv("SLIDES_EXTRACTOR_URL"),
   S3_REGION: getEnv("S3_REGION", "us-east-1"),
-  S3_ACCESS_KEY_ID: getEnv("S3_ACCESS_KEY_ID"),
-  S3_SECRET_ACCESS_KEY: getEnv("S3_SECRET_ACCESS_KEY"),
+  S3_ACCESS_KEY: getEnv("S3_ACCESS_KEY"),
+  S3_SECRET_KEY: getEnv("S3_ACCESS_KEY"), // on purpose, not an issue, see the doc of our private s3 for more details
 };
 
 // ============================================================================
