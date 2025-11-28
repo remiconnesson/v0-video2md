@@ -1,46 +1,49 @@
-"use client";
+"use client"
 
-import { CheckCircle2, Clock, FileVideo } from "lucide-react";
-import Image from "next/image";
-import Link from "next/link";
-import { useEffect, useState } from "react";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { CheckCircle2, Clock, FileVideo } from "lucide-react"
+import Image from "next/image"
+import Link from "next/link"
+import { useEffect, useState } from "react"
+import { Badge } from "@/components/ui/badge"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
 interface VideoData {
-  videoId: string;
+  videoId: string
   videoData?: {
-    title: string;
-    description: string;
-    duration: string;
-    thumbnail: string;
-  };
-  extractSlides: boolean;
-  completedAt?: string;
+    title: string
+    description: string
+    duration: string
+    thumbnail: string
+  }
+  extractSlides: boolean
+  completedAt?: string
 }
 
 export function ProcessedVideosList() {
-  const [videos, setVideos] = useState<VideoData[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [videos, setVideos] = useState<VideoData[]>([])
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     async function fetchVideos() {
       try {
-        const response = await fetch("/api/videos");
+        const response = await fetch("/api/videos")
         if (!response.ok) {
-          throw new Error("Failed to fetch videos");
+          const errorBody = await response.text()
+          console.error("[v0] API Error Response:", response.status, errorBody)
+          throw new Error(`Failed to fetch videos: ${response.status}`)
         }
-        const data = await response.json();
-        setVideos(data);
+        const data = await response.json()
+        console.log("[v0] Fetched videos:", data.length)
+        setVideos(data)
       } catch (error) {
-        console.error("Error fetching videos:", error);
+        console.error("Error fetching videos:", error)
       } finally {
-        setLoading(false);
+        setLoading(false)
       }
     }
 
-    fetchVideos();
-  }, []);
+    fetchVideos()
+  }, [])
 
   if (loading) {
     return (
@@ -52,12 +55,10 @@ export function ProcessedVideosList() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-muted-foreground text-center py-8">
-            Loading videos...
-          </p>
+          <p className="text-muted-foreground text-center py-8">Loading videos...</p>
         </CardContent>
       </Card>
-    );
+    )
   }
 
   if (videos.length === 0) {
@@ -70,12 +71,10 @@ export function ProcessedVideosList() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-muted-foreground text-center py-8">
-            No processed videos yet
-          </p>
+          <p className="text-muted-foreground text-center py-8">No processed videos yet</p>
         </CardContent>
       </Card>
-    );
+    )
   }
 
   return (
@@ -89,18 +88,11 @@ export function ProcessedVideosList() {
       <CardContent>
         <div className="space-y-4">
           {videos.map((video) => (
-            <Link
-              key={video.videoId}
-              href={`/video/youtube/${video.videoId}`}
-              className="block group"
-            >
+            <Link key={video.videoId} href={`/video/youtube/${video.videoId}`} className="block group">
               <div className="flex gap-4 p-4 rounded-lg border hover:bg-accent transition-colors">
                 <div className="flex-shrink-0">
                   <Image
-                    src={
-                      video.videoData?.thumbnail ||
-                      "/placeholder.svg?height=90&width=160"
-                    }
+                    src={video.videoData?.thumbnail || "/placeholder.svg?height=90&width=160" || "/placeholder.svg"}
                     alt={video.videoData?.title || "Video thumbnail"}
                     width={160}
                     height={90}
@@ -119,16 +111,11 @@ export function ProcessedVideosList() {
                       <Clock className="h-4 w-4" />
                       <span>{video.videoData?.duration || "N/A"}</span>
                     </div>
-                    <Badge
-                      variant="secondary"
-                      className="flex items-center gap-1"
-                    >
+                    <Badge variant="secondary" className="flex items-center gap-1">
                       <CheckCircle2 className="h-3 w-3" />
                       Completed
                     </Badge>
-                    {video.extractSlides && (
-                      <Badge variant="outline">With Slides</Badge>
-                    )}
+                    {video.extractSlides && <Badge variant="outline">With Slides</Badge>}
                   </div>
                 </div>
               </div>
@@ -137,5 +124,5 @@ export function ProcessedVideosList() {
         </div>
       </CardContent>
     </Card>
-  );
+  )
 }
