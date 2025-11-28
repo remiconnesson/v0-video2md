@@ -19,6 +19,8 @@ import { useTranscriptFetcher } from "@/hooks/use-transcript-fetcher";
 import { isRecord } from "@/lib/type-utils";
 import { AnalysisPanel } from "./analysis-panel";
 import { RerollDialog } from "./reroll-dialog";
+// Add import
+import { SlidesPanel } from "./slides-panel";
 import { VersionSelector } from "./version-selector";
 
 interface AnalysisRun {
@@ -314,6 +316,7 @@ export function AnalyzeView({ youtubeId, initialVersion }: AnalyzeViewProps) {
         <Tabs defaultValue="analysis" className="space-y-4">
           <TabsList>
             <TabsTrigger value="analysis">Analysis</TabsTrigger>
+            <TabsTrigger value="slides">Slides</TabsTrigger>
           </TabsList>
 
           <TabsContent value="analysis">
@@ -324,6 +327,10 @@ export function AnalyzeView({ youtubeId, initialVersion }: AnalyzeViewProps) {
                 videoId={youtubeId}
               />
             )}
+          </TabsContent>
+
+          <TabsContent value="slides">
+            <SlidesPanel videoId={youtubeId} />
           </TabsContent>
         </Tabs>
       )}
