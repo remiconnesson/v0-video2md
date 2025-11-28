@@ -234,6 +234,10 @@ async function checkJobStatus(videoId: string): Promise<{
           try {
             const update: JobUpdate = JSON.parse(event.data);
 
+            console.log("⚡⚡⚡⚡⚡⚡⚡⚡⚡\n\n");
+            console.dir(update, { depth: null });
+            console.log("⚡⚡⚡⚡⚡⚡⚡⚡⚡\n\n");
+
             console.log(
               `🔍 checkJobStatus: Job event ${eventCount} for video ${videoId}:`,
               {
@@ -281,13 +285,15 @@ async function checkJobStatus(videoId: string): Promise<{
       },
     });
 
+    // BUG IS HERE
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
 
     while (true) {
       const { done, value } = await reader.read();
+      console.log("⚡ In the while loop: is done", done);
       if (done) break;
-      parser.feed(decoder.decode(value, { stream: true }));
+      parser.feed(decoder.decode(value));
       if (manifestUri || jobFailed) break;
     }
 
@@ -298,6 +304,8 @@ async function checkJobStatus(videoId: string): Promise<{
 
   return { manifestUri, jobFailed, failureReason };
 }
+
+checkJobStatus.maxRetries = 1;
 
 // ============================================================================
 // Workflow: Monitor job progress (Fast Failure with Detailed Info)
