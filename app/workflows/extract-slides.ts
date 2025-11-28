@@ -632,7 +632,7 @@ async function updateExtractionStatus(
       hasErrorMessage: !!errorMessage,
     });
 
-    const result = await db
+    await db
       .update(videoSlideExtractions)
       .set({
         status,
@@ -643,7 +643,7 @@ async function updateExtractionStatus(
       .where(eq(videoSlideExtractions.videoId, videoId));
 
     console.log(`Successfully updated extraction status for video ${videoId}`);
-    return result;
+    return;
   } catch (error) {
     console.error(`Failed to update extraction status for video ${videoId}:`, {
       videoId,
