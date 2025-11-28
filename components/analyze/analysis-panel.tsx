@@ -43,7 +43,7 @@ function SectionContent({ content }: { content: unknown }): React.ReactNode {
   if (typeof content === "string") {
     return (
       <div className="prose prose-sm dark:prose-invert max-w-none">
-        <Streamdown>{content}</Streamdown>
+        <Streamdown>{content || ""}</Streamdown>
       </div>
     );
   }
@@ -113,6 +113,9 @@ function Section({
 
 // Convert snake_case to Title Case
 function formatSectionTitle(key: string): string {
+  if (!key || typeof key !== "string") {
+    return "";
+  }
   return key
     .split("_")
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
@@ -125,7 +128,7 @@ export function ObjectSection({ data }: { data: Record<string, unknown> }) {
       {Object.entries(data).map(([key, value]) => {
         const markdown =
           typeof value === "string"
-            ? value
+            ? (value || "")
             : `\`\`\`json\n${
                 JSON.stringify(value, null, 2) ?? String(value)
               }\n\`\`\``;
