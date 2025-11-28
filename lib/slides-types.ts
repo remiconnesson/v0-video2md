@@ -80,6 +80,8 @@ export interface SlideData {
   hasText: boolean;
   textConfidence: number;
   isDuplicate: boolean;
+  imageProcessingError?: string | null;
+  dbError?: string | null;
 }
 
 // ============================================================================

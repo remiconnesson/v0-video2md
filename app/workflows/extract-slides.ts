@@ -369,7 +369,7 @@ async function fetchManifest(s3Uri: string): Promise<VideoManifest> {
       `Manifest response received, parsing JSON (${responseText.length} chars)`,
     );
 
-    let json: any;
+    let json: unknown;
     try {
       json = JSON.parse(responseText);
     } catch (parseError) {
@@ -562,6 +562,7 @@ async function processSlidesFromManifest(
       hasText: frame.has_text,
       textConfidence: Math.round(frame.text_confidence * 100),
       isDuplicate,
+      imageProcessingError,
     };
 
     // Save to database
@@ -610,6 +611,7 @@ async function processSlidesFromManifest(
       // Continue processing other slides even if DB save fails
       // But emit the slide with error info
       slideData.s3Uri = frame.s3_uri; // Use original S3 URI since blob upload failed
+      slideData.dbError = dbErrorMessage;
     }
 
     await emitSlide(slideData);
