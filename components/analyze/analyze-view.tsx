@@ -314,8 +314,6 @@ export function AnalyzeView({ youtubeId, initialVersion }: AnalyzeViewProps) {
         <Tabs defaultValue="analysis" className="space-y-4">
           <TabsList>
             <TabsTrigger value="analysis">Analysis</TabsTrigger>
-            <TabsTrigger value="reasoning">Reasoning</TabsTrigger>
-            <TabsTrigger value="schema">Schema</TabsTrigger>
           </TabsList>
 
           <TabsContent value="analysis">
