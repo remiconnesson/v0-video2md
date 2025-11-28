@@ -1,7 +1,7 @@
 import { AwsClient } from "aws4fetch";
 import { eq } from "drizzle-orm";
 import { createParser } from "eventsource-parser";
-import { fetch, getWritable, sleep } from "workflow";
+import { FatalError, fetch, getWritable, sleep } from "workflow";
 import { db } from "@/db";
 import { videoSlideExtractions, videoSlides } from "@/db/schema";
 import {
@@ -152,174 +152,286 @@ async function triggerExtraction(videoId: string): Promise<void> {
 }
 
 // ============================================================================
-// Step: Monitor job progress (Robust with Retry)
+// Step: Check job status (single attempt)
+// ============================================================================
+
+async function checkJobStatus(videoId: string): Promise<{
+  manifestUri: string | null;
+  jobFailed: boolean;
+  failureReason: string;
+}> {
+  "use step";
+
+  const url = `${CONFIG.SLIDES_EXTRACTOR_URL}/jobs/${videoId}/stream`;
+  let manifestUri: string | null = null;
+  let jobFailed = false;
+  let failureReason = "";
+
+  console.log(`Checking job status for video ${videoId}`);
+
+  const response = await fetch(url, {
+    headers: { Authorization: `Bearer ${CONFIG.SLIDES_API_PASSWORD}` },
+  });
+
+  if (response.status === 404) {
+    console.error(`Job not found for video ${videoId}`, {
+      videoId,
+      url,
+      status: response.status,
+      statusText: response.statusText,
+      errorType: "JOB_NOT_FOUND",
+      timestamp: new Date().toISOString(),
+    });
+    throw new FatalError(
+      `Job not found for video ${videoId} - job may not have been created successfully. ` +
+        `URL: ${url} | Status: ${response.status}`,
+    );
+  }
+
+  if (!response.ok) {
+    const responseText = await response.text();
+    const isServerError = response.status >= 500;
+    const isClientError = response.status >= 400 && response.status < 500;
+
+    console.error(`Job status check failed for video ${videoId}`, {
+      videoId,
+      url,
+      status: response.status,
+      statusText: response.statusText,
+      responseBody: responseText.substring(0, 200), // Truncate long responses
+      errorType: isServerError
+        ? "SERVER_ERROR"
+        : isClientError
+          ? "CLIENT_ERROR"
+          : "UNKNOWN_ERROR",
+      timestamp: new Date().toISOString(),
+    });
+
+    // Use FatalError for client errors (4xx) as they won't be fixed by retries
+    const ErrorClass = isClientError ? FatalError : Error;
+
+    throw new ErrorClass(
+      `Failed to check job status for video ${videoId}: ` +
+        `HTTP ${response.status} ${response.statusText} | ` +
+        `Response: ${responseText.substring(0, 100)}... | ` +
+        `URL: ${url}`,
+    );
+  }
+
+  if (response.ok && response.body) {
+    let eventCount = 0;
+    const parser = createParser({
+      onEvent: (event) => {
+        if (event.event === "event" && event.data) {
+          eventCount++;
+          try {
+            const update: JobUpdate = JSON.parse(event.data);
+
+            console.log(`Job event ${eventCount} for video ${videoId}:`, {
+              status: update.status,
+              progress: update.progress,
+              message: update.message,
+              hasMetadataUri: !!update.metadata_uri,
+            });
+
+            // Capture state
+            if (update.status === JobStatus.COMPLETED && update.metadata_uri) {
+              manifestUri = update.metadata_uri;
+              console.log(
+                `Job completed for video ${videoId}, manifest URI: ${manifestUri}`,
+              );
+            }
+            if (update.status === JobStatus.FAILED) {
+              jobFailed = true;
+              failureReason = update.error ?? "Extraction failed";
+              console.error(`Job failed for video ${videoId}:`, {
+                error: update.error,
+                fullUpdate: update,
+              });
+            }
+
+            // Emit progress (fire and forget inside sync callback is safer in loop)
+            if (!jobFailed && !manifestUri) {
+              emitProgress(
+                update.status,
+                update.progress,
+                update.message,
+              ).catch(() => {});
+            }
+          } catch (parseError) {
+            console.warn(
+              `Failed to parse job event for video ${videoId}:`,
+              parseError,
+            );
+          }
+        }
+      },
+    });
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      parser.feed(decoder.decode(value, { stream: true }));
+      if (manifestUri || jobFailed) break;
+    }
+
+    console.log(
+      `Stream processing complete for video ${videoId}: ${eventCount} events processed`,
+    );
+  }
+
+  return { manifestUri, jobFailed, failureReason };
+}
+
+// ============================================================================
+// Workflow: Monitor job progress (Fast Failure with Detailed Info)
 // ============================================================================
 
 async function monitorJobProgress(videoId: string): Promise<string> {
-  "use step";
+  "use workflow";
 
-  const MAX_TIME_MS = 20 * 60 * 1000;
+  const MAX_TIME_MS = 5 * 60 * 1000; // Reduced from 20 to 5 minutes
+  const MAX_RETRIES = 10; // Limit retry attempts
   const startTime = Date.now();
-  const url = `${CONFIG.SLIDES_EXTRACTOR_URL}/jobs/${videoId}/stream`;
   let retryCount = 0;
 
-  console.log(`Starting to monitor job progress for video ${videoId}`);
+  console.log(`Starting to monitor job progress for video ${videoId}`, {
+    videoId,
+    maxTimeMinutes: MAX_TIME_MS / 60000,
+    maxRetries: MAX_RETRIES,
+    timestamp: new Date().toISOString(),
+  });
 
-  while (Date.now() - startTime < MAX_TIME_MS) {
+  while (Date.now() - startTime < MAX_TIME_MS && retryCount < MAX_RETRIES) {
     const elapsedTime = Date.now() - startTime;
     const elapsedMinutes = Math.round((elapsedTime / 60000) * 10) / 10;
 
-    let manifestUri: string | null = null;
-    let jobFailed = false;
-    let failureReason = "";
-
     try {
+      retryCount++;
       console.log(
-        `Checking job status for video ${videoId} (attempt ${++retryCount}, ${elapsedMinutes}min elapsed)`,
-      );
-
-      const response = await fetch(url, {
-        headers: { Authorization: `Bearer ${CONFIG.SLIDES_API_PASSWORD}` },
-      });
-
-      if (response.status === 404) {
-        console.error(`Job not found for video ${videoId} at ${url}`);
-        throw new Error(
-          `Job not found for video ${videoId} - may not have been created successfully`,
-        );
-      }
-
-      if (!response.ok) {
-        const responseText = await response.text();
-        console.error(`Job status check failed for video ${videoId}:`, {
-          url,
-          status: response.status,
-          statusText: response.statusText,
-          responseBody: responseText,
-          elapsedTime: `${elapsedMinutes} minutes`,
-        });
-        throw new Error(
-          `Failed to check job status for video ${videoId}: ` +
-            `HTTP ${response.status} ${response.statusText} - ${responseText}`,
-        );
-      }
-
-      if (response.ok && response.body) {
-        let eventCount = 0;
-        const parser = createParser({
-          onEvent: (event) => {
-            if (event.event === "event" && event.data) {
-              eventCount++;
-              try {
-                const update: JobUpdate = JSON.parse(event.data);
-
-                console.log(`Job event ${eventCount} for video ${videoId}:`, {
-                  status: update.status,
-                  progress: update.progress,
-                  message: update.message,
-                  hasMetadataUri: !!update.metadata_uri,
-                });
-
-                // Capture state
-                if (
-                  update.status === JobStatus.COMPLETED &&
-                  update.metadata_uri
-                ) {
-                  manifestUri = update.metadata_uri;
-                  console.log(
-                    `Job completed for video ${videoId}, manifest URI: ${manifestUri}`,
-                  );
-                }
-                if (update.status === JobStatus.FAILED) {
-                  jobFailed = true;
-                  failureReason = update.error ?? "Extraction failed";
-                  console.error(`Job failed for video ${videoId}:`, {
-                    error: update.error,
-                    fullUpdate: update,
-                  });
-                }
-
-                // Emit progress (fire and forget inside sync callback is safer in loop)
-                if (!jobFailed && !manifestUri) {
-                  emitProgress(
-                    update.status,
-                    update.progress,
-                    update.message,
-                  ).catch(() => {});
-                }
-              } catch (parseError) {
-                console.warn(
-                  `Failed to parse job event for video ${videoId}:`,
-                  parseError,
-                );
-              }
-            }
-          },
-        });
-
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder();
-
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          parser.feed(decoder.decode(value, { stream: true }));
-          if (manifestUri || jobFailed) break;
-        }
-
-        console.log(
-          `Stream processing complete for video ${videoId}: ${eventCount} events processed`,
-        );
-      }
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : "Unknown error";
-      console.warn(
-        `Stream connection issue for video ${videoId} (attempt ${retryCount}):`,
+        `Job status check ${retryCount}/${MAX_RETRIES} for video ${videoId}`,
         {
-          error: errorMessage,
-          elapsedTime: `${elapsedMinutes} minutes`,
-          willRetry: true,
+          videoId,
+          attempt: retryCount,
+          elapsedMinutes,
+          elapsedMs: elapsedTime,
+          timestamp: new Date().toISOString(),
         },
       );
-    }
 
-    if (jobFailed) {
-      console.error(`Job monitoring failed for video ${videoId}:`, {
-        failureReason,
-        elapsedTime: `${elapsedMinutes} minutes`,
-        totalRetries: retryCount,
-      });
-      throw new Error(
-        `Slide extraction job failed for video ${videoId} after ${elapsedMinutes} minutes: ${failureReason}`,
-      );
-    }
+      const { manifestUri, jobFailed, failureReason } =
+        await checkJobStatus(videoId);
 
-    if (manifestUri) {
-      console.log(
-        `Job monitoring completed successfully for video ${videoId}:`,
-        {
+      if (jobFailed) {
+        console.error(`Job FAILED permanently for video ${videoId}`, {
+          videoId,
+          failureReason,
+          elapsedTime: `${elapsedMinutes} minutes`,
+          totalRetries: retryCount,
+          errorType: "JOB_FAILED",
+          timestamp: new Date().toISOString(),
+        });
+
+        // Use FatalError to prevent workflow retries - job failure is permanent
+        throw new FatalError(
+          `Slide extraction job failed permanently: ${failureReason} | ` +
+            `Video: ${videoId} | Elapsed: ${elapsedMinutes}min | Attempts: ${retryCount}`,
+        );
+      }
+
+      if (manifestUri) {
+        console.log(`Job COMPLETED successfully for video ${videoId}`, {
+          videoId,
           manifestUri,
           elapsedTime: `${elapsedMinutes} minutes`,
           totalRetries: retryCount,
+          success: true,
+          timestamp: new Date().toISOString(),
+        });
+        return manifestUri;
+      }
+
+      console.log(
+        `Job still processing for video ${videoId}, will check again`,
+        {
+          videoId,
+          attempt: retryCount,
+          elapsedMinutes,
+          status: "IN_PROGRESS",
+          timestamp: new Date().toISOString(),
         },
       );
-      return manifestUri;
-    }
 
-    await sleep("2s");
+      await sleep("3s"); // Increased sleep to reduce API load
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "Unknown error";
+      const isNetworkError =
+        errorMessage.includes("fetch") || errorMessage.includes("network");
+      const isAuthError =
+        errorMessage.includes("401") || errorMessage.includes("403");
+
+      console.error(`Job monitoring ERROR for video ${videoId}`, {
+        videoId,
+        attempt: retryCount,
+        error: errorMessage,
+        errorType: isNetworkError
+          ? "NETWORK"
+          : isAuthError
+            ? "AUTH"
+            : "UNKNOWN",
+        elapsedTime: `${elapsedMinutes} minutes`,
+        willRetry: retryCount < MAX_RETRIES,
+        timestamp: new Date().toISOString(),
+        stack: err instanceof Error ? err.stack : undefined,
+      });
+
+      // For certain errors, fail immediately without retry
+      if (isAuthError) {
+        throw new FatalError(
+          `Authentication failed while monitoring job: ${errorMessage} | Video: ${videoId}`,
+        );
+      }
+
+      if (retryCount >= MAX_RETRIES) {
+        console.error(`Max retries exceeded for video ${videoId}`, {
+          videoId,
+          totalRetries: retryCount,
+          maxRetries: MAX_RETRIES,
+          elapsedTime: `${elapsedMinutes} minutes`,
+          finalError: errorMessage,
+          timestamp: new Date().toISOString(),
+        });
+
+        throw new FatalError(
+          `Job monitoring failed after ${retryCount} attempts: ${errorMessage} | ` +
+            `Video: ${videoId} | Elapsed: ${elapsedMinutes}min`,
+        );
+      }
+
+      // Sleep before retrying network/auth errors
+      await sleep("5s");
+    }
   }
 
   const elapsedMinutes =
     Math.round(((Date.now() - startTime) / 60000) * 10) / 10;
-  console.error(`Job monitoring timed out for video ${videoId}:`, {
+
+  console.error(`Job monitoring TIMEOUT for video ${videoId}`, {
+    videoId,
     maxTimeMinutes: MAX_TIME_MS / 60000,
+    maxRetries: MAX_RETRIES,
     elapsedTime: `${elapsedMinutes} minutes`,
     totalRetries: retryCount,
+    errorType: "TIMEOUT",
+    timestamp: new Date().toISOString(),
   });
 
-  throw new Error(
-    `Slide extraction job timed out for video ${videoId} after ${elapsedMinutes} minutes ` +
-      `(max: ${MAX_TIME_MS / 60000} minutes, ${retryCount} status checks)`,
+  throw new FatalError(
+    `Job monitoring timed out after ${elapsedMinutes} minutes (${retryCount} attempts) | ` +
+      `Video: ${videoId} | Max time: ${MAX_TIME_MS / 60000}min | Max retries: ${MAX_RETRIES}`,
   );
 }
 
