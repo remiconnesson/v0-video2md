@@ -28,7 +28,13 @@ export function AnalysisPanel({
 
       <CardContent>
         {Object.entries(analysis).map(([key, value]) => (
-          <Section key={key} content={value} runId={runId} videoId={videoId} />
+          <Section
+            key={key}
+            title={key}
+            content={value}
+            runId={runId}
+            videoId={videoId}
+          />
         ))}
       </CardContent>
     </Card>
@@ -75,7 +81,7 @@ function SectionContent({ content }: { content: unknown }): React.ReactNode {
 }
 
 function Section({
-  key,
+  title,
   content,
   runId,
   videoId,
@@ -87,11 +93,14 @@ function Section({
   videoId: string;
   description?: string;
 }) {
+  const key = title;
   return (
-    <div key={key} className="pb-6 border-b last:border-0 last:pb-0">
+    <div key={key} className="pb-6 border-b last:border-0 last:pb-0 pt-4">
       <div className="flex items-start justify-between gap-4 mb-3">
         <div>
-          <h3 className="font-semibold text-base">{formatSectionTitle(key)}</h3>
+          <h3 className="font-semibold text-base">
+            {formatSectionTitle(title) || title}
+          </h3>
           {description && (
             <p className="text-xs text-muted-foreground mt-0.5">
               {description}
@@ -128,7 +137,7 @@ export function ObjectSection({ data }: { data: Record<string, unknown> }) {
       {Object.entries(data).map(([key, value]) => {
         const markdown =
           typeof value === "string"
-            ? (value || "")
+            ? value || ""
             : `\`\`\`json\n${
                 JSON.stringify(value, null, 2) ?? String(value)
               }\n\`\`\``;
