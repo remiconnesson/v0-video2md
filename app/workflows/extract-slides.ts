@@ -177,11 +177,6 @@ async function checkJobStatus(videoId: string): Promise<{
     headers: { Authorization: `Bearer ${CONFIG.SLIDES_API_PASSWORD}` },
   });
 
-  console.log("⚡ response ❌❌❌❌❌❌❌");
-  console.dir(response, { depth: null });
-  console.dir(response.body, { depth: null });
-  console.log("⚡ response ❌❌❌❌❌❌❌");
-
   if (response.status === 404) {
     console.error(`🔍 checkJobStatus: Job not found for video ${videoId}`, {
       videoId,
@@ -240,12 +235,10 @@ async function checkJobStatus(videoId: string): Promise<{
           try {
             const update: JobUpdate = JSON.parse(event.data);
 
-            console.log("⚡⚡⚡⚡⚡⚡⚡⚡⚡\n\n");
             console.dir(update, { depth: null });
-            console.log("⚡⚡⚡⚡⚡⚡⚡⚡⚡\n\n");
 
             console.log(
-              `🔍⚠️⚠️⚠️ checkJobStatus: Job event ${eventCount} for video ${videoId}:`,
+              `🔍️ checkJobStatus: Job event ${eventCount} for video ${videoId}:`,
               {
                 status: update.status,
                 progress: update.progress,
@@ -292,14 +285,11 @@ async function checkJobStatus(videoId: string): Promise<{
       },
     });
 
-    // BUG IS HERE
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
 
     while (true) {
       const { done, value } = await reader.read();
-      // DISplays false, true
-      console.log("⚡ In the while loop: is done", done);
       if (done) break;
       parser.feed(decoder.decode(value));
       if (manifestUri || jobFailed) break;
