@@ -1,7 +1,7 @@
 import { AwsClient } from "aws4fetch";
 import { eq } from "drizzle-orm";
 import { createParser } from "eventsource-parser";
-import { FatalError, fetch, getWritable, sleep } from "workflow";
+import { FatalError, fetch, getWritable } from "workflow";
 import { db } from "@/db";
 import { videoSlideExtractions, videoSlides } from "@/db/schema";
 import {
