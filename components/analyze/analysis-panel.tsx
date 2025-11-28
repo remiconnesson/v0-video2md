@@ -87,6 +87,7 @@ function Section({
   videoId,
   description,
 }: {
+  title: string;
   key: string;
   content: unknown;
   runId: number | null;
