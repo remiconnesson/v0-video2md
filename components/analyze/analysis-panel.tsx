@@ -1,6 +1,5 @@
 "use client";
 
-import { FileText } from "lucide-react";
 import { Streamdown } from "streamdown";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { isRecord } from "@/lib/type-utils";
