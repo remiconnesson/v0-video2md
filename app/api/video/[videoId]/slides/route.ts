@@ -25,7 +25,17 @@ export async function GET(
 
   // Get existing slides
   const slides = await db
-    .select()
+    .select({
+      slideIndex: videoSlides.slideIndex,
+      frameId: videoSlides.frameId,
+      startTime: videoSlides.startTime,
+      endTime: videoSlides.endTime,
+      duration: videoSlides.duration,
+      imageUrl: videoSlides.imageUrl,
+      hasText: videoSlides.hasText,
+      textConfidence: videoSlides.textConfidence,
+      isDuplicate: videoSlides.isDuplicate,
+    })
     .from(videoSlides)
     .where(eq(videoSlides.videoId, videoId))
     .orderBy(asc(videoSlides.slideIndex));
@@ -40,7 +50,7 @@ export async function GET(
       startTime: s.startTime,
       endTime: s.endTime,
       duration: s.duration,
-      s3Uri: s.s3Uri,
+      imageUrl: s.imageUrl,
       hasText: s.hasText,
       textConfidence: s.textConfidence,
       isDuplicate: s.isDuplicate,

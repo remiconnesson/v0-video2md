@@ -576,7 +576,7 @@ async function processSlidesFromManifest(
       startTime: segment.start_time,
       endTime: segment.end_time,
       duration: segment.duration,
-      s3Uri: publicImageUrl || frame.s3_uri,
+      imageUrl: publicImageUrl,
       hasText: frame.has_text,
       textConfidence: Math.round(frame.text_confidence * 100),
       isDuplicate,
@@ -635,7 +635,7 @@ async function processSlidesFromManifest(
 
       // Continue processing other slides even if DB save fails
       // But emit the slide with error info
-      slideData.s3Uri = frame.s3_uri; // Use original S3 URI since blob upload failed
+      slideData.imageUrl = null; // No image URL available since blob upload failed
       slideData.dbError = dbErrorMessage;
     }
 

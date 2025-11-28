@@ -1,6 +1,7 @@
 "use client";
 
 import { ImageIcon, Loader2, Play } from "lucide-react";
+import Image from "next/image";
 import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -150,13 +151,21 @@ function SlideGrid({ slides }: { slides: SlideData[] }) {
 // ============================================================================
 
 function SlideCard({ slide }: { slide: SlideData }) {
-  // Generate a signed URL or use placeholder
-  // For now, show a placeholder with metadata
   return (
     <div className="group relative rounded-lg border bg-card overflow-hidden">
-      {/* Image placeholder - replace with actual S3 signed URL */}
+      {/* Image display */}
       <div className="aspect-video bg-muted flex items-center justify-center">
-        <ImageIcon className="h-8 w-8 text-muted-foreground" />
+        {slide.imageUrl ? (
+          <Image
+            src={slide.imageUrl}
+            alt={`Slide ${slide.slideIndex + 1}`}
+            fill
+            className="object-cover"
+            sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
+          />
+        ) : (
+          <ImageIcon className="h-8 w-8 text-muted-foreground" />
+        )}
       </div>
 
       {/* Metadata overlay */}

@@ -77,7 +77,7 @@ export interface SlideData {
   startTime: number;
   endTime: number;
   duration: number;
-  s3Uri: string | null;
+  imageUrl: string | null;
   hasText: boolean;
   textConfidence: number;
   isDuplicate: boolean;
