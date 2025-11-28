@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { SlideData, SlideStreamEvent } from "@/lib/slides-types";
 
 export type SlideExtractionStatus =
@@ -32,6 +32,16 @@ export function useSlideExtraction(videoId: string): UseSlideExtractionReturn {
   });
   const [slides, setSlides] = useState<SlideData[]>([]);
   const abortControllerRef = useRef<AbortController | null>(null);
+
+  // NEW: Add cleanup effect
+  // This ensures that if the user navigates away while extracting, we stop processing
+  useEffect(() => {
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, []);
 
   // Load existing slides from DB
   const loadExistingSlides = useCallback(async () => {

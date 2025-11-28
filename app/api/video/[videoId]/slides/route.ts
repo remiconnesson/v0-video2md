@@ -99,30 +99,44 @@ export async function POST(
       },
     });
 
-  // Start workflow
-  const run = await start(extractSlidesWorkflow, [videoId]);
+  try {
+    // Start workflow
+    const run = await start(extractSlidesWorkflow, [videoId]);
 
-  // Update with runId
-  await db
-    .update(videoSlideExtractions)
-    .set({ runId: run.runId })
-    .where(eq(videoSlideExtractions.videoId, videoId));
+    // Update with runId
+    await db
+      .update(videoSlideExtractions)
+      .set({ runId: run.runId })
+      .where(eq(videoSlideExtractions.videoId, videoId));
 
-  // Transform to SSE
-  const transformStream = new TransformStream<SlideStreamEvent, string>({
-    transform(chunk, controller) {
-      controller.enqueue(`data: ${JSON.stringify(chunk)}\n\n`);
-    },
-  });
+    // Transform to SSE
+    const transformStream = new TransformStream<SlideStreamEvent, string>({
+      transform(chunk, controller) {
+        controller.enqueue(`data: ${JSON.stringify(chunk)}\n\n`);
+      },
+    });
 
-  const sseStream = run.readable.pipeThrough(transformStream);
+    const sseStream = run.readable.pipeThrough(transformStream);
 
-  return new NextResponse(sseStream, {
-    headers: {
-      "Content-Type": "text/event-stream",
-      "Cache-Control": "no-cache",
-      Connection: "keep-alive",
-      "X-Workflow-Run-Id": run.runId,
-    },
-  });
+    return new NextResponse(sseStream, {
+      headers: {
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache",
+        Connection: "keep-alive",
+        "X-Workflow-Run-Id": run.runId,
+      },
+    });
+  } catch (error) {
+    console.error("Failed to start workflow:", error);
+
+    // FIX: Revert DB state so user can try again
+    await db
+      .delete(videoSlideExtractions)
+      .where(eq(videoSlideExtractions.videoId, videoId));
+
+    return NextResponse.json(
+      { error: "Failed to start extraction workflow" },
+      { status: 500 },
+    );
+  }
 }

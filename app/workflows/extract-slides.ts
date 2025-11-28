@@ -1,3 +1,4 @@
+import { put } from "@vercel/blob"; // <--- NEW: Install this package if missing
 import { AwsClient } from "aws4fetch";
 import { eq } from "drizzle-orm";
 import { createParser } from "eventsource-parser";
@@ -37,7 +38,24 @@ const CONFIG = {
   S3_REGION: getEnv("S3_REGION", "us-east-1"),
   S3_ACCESS_KEY: getEnv("S3_ACCESS_KEY"),
   S3_SECRET_KEY: getEnv("S3_ACCESS_KEY"), // on purpose, not an issue, see the doc of our private s3 for more details
+  SLIDES_API_PASSWORD: getEnv("SLIDES_API_PASSWORD"),
 };
+
+// ============================================================================
+// Helper: S3 URL Handling
+// ============================================================================
+
+// NEW: aws4fetch needs a real HTTP URL, not s3://
+function getS3DownloadUrl(s3Uri: string): string {
+  const match = s3Uri.match(/^s3:\/\/([^/]+)\/(.+)$/);
+  if (!match) throw new Error(`Invalid S3 URI: ${s3Uri}`);
+
+  const [, bucket, key] = match;
+  // Assumes path-style access for private S3: https://endpoint/bucket/key
+  // Remove trailing slash from base URL if present
+  const baseUrl = CONFIG.SLIDES_EXTRACTOR_URL.replace(/\/$/, "");
+  return `${baseUrl}/${bucket}/${key}`;
+}
 
 // ============================================================================
 // Stream Helpers
@@ -84,11 +102,16 @@ async function emitError(message: string) {
 async function triggerExtraction(videoId: string): Promise<void> {
   "use step";
 
-  const response = await fetch(`${CONFIG.SLIDES_EXTRACTOR_URL}/extract`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ video_id: videoId }),
-  });
+  // Endpoint is /process/youtube/{video_id} with Bearer auth
+  const response = await fetch(
+    `${CONFIG.SLIDES_EXTRACTOR_URL}/process/youtube/${videoId}`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${CONFIG.SLIDES_API_PASSWORD}`,
+      },
+    },
+  );
 
   if (!response.ok) {
     const text = await response.text();
@@ -104,7 +127,12 @@ async function monitorJobProgress(videoId: string): Promise<string> {
   "use step";
 
   const response = await fetch(
-    `${CONFIG.SLIDES_EXTRACTOR_URL}/stream/${videoId}`,
+    `${CONFIG.SLIDES_EXTRACTOR_URL}/jobs/${videoId}/stream`,
+    {
+      headers: {
+        Authorization: `Bearer ${CONFIG.SLIDES_API_PASSWORD}`,
+      },
+    },
   );
 
   if (!response.ok || !response.body) {
@@ -159,11 +187,10 @@ async function monitorJobProgress(videoId: string): Promise<string> {
 async function fetchManifest(s3Uri: string): Promise<VideoManifest> {
   "use step";
 
-  const { bucket, key } = parseS3Uri(s3Uri);
   const client = makeAwsClient();
+  const httpUrl = getS3DownloadUrl(s3Uri); // <--- FIX: Convert s3:// to https://
 
-  const url = `https://${bucket}.s3.${CONFIG.S3_REGION}.amazonaws.com/${key}`;
-  const response = await client.fetch(url);
+  const response = await client.fetch(httpUrl);
 
   if (!response.ok) {
     throw new Error(`Failed to fetch manifest: ${response.status}`);
@@ -194,14 +221,40 @@ async function processSlidesFromManifest(
   );
 
   let slideIndex = 0;
+  const client = makeAwsClient(); // <--- FIX: We need client to download images
 
   for (const segment of staticSegments) {
+    // FIX: Access data via first_frame based on your new Schema
     const frame = segment.first_frame;
 
-    // Skip if no frame data
-    if (!frame) continue;
+    // Skip if no frame data or missing S3 info
+    if (!frame || !frame.s3_uri) continue;
 
-    // Check for duplicate
+    let finalImageUrl = "";
+
+    try {
+      // 1. Download image from Private S3
+      const s3Url = getS3DownloadUrl(frame.s3_uri);
+      const imageRes = await client.fetch(s3Url);
+
+      if (imageRes.ok && imageRes.body) {
+        // 2. Upload to Vercel Blob (Public)
+        // We use the response body stream directly
+        const blob = await put(
+          frame.s3_key || `slide-${videoId}-${slideIndex}.jpg`,
+          imageRes.body,
+          {
+            access: "public",
+          },
+        );
+        finalImageUrl = blob.url;
+      } else {
+        console.error(`Failed to download slide image: ${s3Url}`);
+      }
+    } catch (e) {
+      console.error("Failed to process slide image", e);
+    }
+
     const isDuplicate = frame.duplicate_of !== null;
 
     // Build slide data
@@ -211,7 +264,7 @@ async function processSlidesFromManifest(
       startTime: segment.start_time,
       endTime: segment.end_time,
       duration: segment.duration,
-      s3Uri: frame.s3_uri,
+      s3Uri: finalImageUrl, // <--- FIX: Send the public Blob URL to frontend
       hasText: frame.has_text,
       textConfidence: Math.round(frame.text_confidence * 100),
       isDuplicate,
@@ -227,7 +280,7 @@ async function processSlidesFromManifest(
         startTime: segment.start_time,
         endTime: segment.end_time,
         duration: segment.duration,
-        s3Uri: frame.s3_uri,
+        s3Uri: frame.s3_uri, // Keep original ref if needed
         s3Bucket: frame.s3_bucket,
         s3Key: frame.s3_key,
         hasText: frame.has_text,
@@ -317,12 +370,4 @@ function makeAwsClient(): AwsClient {
     secretAccessKey: CONFIG.S3_SECRET_KEY,
     region: CONFIG.S3_REGION,
   });
-}
-
-function parseS3Uri(s3Uri: string): { bucket: string; key: string } {
-  const match = s3Uri.match(/^s3:\/\/([^/]+)\/(.+)$/);
-  if (!match) {
-    throw new Error(`Invalid S3 URI: ${s3Uri}`);
-  }
-  return { bucket: match[1], key: match[2] };
 }
