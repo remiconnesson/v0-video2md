@@ -105,7 +105,9 @@ async function triggerExtraction(videoId: string): Promise<void> {
   const url = `${CONFIG.SLIDES_EXTRACTOR_URL}/process/youtube/${videoId}`;
 
   try {
-    console.log(`Triggering extraction for video ${videoId} at ${url}`);
+    console.log(
+      `📤 triggerExtraction: Triggering extraction for video ${videoId} at ${url}`,
+    );
 
     const response = await fetch(url, {
       method: "POST",
@@ -131,7 +133,9 @@ async function triggerExtraction(videoId: string): Promise<void> {
       );
     }
 
-    console.log(`Successfully triggered extraction for video ${videoId}`);
+    console.log(
+      `📤 triggerExtraction: Successfully triggered extraction for video ${videoId}`,
+    );
   } catch (error) {
     if (
       error instanceof Error &&
@@ -141,7 +145,7 @@ async function triggerExtraction(videoId: string): Promise<void> {
     }
 
     console.error(
-      `Network error triggering extraction for video ${videoId}:`,
+      `📤 triggerExtraction: Network error triggering extraction for video ${videoId}:`,
       error,
     );
     throw new Error(
@@ -167,14 +171,14 @@ async function checkJobStatus(videoId: string): Promise<{
   let jobFailed = false;
   let failureReason = "";
 
-  console.log(`Checking job status for video ${videoId}`);
+  console.log(`🔍 checkJobStatus: Checking job status for video ${videoId}`);
 
   const response = await fetch(url, {
     headers: { Authorization: `Bearer ${CONFIG.SLIDES_API_PASSWORD}` },
   });
 
   if (response.status === 404) {
-    console.error(`Job not found for video ${videoId}`, {
+    console.error(`🔍 checkJobStatus: Job not found for video ${videoId}`, {
       videoId,
       url,
       status: response.status,
@@ -193,19 +197,22 @@ async function checkJobStatus(videoId: string): Promise<{
     const isServerError = response.status >= 500;
     const isClientError = response.status >= 400 && response.status < 500;
 
-    console.error(`Job status check failed for video ${videoId}`, {
-      videoId,
-      url,
-      status: response.status,
-      statusText: response.statusText,
-      responseBody: responseText.substring(0, 200), // Truncate long responses
-      errorType: isServerError
-        ? "SERVER_ERROR"
-        : isClientError
-          ? "CLIENT_ERROR"
-          : "UNKNOWN_ERROR",
-      timestamp: new Date().toISOString(),
-    });
+    console.error(
+      `🔍 checkJobStatus: Job status check failed for video ${videoId}`,
+      {
+        videoId,
+        url,
+        status: response.status,
+        statusText: response.statusText,
+        responseBody: responseText.substring(0, 200), // Truncate long responses
+        errorType: isServerError
+          ? "SERVER_ERROR"
+          : isClientError
+            ? "CLIENT_ERROR"
+            : "UNKNOWN_ERROR",
+        timestamp: new Date().toISOString(),
+      },
+    );
 
     // Use FatalError for client errors (4xx) as they won't be fixed by retries
     const ErrorClass = isClientError ? FatalError : Error;
@@ -227,27 +234,33 @@ async function checkJobStatus(videoId: string): Promise<{
           try {
             const update: JobUpdate = JSON.parse(event.data);
 
-            console.log(`Job event ${eventCount} for video ${videoId}:`, {
-              status: update.status,
-              progress: update.progress,
-              message: update.message,
-              hasMetadataUri: !!update.metadata_uri,
-            });
+            console.log(
+              `🔍 checkJobStatus: Job event ${eventCount} for video ${videoId}:`,
+              {
+                status: update.status,
+                progress: update.progress,
+                message: update.message,
+                hasMetadataUri: !!update.metadata_uri,
+              },
+            );
 
             // Capture state
             if (update.status === JobStatus.COMPLETED && update.metadata_uri) {
               manifestUri = update.metadata_uri;
               console.log(
-                `Job completed for video ${videoId}, manifest URI: ${manifestUri}`,
+                `🔍 checkJobStatus: Job completed for video ${videoId}, manifest URI: ${manifestUri}`,
               );
             }
             if (update.status === JobStatus.FAILED) {
               jobFailed = true;
               failureReason = update.error ?? "Extraction failed";
-              console.error(`Job failed for video ${videoId}:`, {
-                error: update.error,
-                fullUpdate: update,
-              });
+              console.error(
+                `🔍 checkJobStatus: Job failed for video ${videoId}:`,
+                {
+                  error: update.error,
+                  fullUpdate: update,
+                },
+              );
             }
 
             // Emit progress (fire and forget inside sync callback is safer in loop)
@@ -260,7 +273,7 @@ async function checkJobStatus(videoId: string): Promise<{
             }
           } catch (parseError) {
             console.warn(
-              `Failed to parse job event for video ${videoId}:`,
+              `🔍 checkJobStatus: Failed to parse job event for video ${videoId}:`,
               parseError,
             );
           }
@@ -279,7 +292,7 @@ async function checkJobStatus(videoId: string): Promise<{
     }
 
     console.log(
-      `Stream processing complete for video ${videoId}: ${eventCount} events processed`,
+      `🔍 checkJobStatus: Stream processing complete for video ${videoId}: ${eventCount} events processed`,
     );
   }
 
@@ -310,7 +323,7 @@ async function fetchManifest(s3Uri: string): Promise<VideoManifest> {
   "use step";
 
   try {
-    console.log(`Fetching manifest from S3 URI: ${s3Uri}`);
+    console.log(`📥 fetchManifest: Fetching manifest from S3 URI: ${s3Uri}`);
 
     const client = makeAwsClient();
     const { bucket, key } = parseS3Uri(s3Uri);
@@ -318,7 +331,9 @@ async function fetchManifest(s3Uri: string): Promise<VideoManifest> {
     // RESTORED: Using your custom S3 domain
     const httpUrl = `${CONFIG.S3_BASE_URL}/${bucket}/${key}`;
 
-    console.log(`Fetching manifest from HTTP URL: ${httpUrl}`);
+    console.log(
+      `📥 fetchManifest: Fetching manifest from HTTP URL: ${httpUrl}`,
+    );
 
     const response = await client.fetch(httpUrl);
 
@@ -335,7 +350,10 @@ async function fetchManifest(s3Uri: string): Promise<VideoManifest> {
         responseBody: responseText,
       };
 
-      console.error("Failed to fetch manifest:", errorDetails);
+      console.error(
+        "📥 fetchManifest: Failed to fetch manifest:",
+        errorDetails,
+      );
 
       throw new Error(
         `Failed to fetch manifest from ${httpUrl}: ` +
@@ -345,14 +363,14 @@ async function fetchManifest(s3Uri: string): Promise<VideoManifest> {
 
     const responseText = await response.text();
     console.log(
-      `Manifest response received, parsing JSON (${responseText.length} chars)`,
+      `📥 fetchManifest: Manifest response received, parsing JSON (${responseText.length} chars)`,
     );
 
     let json: unknown;
     try {
       json = JSON.parse(responseText);
     } catch (parseError) {
-      console.error("Failed to parse manifest JSON:", {
+      console.error("📥 fetchManifest: Failed to parse manifest JSON:", {
         s3Uri,
         httpUrl,
         responseText:
@@ -369,7 +387,7 @@ async function fetchManifest(s3Uri: string): Promise<VideoManifest> {
 
     const manifest = VideoManifestSchema.parse(json);
     console.log(
-      `Manifest parsed successfully, contains ${Object.keys(manifest).length} video entries`,
+      `📥 fetchManifest: Manifest parsed successfully, contains ${Object.keys(manifest).length} video entries`,
     );
 
     return manifest;
@@ -381,7 +399,10 @@ async function fetchManifest(s3Uri: string): Promise<VideoManifest> {
       throw error; // Re-throw our detailed error
     }
 
-    console.error(`Unexpected error fetching manifest from ${s3Uri}:`, error);
+    console.error(
+      `📥 fetchManifest: Unexpected error fetching manifest from ${s3Uri}:`,
+      error,
+    );
     throw new Error(
       `Unexpected error fetching manifest from ${s3Uri}: ` +
         `${error instanceof Error ? error.message : "Unknown error"}`,
@@ -399,14 +420,19 @@ async function processSlidesFromManifest(
 ): Promise<number> {
   "use step";
 
-  console.log(`Processing slides for video ${videoId}`);
+  console.log(
+    `💾 processSlidesFromManifest: Processing slides for video ${videoId}`,
+  );
 
   const videoData = manifest[videoId];
   if (!videoData) {
-    console.error(`No data found for video ${videoId} in manifest`, {
-      availableVideos: Object.keys(manifest),
-      videoId,
-    });
+    console.error(
+      `💾 processSlidesFromManifest: No data found for video ${videoId} in manifest`,
+      {
+        availableVideos: Object.keys(manifest),
+        videoId,
+      },
+    );
     throw new Error(
       `No data for video ${videoId} in manifest - available videos: ${Object.keys(manifest).join(", ")}`,
     );
@@ -417,7 +443,7 @@ async function processSlidesFromManifest(
   );
 
   console.log(
-    `Found ${staticSegments.length} static segments for video ${videoId}`,
+    `💾 processSlidesFromManifest: Found ${staticSegments.length} static segments for video ${videoId}`,
   );
 
   let slideIndex = 0;
@@ -429,7 +455,7 @@ async function processSlidesFromManifest(
     const frame = segment.first_frame;
     if (!frame || !frame.s3_uri) {
       console.warn(
-        `Skipping segment ${slideIndex} for video ${videoId}: missing frame or S3 URI`,
+        `💾 processSlidesFromManifest: Skipping segment ${slideIndex} for video ${videoId}: missing frame or S3 URI`,
         {
           segment,
           hasFrame: !!frame,
@@ -445,33 +471,38 @@ async function processSlidesFromManifest(
 
     try {
       console.log(
-        `Processing slide ${slideIndex} for video ${videoId} (frame: ${frame.frame_id})`,
+        `💾 processSlidesFromManifest: Processing slide ${slideIndex} for video ${videoId} (frame: ${frame.frame_id})`,
       );
 
       // 1. Download from Private S3 (Custom Endpoint)
       const { bucket, key } = parseS3Uri(frame.s3_uri);
       const s3Url = `${CONFIG.S3_BASE_URL}/${bucket}/${key}`;
 
-      console.log(`Downloading image from S3: ${s3Url}`);
+      console.log(
+        `💾 processSlidesFromManifest: Downloading image from S3: ${s3Url}`,
+      );
 
       const imageResponse = await client.fetch(s3Url);
 
       if (!imageResponse.ok) {
         const errorText = await imageResponse.text();
         imageProcessingError = `S3 download failed: HTTP ${imageResponse.status} ${imageResponse.statusText} - ${errorText}`;
-        console.error(`Failed to download image for slide ${slideIndex}:`, {
-          videoId,
-          slideIndex,
-          frameId: frame.frame_id,
-          s3Url,
-          status: imageResponse.status,
-          statusText: imageResponse.statusText,
-          responseBody: errorText,
-        });
+        console.error(
+          `💾 processSlidesFromManifest: Failed to download image for slide ${slideIndex}:`,
+          {
+            videoId,
+            slideIndex,
+            frameId: frame.frame_id,
+            s3Url,
+            status: imageResponse.status,
+            statusText: imageResponse.statusText,
+            responseBody: errorText,
+          },
+        );
       } else {
         const imageBuffer = await imageResponse.arrayBuffer();
         console.log(
-          `Downloaded image (${imageBuffer.byteLength} bytes), uploading to Vercel Blob`,
+          `💾 processSlidesFromManifest: Downloaded image (${imageBuffer.byteLength} bytes), uploading to Vercel Blob`,
         );
 
         // 2. Upload to Vercel Blob (MANUAL FETCH - RESTORED)
@@ -492,7 +523,7 @@ async function processSlidesFromManifest(
           const blobErrorText = await blobResponse.text();
           imageProcessingError = `Blob upload failed: HTTP ${blobResponse.status} ${blobResponse.statusText} - ${blobErrorText}`;
           console.error(
-            `Failed to upload image to blob for slide ${slideIndex}:`,
+            `💾 processSlidesFromManifest: Failed to upload image to blob for slide ${slideIndex}:`,
             {
               videoId,
               slideIndex,
@@ -506,13 +537,15 @@ async function processSlidesFromManifest(
         } else {
           const blobResult = (await blobResponse.json()) as { url: string };
           publicImageUrl = blobResult.url;
-          console.log(`Successfully uploaded image to blob: ${publicImageUrl}`);
+          console.log(
+            `💾 processSlidesFromManifest: Successfully uploaded image to blob: ${publicImageUrl}`,
+          );
         }
       }
     } catch (e) {
       imageProcessingError = `Unexpected error processing image: ${e instanceof Error ? e.message : "Unknown error"}`;
       console.error(
-        `Unexpected error processing image for slide ${slideIndex}:`,
+        `💾 processSlidesFromManifest: Unexpected error processing image for slide ${slideIndex}:`,
         {
           videoId,
           slideIndex,
@@ -546,7 +579,9 @@ async function processSlidesFromManifest(
 
     // Save to database
     try {
-      console.log(`Saving slide ${slideIndex} to database`);
+      console.log(
+        `💾 processSlidesFromManifest: Saving slide ${slideIndex} to database`,
+      );
       await db
         .insert(videoSlides)
         .values({
@@ -568,24 +603,29 @@ async function processSlidesFromManifest(
         })
         .onConflictDoNothing();
 
-      console.log(`Successfully saved slide ${slideIndex} to database`);
+      console.log(
+        `💾 processSlidesFromManifest: Successfully saved slide ${slideIndex} to database`,
+      );
       successfulSlides++;
     } catch (dbError) {
       failedSlides++;
       const dbErrorMessage = `Database save failed: ${dbError instanceof Error ? dbError.message : "Unknown DB error"}`;
-      console.error(`Failed to save slide ${slideIndex} to database:`, {
-        videoId,
-        slideIndex,
-        frameId: frame.frame_id,
-        error:
-          dbError instanceof Error
-            ? {
-                name: dbError.name,
-                message: dbError.message,
-                stack: dbError.stack,
-              }
-            : dbError,
-      });
+      console.error(
+        `💾 processSlidesFromManifest: Failed to save slide ${slideIndex} to database:`,
+        {
+          videoId,
+          slideIndex,
+          frameId: frame.frame_id,
+          error:
+            dbError instanceof Error
+              ? {
+                  name: dbError.name,
+                  message: dbError.message,
+                  stack: dbError.stack,
+                }
+              : dbError,
+        },
+      );
 
       // Continue processing other slides even if DB save fails
       // But emit the slide with error info
@@ -597,16 +637,19 @@ async function processSlidesFromManifest(
     slideIndex++;
   }
 
-  console.log(`Slide processing completed for video ${videoId}:`, {
-    totalSegments: staticSegments.length,
-    successfulSlides,
-    failedSlides,
-    successRate: `${Math.round((successfulSlides / staticSegments.length) * 100)}%`,
-  });
+  console.log(
+    `💾 processSlidesFromManifest: Slide processing completed for video ${videoId}:`,
+    {
+      totalSegments: staticSegments.length,
+      successfulSlides,
+      failedSlides,
+      successRate: `${Math.round((successfulSlides / staticSegments.length) * 100)}%`,
+    },
+  );
 
   if (failedSlides > 0) {
     console.warn(
-      `${failedSlides} slides failed to process for video ${videoId}, but ${successfulSlides} succeeded`,
+      `💾 processSlidesFromManifest: ${failedSlides} slides failed to process for video ${videoId}, but ${successfulSlides} succeeded`,
     );
   }
 
@@ -626,11 +669,14 @@ async function updateExtractionStatus(
   "use step";
 
   try {
-    console.log(`Updating extraction status for video ${videoId}:`, {
-      status,
-      totalSlides,
-      hasErrorMessage: !!errorMessage,
-    });
+    console.log(
+      `📊 updateExtractionStatus: Updating extraction status for video ${videoId}:`,
+      {
+        status,
+        totalSlides,
+        hasErrorMessage: !!errorMessage,
+      },
+    );
 
     await db
       .update(videoSlideExtractions)
@@ -642,28 +688,33 @@ async function updateExtractionStatus(
       })
       .where(eq(videoSlideExtractions.videoId, videoId));
 
-    console.log(`Successfully updated extraction status for video ${videoId}`);
+    console.log(
+      `📊 updateExtractionStatus: Successfully updated extraction status for video ${videoId}`,
+    );
     return;
   } catch (error) {
-    console.error(`Failed to update extraction status for video ${videoId}:`, {
-      videoId,
-      status,
-      totalSlides,
-      errorMessage,
-      dbError:
-        error instanceof Error
-          ? {
-              name: error.name,
-              message: error.message,
-              stack: error.stack,
-            }
-          : error,
-    });
+    console.error(
+      `📊 updateExtractionStatus: Failed to update extraction status for video ${videoId}:`,
+      {
+        videoId,
+        status,
+        totalSlides,
+        errorMessage,
+        dbError:
+          error instanceof Error
+            ? {
+                name: error.name,
+                message: error.message,
+                stack: error.stack,
+              }
+            : error,
+      },
+    );
 
     // Don't throw here - we don't want status update failures to crash the workflow
     // But log it prominently since this is critical for monitoring
     console.error(
-      `CRITICAL: Could not update extraction status for video ${videoId} - manual intervention may be required`,
+      `📊 updateExtractionStatus: CRITICAL: Could not update extraction status for video ${videoId} - manual intervention may be required`,
     );
   }
 }
@@ -700,19 +751,22 @@ export async function extractSlidesWorkflow(videoId: string) {
 
     return { success: true, totalSlides };
   } catch (error) {
-    console.error(`Extract slides workflow failed at step: ${currentStep}`, {
-      videoId,
-      step: currentStep,
-      error:
-        error instanceof Error
-          ? {
-              name: error.name,
-              message: error.message,
-              stack: error.stack,
-            }
-          : error,
-      timestamp: new Date().toISOString(),
-    });
+    console.error(
+      `🚀 extractSlidesWorkflow: Extract slides workflow failed at step: ${currentStep}`,
+      {
+        videoId,
+        step: currentStep,
+        error:
+          error instanceof Error
+            ? {
+                name: error.name,
+                message: error.message,
+                stack: error.stack,
+              }
+            : error,
+        timestamp: new Date().toISOString(),
+      },
+    );
 
     const detailedMessage =
       error instanceof Error
@@ -727,7 +781,10 @@ export async function extractSlidesWorkflow(videoId: string) {
         detailedMessage,
       );
     } catch (statusError) {
-      console.error("Failed to update extraction status:", statusError);
+      console.error(
+        "🚀 extractSlidesWorkflow: Failed to update extraction status:",
+        statusError,
+      );
     }
 
     await emitError(detailedMessage);
