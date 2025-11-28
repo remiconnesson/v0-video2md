@@ -153,3 +153,69 @@ export const runFeedback = pgTable("run_feedback", {
 
 export type RunFeedback = typeof runFeedback.$inferSelect;
 export type NewRunFeedback = typeof runFeedback.$inferInsert;
+
+// ============================================================================
+// Slides Tables
+// ============================================================================
+
+export const videoSlideExtractions = pgTable(
+  "video_slide_extractions",
+  {
+    id: serial("id").primaryKey(),
+    videoId: varchar("video_id", { length: 32 })
+      .notNull()
+      .references(() => videos.videoId, { onDelete: "cascade" }),
+    status: extractionStatusEnum("status").notNull().default("pending"),
+    runId: varchar("run_id", { length: 100 }), // Workflow run ID for resumption
+    totalSlides: integer("total_slides"),
+    errorMessage: text("error_message"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("video_slide_extractions_video_idx").on(table.videoId),
+    unique("video_slide_extractions_video_unique").on(table.videoId),
+  ],
+);
+
+export type VideoSlideExtraction = typeof videoSlideExtractions.$inferSelect;
+
+export const videoSlides = pgTable(
+  "video_slides",
+  {
+    id: serial("id").primaryKey(),
+    videoId: varchar("video_id", { length: 32 })
+      .notNull()
+      .references(() => videos.videoId, { onDelete: "cascade" }),
+    slideIndex: integer("slide_index").notNull(),
+    frameId: varchar("frame_id", { length: 100 }),
+
+    // Timing
+    startTime: integer("start_time").notNull(), // seconds
+    endTime: integer("end_time").notNull(),
+    duration: integer("duration").notNull(),
+
+    // S3 reference (we store URI, not blob URL)
+    s3Uri: text("s3_uri"),
+    s3Bucket: varchar("s3_bucket", { length: 100 }),
+    s3Key: text("s3_key"),
+
+    // Text detection metadata
+    hasText: boolean("has_text").default(false),
+    textConfidence: integer("text_confidence"), // 0-100
+    textBoxCount: integer("text_box_count"),
+
+    // Deduplication
+    isDuplicate: boolean("is_duplicate").default(false),
+    duplicateOfSegmentId: integer("duplicate_of_segment_id"),
+
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("video_slides_video_idx").on(table.videoId),
+    unique("video_slides_video_index").on(table.videoId, table.slideIndex),
+  ],
+);
+
+export type VideoSlide = typeof videoSlides.$inferSelect;
+export type NewVideoSlide = typeof videoSlides.$inferInsert;
