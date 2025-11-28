@@ -195,13 +195,35 @@ export const videoSlides = pgTable(
     endTime: integer("end_time").notNull(),
     duration: integer("duration").notNull(),
 
-    // S3 reference (we store URI, not blob URL)
+    // First frame data
+    firstFrameS3Uri: text("first_frame_s3_uri"),
+    firstFrameS3Bucket: varchar("first_frame_s3_bucket", { length: 100 }),
+    firstFrameS3Key: text("first_frame_s3_key"),
+    firstFrameImageUrl: text("first_frame_image_url"),
+    firstFrameHasText: boolean("first_frame_has_text").default(false),
+    firstFrameTextConfidence: integer("first_frame_text_confidence"), // 0-100
+    firstFrameTextBoxCount: integer("first_frame_text_box_count"),
+    firstFrameIsDuplicate: boolean("first_frame_is_duplicate").default(false),
+    firstFrameDuplicateOfSegmentId: integer("first_frame_duplicate_of_segment_id"),
+    firstFrameSkipReason: text("first_frame_skip_reason"),
+
+    // Last frame data
+    lastFrameS3Uri: text("last_frame_s3_uri"),
+    lastFrameS3Bucket: varchar("last_frame_s3_bucket", { length: 100 }),
+    lastFrameS3Key: text("last_frame_s3_key"),
+    lastFrameImageUrl: text("last_frame_image_url"),
+    lastFrameHasText: boolean("last_frame_has_text").default(false),
+    lastFrameTextConfidence: integer("last_frame_text_confidence"), // 0-100
+    lastFrameTextBoxCount: integer("last_frame_text_box_count"),
+    lastFrameIsDuplicate: boolean("last_frame_is_duplicate").default(false),
+    lastFrameDuplicateOfSegmentId: integer("last_frame_duplicate_of_segment_id"),
+    lastFrameSkipReason: text("last_frame_skip_reason"),
+
+    // Legacy columns (kept for backward compatibility)
     s3Uri: text("s3_uri"),
     s3Bucket: varchar("s3_bucket", { length: 100 }),
     s3Key: text("s3_key"),
     imageUrl: text("image_url"),
-
-    // Text detection metadata
     hasText: boolean("has_text").default(false),
     textConfidence: integer("text_confidence"), // 0-100
     textBoxCount: integer("text_box_count"),

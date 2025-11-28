@@ -77,9 +77,28 @@ export interface SlideData {
   startTime: number;
   endTime: number;
   duration: number;
+
+  // First frame data
+  firstFrameImageUrl: string | null;
+  firstFrameHasText: boolean;
+  firstFrameTextConfidence: number;
+  firstFrameIsDuplicate: boolean;
+  firstFrameDuplicateOfSegmentId: number | null;
+  firstFrameSkipReason: string | null;
+
+  // Last frame data
+  lastFrameImageUrl: string | null;
+  lastFrameHasText: boolean;
+  lastFrameTextConfidence: number;
+  lastFrameIsDuplicate: boolean;
+  lastFrameDuplicateOfSegmentId: number | null;
+  lastFrameSkipReason: string | null;
+
+  // Legacy fields (kept for backward compatibility)
   imageUrl: string | null;
   hasText: boolean;
   textConfidence: number;
+
   isDuplicate: boolean;
   imageProcessingError?: string | null;
   dbError?: string | null;

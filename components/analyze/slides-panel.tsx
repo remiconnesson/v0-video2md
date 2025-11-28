@@ -153,32 +153,126 @@ function SlideGrid({ slides }: { slides: SlideData[] }) {
 function SlideCard({ slide }: { slide: SlideData }) {
   return (
     <div className="group relative rounded-lg border bg-card overflow-hidden">
-      {/* Image display */}
-      <div className="aspect-video bg-muted flex items-center justify-center">
-        {slide.imageUrl ? (
-          <Image
-            src={slide.imageUrl}
-            alt={`Slide ${slide.slideIndex + 1}`}
-            fill
-            className="object-cover"
-            sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
-          />
-        ) : (
-          <ImageIcon className="h-8 w-8 text-muted-foreground" />
-        )}
+      {/* Side-by-side image display */}
+      <div className="aspect-video bg-muted flex">
+        {/* First frame */}
+        <div className="flex-1 bg-muted flex items-center justify-center relative">
+          {slide.firstFrameImageUrl ? (
+            <Image
+              src={slide.firstFrameImageUrl}
+              alt={`Slide ${slide.slideIndex + 1} - First Frame`}
+              fill
+              className="object-cover"
+              sizes="(max-width: 768px) 25vw, (max-width: 1024px) 16.5vw, 12.5vw"
+            />
+          ) : (
+            <ImageIcon className="h-6 w-6 text-muted-foreground" />
+          )}
+          {/* First frame label */}
+          <div className="absolute top-1 left-1 bg-black/70 text-white text-xs px-1 py-0.5 rounded">
+            First
+          </div>
+          {/* Indicators for first frame */}
+          <div className="absolute top-1 right-1 flex flex-col gap-0.5">
+            {slide.firstFrameHasText && (
+              <div className="bg-blue-500/80 text-white text-xs px-1 py-0.5 rounded">
+                T:{slide.firstFrameTextConfidence}%
+              </div>
+            )}
+            {slide.firstFrameIsDuplicate && (
+              <div className="bg-red-500/80 text-white text-xs px-1 py-0.5 rounded">
+                DUP
+              </div>
+            )}
+            {slide.firstFrameSkipReason && (
+              <div className="bg-yellow-500/80 text-white text-xs px-1 py-0.5 rounded" title={slide.firstFrameSkipReason}>
+                SKIP
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Last frame */}
+        <div className="flex-1 bg-muted flex items-center justify-center relative border-l">
+          {slide.lastFrameImageUrl ? (
+            <Image
+              src={slide.lastFrameImageUrl}
+              alt={`Slide ${slide.slideIndex + 1} - Last Frame`}
+              fill
+              className="object-cover"
+              sizes="(max-width: 768px) 25vw, (max-width: 1024px) 16.5vw, 12.5vw"
+            />
+          ) : (
+            <ImageIcon className="h-6 w-6 text-muted-foreground" />
+          )}
+          {/* Last frame label */}
+          <div className="absolute top-1 left-1 bg-black/70 text-white text-xs px-1 py-0.5 rounded">
+            Last
+          </div>
+          {/* Indicators for last frame */}
+          <div className="absolute top-1 right-1 flex flex-col gap-0.5">
+            {slide.lastFrameHasText && (
+              <div className="bg-green-500/80 text-white text-xs px-1 py-0.5 rounded">
+                T:{slide.lastFrameTextConfidence}%
+              </div>
+            )}
+            {slide.lastFrameIsDuplicate && (
+              <div className="bg-red-500/80 text-white text-xs px-1 py-0.5 rounded">
+                DUP
+              </div>
+            )}
+            {slide.lastFrameSkipReason && (
+              <div className="bg-orange-500/80 text-white text-xs px-1 py-0.5 rounded" title={slide.lastFrameSkipReason}>
+                SKIP
+              </div>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* Metadata overlay */}
       <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
         <div className="absolute bottom-0 left-0 right-0 p-2 text-white text-xs">
-          <div className="flex justify-between">
-            <span>
-              {formatTime(slide.startTime)} - {formatTime(slide.endTime)}
-            </span>
-            {slide.hasText && (
-              <span className="bg-white/20 px-1.5 rounded">
-                Text: {slide.textConfidence}%
+          <div className="space-y-1">
+            {/* Timing */}
+            <div className="flex justify-between items-center">
+              <span>
+                {formatTime(slide.startTime)} - {formatTime(slide.endTime)}
               </span>
+              <div className="flex gap-1">
+                {slide.firstFrameHasText && slide.lastFrameHasText && (
+                  <span className="bg-purple-500/80 px-1.5 rounded">
+                    Both have text
+                  </span>
+                )}
+                {!slide.firstFrameHasText && !slide.lastFrameHasText && slide.hasText && (
+                  <span className="bg-gray-500/80 px-1.5 rounded">
+                    Legacy text
+                  </span>
+                )}
+                {slide.firstFrameIsDuplicate && slide.lastFrameIsDuplicate && (
+                  <span className="bg-red-500/80 px-1.5 rounded">
+                    Both duplicate
+                  </span>
+                )}
+                {(slide.firstFrameSkipReason || slide.lastFrameSkipReason) && (
+                  <span className="bg-yellow-500/80 px-1.5 rounded">
+                    Has skips
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Skip reasons */}
+            {(slide.firstFrameSkipReason || slide.lastFrameSkipReason) && (
+              <div className="text-xs text-yellow-200">
+                {slide.firstFrameSkipReason && (
+                  <div>First: {slide.firstFrameSkipReason}</div>
+                )}
+                {slide.lastFrameSkipReason && (
+                  <div>Last: {slide.lastFrameSkipReason}</div>
+                )}
+              </div>
             )}
           </div>
         </div>
