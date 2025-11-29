@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { getRun, start } from "workflow/api";
 import type { AnalysisStreamEvent } from "@/app/workflows/dynamic-analysis";
@@ -51,11 +51,46 @@ async function startSlidesWorkflow(videoId: string) {
     .limit(1);
 
   if (existing?.status === "in_progress" || existing?.status === "completed") {
-    return existing.runId
-      ? { runId: existing.runId, readable: getRun(existing.runId).readable }
-      : null;
+    if (!existing.runId) {
+      // No runId yet, return null
+      return null;
+    }
+
+    // If it's a real runId (not a placeholder), return it
+    if (!existing.runId.startsWith("CLAIMING-")) {
+      return {
+        runId: existing.runId,
+        readable: getRun(existing.runId).readable,
+      };
+    }
+
+    // It's a placeholder from another request - poll until it becomes real
+    // Max wait time: 10 seconds (20 attempts * 500ms)
+    for (let attempt = 0; attempt < 20; attempt++) {
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
+      const [updated] = await db
+        .select({
+          runId: videoSlideExtractions.runId,
+        })
+        .from(videoSlideExtractions)
+        .where(eq(videoSlideExtractions.videoId, videoId))
+        .limit(1);
+
+      if (updated?.runId && !updated.runId.startsWith("CLAIMING-")) {
+        // Placeholder was replaced with real runId
+        return {
+          runId: updated.runId,
+          readable: getRun(updated.runId).readable,
+        };
+      }
+    }
+
+    // Timeout waiting for placeholder to resolve - return null to retry from scratch
+    return null;
   }
 
+  // Ensure the row exists with status in_progress, but don't set runId yet
   await db
     .insert(videoSlideExtractions)
     .values({
@@ -71,9 +106,23 @@ async function startSlidesWorkflow(videoId: string) {
       },
     });
 
-  // After insert/update, check if another concurrent request already set the runId
-  // This prevents duplicate workflow starts in race conditions
-  const [updated] = await db
+  // Generate a unique temporary placeholder to atomically claim the workflow slot
+  const placeholderRunId = `CLAIMING-${Date.now()}-${Math.random().toString(36).substring(2, 15)}`;
+
+  // Atomically claim the slot by updating runId ONLY if it's currently NULL
+  // This is the critical race-condition fix: only one request can successfully claim a NULL runId
+  await db
+    .update(videoSlideExtractions)
+    .set({ runId: placeholderRunId })
+    .where(
+      and(
+        eq(videoSlideExtractions.videoId, videoId),
+        isNull(videoSlideExtractions.runId),
+      ),
+    );
+
+  // Check if we successfully claimed the slot by verifying our placeholder is now set
+  const [claimed] = await db
     .select({
       status: videoSlideExtractions.status,
       runId: videoSlideExtractions.runId,
@@ -82,13 +131,51 @@ async function startSlidesWorkflow(videoId: string) {
     .where(eq(videoSlideExtractions.videoId, videoId))
     .limit(1);
 
-  if (updated?.runId) {
-    // Another concurrent request already started the workflow, reuse it
-    return { runId: updated.runId, readable: getRun(updated.runId).readable };
+  if (claimed?.runId !== placeholderRunId) {
+    // Another concurrent request won the race and is starting the workflow
+    // Wait for the placeholder to be replaced with a real runId
+    if (claimed?.runId) {
+      if (!claimed.runId.startsWith("CLAIMING-")) {
+        // Already has a real runId, return it
+        return {
+          runId: claimed.runId,
+          readable: getRun(claimed.runId).readable,
+        };
+      }
+
+      // Still a placeholder from another request - poll until it becomes real
+      // Max wait time: 10 seconds (20 attempts * 500ms)
+      for (let attempt = 0; attempt < 20; attempt++) {
+        await new Promise((resolve) => setTimeout(resolve, 500));
+
+        const [updated] = await db
+          .select({
+            runId: videoSlideExtractions.runId,
+          })
+          .from(videoSlideExtractions)
+          .where(eq(videoSlideExtractions.videoId, videoId))
+          .limit(1);
+
+        if (updated?.runId && !updated.runId.startsWith("CLAIMING-")) {
+          // Placeholder was replaced with real runId
+          return {
+            runId: updated.runId,
+            readable: getRun(updated.runId).readable,
+          };
+        }
+      }
+
+      // Timeout waiting for placeholder to resolve - return null to retry from scratch
+      return null;
+    }
+
+    return null;
   }
 
+  // We successfully claimed the slot, now start the workflow
   const run = await start(extractSlidesWorkflow, [videoId]);
 
+  // Update with the actual workflow runId, replacing our placeholder
   await db
     .update(videoSlideExtractions)
     .set({ runId: run.runId })
