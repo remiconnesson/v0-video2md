@@ -15,7 +15,8 @@ const slideFeedbackSchema = z.object({
   lastFrameHasTextValidated: z.boolean().nullable().optional(),
   lastFrameIsDuplicateValidated: z.boolean().nullable().optional(),
   framesSameness: z.enum(["same", "different"]).nullable().optional(),
-  isPicked: z.boolean().nullable().optional(),
+  isFirstFramePicked: z.boolean().nullable().optional(),
+  isLastFramePicked: z.boolean().nullable().optional(),
 });
 
 // ============================================================================
@@ -99,7 +100,8 @@ export async function POST(
       lastFrameIsDuplicateValidated:
         feedback.lastFrameIsDuplicateValidated ?? null,
       framesSameness: feedback.framesSameness ?? null,
-      isPicked: feedback.isPicked ?? true,
+      isFirstFramePicked: feedback.isFirstFramePicked ?? true,
+      isLastFramePicked: feedback.isLastFramePicked ?? true,
     })
     .onConflictDoUpdate({
       target: [slideFeedback.videoId, slideFeedback.slideIndex],
@@ -111,7 +113,8 @@ export async function POST(
         lastFrameIsDuplicateValidated:
           feedback.lastFrameIsDuplicateValidated ?? null,
         framesSameness: feedback.framesSameness ?? null,
-        isPicked: feedback.isPicked ?? true,
+        isFirstFramePicked: feedback.isFirstFramePicked ?? true,
+        isLastFramePicked: feedback.isLastFramePicked ?? true,
         updatedAt: new Date(),
       },
     });

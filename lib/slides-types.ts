@@ -109,7 +109,8 @@ export interface SlideFeedbackData {
   lastFrameHasTextValidated: boolean | null;
   lastFrameIsDuplicateValidated: boolean | null;
   framesSameness: "same" | "different" | null;
-  isPicked: boolean | null;
+  isFirstFramePicked: boolean | null;
+  isLastFramePicked: boolean | null;
 }
 
 // ============================================================================

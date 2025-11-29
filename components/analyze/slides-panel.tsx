@@ -388,6 +388,8 @@ function FrameCard({
   onZoom,
   validation,
   onValidate,
+  isPicked,
+  onPickedChange,
 }: {
   label: "First" | "Last";
   imageUrl: string | null;
@@ -400,6 +402,8 @@ function FrameCard({
   onZoom: () => void;
   validation: FrameValidation;
   onValidate: (field: "hasText" | "isDuplicate", value: boolean | null) => void;
+  isPicked: boolean;
+  onPickedChange: (picked: boolean) => void;
 }) {
   // Find duplicate slide if exists
   const duplicateSlide =
@@ -415,6 +419,17 @@ function FrameCard({
 
   return (
     <div className="flex flex-col gap-3">
+      {/* Frame header with checkbox */}
+      <label className="flex items-center gap-2 cursor-pointer">
+        <input
+          type="checkbox"
+          checked={isPicked}
+          onChange={(e) => onPickedChange(e.target.checked)}
+          className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-2 focus:ring-primary"
+        />
+        <span className="text-sm font-medium">{label} Frame</span>
+      </label>
+
       {/* Image container - preserves aspect ratio */}
       <div className="relative w-full group">
         <button
@@ -610,8 +625,11 @@ function SlideCard({
   const [samenessFeedback, setSamenessFeedback] = useState<SamenessFeedback>(
     initialFeedback?.framesSameness ?? null,
   );
-  const [isPicked, setIsPicked] = useState<boolean>(
-    initialFeedback?.isPicked ?? true,
+  const [isFirstFramePicked, setIsFirstFramePicked] = useState<boolean>(
+    initialFeedback?.isFirstFramePicked ?? true,
+  );
+  const [isLastFramePicked, setIsLastFramePicked] = useState<boolean>(
+    initialFeedback?.isLastFramePicked ?? true,
   );
 
   // Sync state when initialFeedback prop changes
@@ -628,7 +646,8 @@ function SlideCard({
           initialFeedback.lastFrameIsDuplicateValidated ?? null,
       });
       setSamenessFeedback(initialFeedback.framesSameness ?? null);
-      setIsPicked(initialFeedback.isPicked ?? true);
+      setIsFirstFramePicked(initialFeedback.isFirstFramePicked ?? true);
+      setIsLastFramePicked(initialFeedback.isLastFramePicked ?? true);
     }
   }, [initialFeedback]);
 
@@ -643,7 +662,8 @@ function SlideCard({
       lastFrameIsDuplicateValidated:
         lastValidation.isDuplicateValidated ?? null,
       framesSameness: samenessFeedback,
-      isPicked,
+      isFirstFramePicked,
+      isLastFramePicked,
     };
 
     // Only submit if at least one field has a value
@@ -653,7 +673,8 @@ function SlideCard({
       feedback.lastFrameHasTextValidated !== null ||
       feedback.lastFrameIsDuplicateValidated !== null ||
       feedback.framesSameness !== null ||
-      feedback.isPicked !== null;
+      feedback.isFirstFramePicked !== null ||
+      feedback.isLastFramePicked !== null;
 
     if (hasAnyValue) {
       onSubmitFeedback(feedback);
@@ -662,7 +683,8 @@ function SlideCard({
     firstValidation,
     lastValidation,
     samenessFeedback,
-    isPicked,
+    isFirstFramePicked,
+    isLastFramePicked,
     slide.slideIndex,
     onSubmitFeedback,
   ]);
@@ -711,15 +733,7 @@ function SlideCard({
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-2 bg-muted/30 border-b">
         <div className="flex items-center gap-3">
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={isPicked}
-              onChange={(e) => setIsPicked(e.target.checked)}
-              className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-2 focus:ring-primary"
-            />
-            <span className="font-semibold">Slide #{slide.slideIndex + 1}</span>
-          </label>
+          <span className="font-semibold">Slide #{slide.slideIndex + 1}</span>
           <span className="text-sm text-muted-foreground">
             {formatTime(slide.startTime)} - {formatTime(slide.endTime)}
           </span>
@@ -742,6 +756,8 @@ function SlideCard({
             onZoom={() => handleZoom("first")}
             validation={firstValidation}
             onValidate={handleFirstValidate}
+            isPicked={isFirstFramePicked}
+            onPickedChange={setIsFirstFramePicked}
           />
           <FrameCard
             label="Last"
@@ -755,6 +771,8 @@ function SlideCard({
             onZoom={() => handleZoom("last")}
             validation={lastValidation}
             onValidate={handleLastValidate}
+            isPicked={isLastFramePicked}
+            onPickedChange={setIsLastFramePicked}
           />
         </div>
 
