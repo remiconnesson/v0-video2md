@@ -610,6 +610,9 @@ function SlideCard({
   const [samenessFeedback, setSamenessFeedback] = useState<SamenessFeedback>(
     initialFeedback?.framesSameness ?? null,
   );
+  const [isPicked, setIsPicked] = useState<boolean>(
+    initialFeedback?.isPicked ?? true,
+  );
 
   // Sync state when initialFeedback prop changes
   useEffect(() => {
@@ -625,6 +628,7 @@ function SlideCard({
           initialFeedback.lastFrameIsDuplicateValidated ?? null,
       });
       setSamenessFeedback(initialFeedback.framesSameness ?? null);
+      setIsPicked(initialFeedback.isPicked ?? true);
     }
   }, [initialFeedback]);
 
@@ -639,6 +643,7 @@ function SlideCard({
       lastFrameIsDuplicateValidated:
         lastValidation.isDuplicateValidated ?? null,
       framesSameness: samenessFeedback,
+      isPicked,
     };
 
     // Only submit if at least one field has a value
@@ -647,7 +652,8 @@ function SlideCard({
       feedback.firstFrameIsDuplicateValidated !== null ||
       feedback.lastFrameHasTextValidated !== null ||
       feedback.lastFrameIsDuplicateValidated !== null ||
-      feedback.framesSameness !== null;
+      feedback.framesSameness !== null ||
+      feedback.isPicked !== null;
 
     if (hasAnyValue) {
       onSubmitFeedback(feedback);
@@ -656,6 +662,7 @@ function SlideCard({
     firstValidation,
     lastValidation,
     samenessFeedback,
+    isPicked,
     slide.slideIndex,
     onSubmitFeedback,
   ]);
@@ -704,7 +711,15 @@ function SlideCard({
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-2 bg-muted/30 border-b">
         <div className="flex items-center gap-3">
-          <span className="font-semibold">Slide #{slide.slideIndex + 1}</span>
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={isPicked}
+              onChange={(e) => setIsPicked(e.target.checked)}
+              className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-2 focus:ring-primary"
+            />
+            <span className="font-semibold">Slide #{slide.slideIndex + 1}</span>
+          </label>
           <span className="text-sm text-muted-foreground">
             {formatTime(slide.startTime)} - {formatTime(slide.endTime)}
           </span>
