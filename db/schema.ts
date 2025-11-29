@@ -1,11 +1,11 @@
 import {
   boolean,
   index,
-  real,
   integer,
   jsonb,
   pgEnum,
   pgTable,
+  real,
   serial,
   text,
   timestamp,
