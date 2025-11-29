@@ -1,5 +1,4 @@
 import { z } from "zod";
-import type { SlideFeedback } from "@/db/schema";
 
 // ============================================================================
 // Manifest Schema (matches your S3 output)
