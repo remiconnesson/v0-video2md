@@ -86,33 +86,9 @@ export async function POST(
   const feedback = parsed.data;
 
   // Upsert slide feedback
-  const existing = await db
-    .select({ id: slideFeedback.id })
-    .from(slideFeedback)
-    .where(
-      and(
-        eq(slideFeedback.videoId, videoId),
-        eq(slideFeedback.slideIndex, feedback.slideIndex),
-      ),
-    )
-    .limit(1);
-
-  if (existing.length > 0) {
-    await db
-      .update(slideFeedback)
-      .set({
-        firstFrameHasTextValidated: feedback.firstFrameHasTextValidated ?? null,
-        firstFrameIsDuplicateValidated:
-          feedback.firstFrameIsDuplicateValidated ?? null,
-        lastFrameHasTextValidated: feedback.lastFrameHasTextValidated ?? null,
-        lastFrameIsDuplicateValidated:
-          feedback.lastFrameIsDuplicateValidated ?? null,
-        framesSameness: feedback.framesSameness ?? null,
-        updatedAt: new Date(),
-      })
-      .where(eq(slideFeedback.id, existing[0].id));
-  } else {
-    await db.insert(slideFeedback).values({
+  await db
+    .insert(slideFeedback)
+    .values({
       videoId,
       slideIndex: feedback.slideIndex,
       firstFrameHasTextValidated: feedback.firstFrameHasTextValidated ?? null,
@@ -122,8 +98,20 @@ export async function POST(
       lastFrameIsDuplicateValidated:
         feedback.lastFrameIsDuplicateValidated ?? null,
       framesSameness: feedback.framesSameness ?? null,
+    })
+    .onConflictDoUpdate({
+      target: [slideFeedback.videoId, slideFeedback.slideIndex],
+      set: {
+        firstFrameHasTextValidated: feedback.firstFrameHasTextValidated ?? null,
+        firstFrameIsDuplicateValidated:
+          feedback.firstFrameIsDuplicateValidated ?? null,
+        lastFrameHasTextValidated: feedback.lastFrameHasTextValidated ?? null,
+        lastFrameIsDuplicateValidated:
+          feedback.lastFrameIsDuplicateValidated ?? null,
+        framesSameness: feedback.framesSameness ?? null,
+        updatedAt: new Date(),
+      },
     });
-  }
 
   return NextResponse.json({ success: true });
 }
