@@ -71,6 +71,22 @@ async function startSlidesWorkflow(videoId: string) {
       },
     });
 
+  // After insert/update, check if another concurrent request already set the runId
+  // This prevents duplicate workflow starts in race conditions
+  const [updated] = await db
+    .select({
+      status: videoSlideExtractions.status,
+      runId: videoSlideExtractions.runId,
+    })
+    .from(videoSlideExtractions)
+    .where(eq(videoSlideExtractions.videoId, videoId))
+    .limit(1);
+
+  if (updated?.runId) {
+    // Another concurrent request already started the workflow, reuse it
+    return { runId: updated.runId, readable: getRun(updated.runId).readable };
+  }
+
   const run = await start(extractSlidesWorkflow, [videoId]);
 
   await db
