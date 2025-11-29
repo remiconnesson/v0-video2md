@@ -9,7 +9,7 @@ import {
   Youtube,
 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -55,6 +55,7 @@ export function AnalyzeView({ youtubeId, initialVersion }: AnalyzeViewProps) {
   const [runs, setRuns] = useState<AnalysisRun[]>([]);
   const [selectedRun, setSelectedRun] = useState<AnalysisRun | null>(null);
   const [rerollOpen, setRerollOpen] = useState(false);
+  const [runsInitialized, setRunsInitialized] = useState(false);
 
   const {
     state: analysisState,
@@ -63,6 +64,9 @@ export function AnalyzeView({ youtubeId, initialVersion }: AnalyzeViewProps) {
   } = useDynamicAnalysis(youtubeId);
   const { state: transcriptState, startFetching } =
     useTranscriptFetcher(youtubeId);
+
+  const autoTranscriptStarted = useRef(false);
+  const autoAnalysisStarted = useRef(false);
 
   // Fetch existing analysis runs
   const fetchRuns = useCallback(async (): Promise<AnalysisRun[]> => {
@@ -84,6 +88,8 @@ export function AnalyzeView({ youtubeId, initialVersion }: AnalyzeViewProps) {
     } catch (err) {
       console.error("Failed to fetch runs:", err);
       return [];
+    } finally {
+      setRunsInitialized(true);
     }
   }, [youtubeId, initialVersion]);
 
@@ -141,8 +147,9 @@ export function AnalyzeView({ youtubeId, initialVersion }: AnalyzeViewProps) {
           channelName: transcriptState.videoInfo.channelName,
         });
       }
+      fetchRuns();
     }
-  }, [transcriptState.status, transcriptState.videoInfo]);
+  }, [fetchRuns, transcriptState.status, transcriptState.videoInfo]);
 
   // When analysis completes, refresh runs
   useEffect(() => {
@@ -163,10 +170,10 @@ export function AnalyzeView({ youtubeId, initialVersion }: AnalyzeViewProps) {
   ]);
 
   // Handlers
-  const handleFetchTranscript = () => {
+  const handleFetchTranscript = useCallback(() => {
     setPageStatus("fetching_transcript");
     startFetching();
-  };
+  }, [startFetching]);
 
   const handleVersionChange = (version: number) => {
     const run = runs.find((r) => r.version === version);
@@ -178,18 +185,51 @@ export function AnalyzeView({ youtubeId, initialVersion }: AnalyzeViewProps) {
     }
   };
 
-  const handleStartAnalysis = () => {
+  const handleStartAnalysis = useCallback(() => {
     startAnalysis();
-  };
+  }, [startAnalysis]);
 
   const handleReroll = (instructions: string) => {
     setRerollOpen(false);
     startAnalysis(instructions);
   };
 
+  // Auto-start transcript fetching when needed
+  useEffect(() => {
+    if (
+      pageStatus === "no_transcript" &&
+      transcriptState.status === "idle" &&
+      !autoTranscriptStarted.current
+    ) {
+      autoTranscriptStarted.current = true;
+      handleFetchTranscript();
+    }
+  }, [handleFetchTranscript, pageStatus, transcriptState.status]);
+
+  const hasRuns = runs.length > 0;
+
+  // Auto-start analysis once transcript is ready and no runs exist
+  useEffect(() => {
+    if (
+      pageStatus === "ready" &&
+      runsInitialized &&
+      !hasRuns &&
+      analysisState.status === "idle" &&
+      !autoAnalysisStarted.current
+    ) {
+      autoAnalysisStarted.current = true;
+      handleStartAnalysis();
+    }
+  }, [
+    analysisState.status,
+    handleStartAnalysis,
+    hasRuns,
+    pageStatus,
+    runsInitialized,
+  ]);
+
   // Computed state
   const isAnalysisRunning = analysisState.status === "running";
-  const hasRuns = runs.length > 0;
   const displayResult: unknown = isAnalysisRunning
     ? analysisState.result
     : (selectedRun?.result ?? null);

@@ -14,7 +14,7 @@ import {
   ZoomIn,
 } from "lucide-react";
 import Image from "next/image";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
@@ -32,11 +32,29 @@ interface SlidesPanelProps {
 export function SlidesPanel({ videoId }: SlidesPanelProps) {
   const { state, slides, startExtraction, loadExistingSlides } =
     useSlideExtraction(videoId);
+  const autoStartRef = useRef(false);
+  const hasCheckedSlidesRef = useRef(false);
 
   // Load existing slides on mount
   useEffect(() => {
-    loadExistingSlides();
+    const loadSlides = async () => {
+      await loadExistingSlides();
+      hasCheckedSlidesRef.current = true;
+    };
+
+    void loadSlides();
   }, [loadExistingSlides]);
+
+  useEffect(() => {
+    if (
+      hasCheckedSlidesRef.current &&
+      !autoStartRef.current &&
+      state.status === "idle"
+    ) {
+      autoStartRef.current = true;
+      startExtraction();
+    }
+  }, [startExtraction, state.status]);
 
   // Idle state - show extract button
   if (state.status === "idle") {
