@@ -1,5 +1,6 @@
 "use client";
 
+import { useVirtualizer } from "@tanstack/react-virtual";
 import {
   Check,
   ChevronLeft,
@@ -14,12 +15,11 @@ import {
   ZoomIn,
 } from "lucide-react";
 import Image from "next/image";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { useSlideExtraction } from "@/hooks/use-slides-extraction";
 import type { SlideData, SlideFeedbackData } from "@/lib/slides-types";
 import { formatTime } from "@/lib/time-utils";
@@ -192,21 +192,19 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <ScrollArea className="h-[600px]">
-          <SlideGrid
-            slides={slides}
-            allSlides={slides}
-            feedbackMap={feedbackMap}
-            onSubmitFeedback={submitFeedback}
-          />
-        </ScrollArea>
+        <SlideGrid
+          slides={slides}
+          allSlides={slides}
+          feedbackMap={feedbackMap}
+          onSubmitFeedback={submitFeedback}
+        />
       </CardContent>
     </Card>
   );
 }
 
 // ============================================================================
-// Slide Grid
+// Slide Grid with Virtual Scrolling
 // ============================================================================
 
 function SlideGrid({
@@ -220,17 +218,57 @@ function SlideGrid({
   feedbackMap: Map<number, SlideFeedbackData>;
   onSubmitFeedback: (feedback: SlideFeedbackData) => Promise<void>;
 }) {
+  const parentRef = useRef<HTMLDivElement>(null);
+
+  const virtualizer = useVirtualizer({
+    count: slides.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => 500, // Estimated height of each slide card
+    overscan: 2, // Number of items to render outside of the visible area
+  });
+
   return (
-    <div className="flex flex-col gap-6">
-      {slides.map((slide) => (
-        <SlideCard
-          key={slide.slideIndex}
-          slide={slide}
-          allSlides={allSlides}
-          initialFeedback={feedbackMap.get(slide.slideIndex)}
-          onSubmitFeedback={onSubmitFeedback}
-        />
-      ))}
+    <div
+      ref={parentRef}
+      className="h-[600px] overflow-auto"
+      style={{
+        contain: "strict",
+      }}
+    >
+      <div
+        style={{
+          height: `${virtualizer.getTotalSize()}px`,
+          width: "100%",
+          position: "relative",
+        }}
+      >
+        {virtualizer.getVirtualItems().map((virtualItem) => {
+          const slide = slides[virtualItem.index];
+          return (
+            <div
+              key={virtualItem.key}
+              data-index={virtualItem.index}
+              ref={virtualizer.measureElement}
+              style={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                width: "100%",
+                transform: `translateY(${virtualItem.start}px)`,
+              }}
+            >
+              <div className="pb-6">
+                <SlideCard
+                  slide={slide}
+                  allSlides={allSlides}
+                  initialFeedback={feedbackMap.get(slide.slideIndex)}
+                  onSubmitFeedback={onSubmitFeedback}
+                />
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
