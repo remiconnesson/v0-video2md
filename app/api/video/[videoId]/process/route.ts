@@ -152,10 +152,22 @@ export async function POST(
       streamPromises.push(streamWorkflow(slidesRun.readable, "slides", writer));
     }
 
-    Promise.all(streamPromises).finally(() => {
-      // Close the stream once the concatenated workflow has finished
-      writer.close();
-    });
+    Promise.all(streamPromises)
+      .catch((err) => {
+        console.error("Stream concatenation failed:", err);
+        try {
+          writer.abort(err);
+        } catch (_e) {
+          // Ignore abort errors
+        }
+      })
+      .finally(() => {
+        try {
+          writer.close();
+        } catch (_e) {
+          // Ignore close errors
+        }
+      });
   } catch (error) {
     console.error("Failed to start processing workflow:", error);
     writer.abort(error);
