@@ -32,7 +32,7 @@ async function streamWorkflow<
     const { done, value } = await reader.read();
     if (done || !value) break;
 
-    onEvent?.(value);
+    await onEvent?.(value);
 
     const payload = { source, ...(value as object) } as AnyStreamEvent;
     await writer.write(`data: ${JSON.stringify(payload)}\n\n`);
