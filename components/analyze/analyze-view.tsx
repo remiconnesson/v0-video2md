@@ -75,12 +75,19 @@ export function AnalyzeView({ youtubeId, initialVersion }: AnalyzeViewProps) {
   });
 
   const abortControllerRef = useRef<AbortController | null>(null);
-  const autoStartedRef = useRef(false);
+  const processingAbortRef = useRef<AbortController | null>(null);
 
   const abort = useCallback(() => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
       abortControllerRef.current = null;
+    }
+  }, []);
+
+  const abortProcessing = useCallback(() => {
+    if (processingAbortRef.current) {
+      processingAbortRef.current.abort();
+      processingAbortRef.current = null;
     }
   }, []);
 
@@ -207,8 +214,15 @@ export function AnalyzeView({ youtubeId, initialVersion }: AnalyzeViewProps) {
   }, [youtubeId, initialVersion]);
 
   const startProcessing = useCallback(async () => {
-    if (autoStartedRef.current) return;
-    autoStartedRef.current = true;
+    // Avoid double wiring when the transcript is already present
+    if (transcriptState.status === "completed") return;
+
+    // Only allow a single live stream subscription at a time so we don't
+    // duplicate work when remounting.
+    if (processingAbortRef.current) return;
+
+    const controller = new AbortController();
+    processingAbortRef.current = controller;
 
     setPageStatus("fetching_transcript");
     setTranscriptState({
@@ -221,6 +235,7 @@ export function AnalyzeView({ youtubeId, initialVersion }: AnalyzeViewProps) {
     try {
       const res = await fetch(`/api/video/${youtubeId}/process`, {
         method: "POST",
+        signal: controller.signal,
       });
 
       if (!res.ok || !res.body) {
@@ -323,6 +338,10 @@ export function AnalyzeView({ youtubeId, initialVersion }: AnalyzeViewProps) {
         }
       }
     } catch (err) {
+      if (err instanceof Error && err.name === "AbortError") {
+        return;
+      }
+
       console.error("Failed to start processing:", err);
       setPageStatus("no_transcript");
       setTranscriptState((prev) => ({
@@ -330,23 +349,30 @@ export function AnalyzeView({ youtubeId, initialVersion }: AnalyzeViewProps) {
         status: "error",
         error: err instanceof Error ? err.message : "Unknown error",
       }));
+    } finally {
+      processingAbortRef.current = null;
     }
-  }, [youtubeId]);
+  }, [transcriptState.status, youtubeId]);
 
   // Check video status and fetch runs
   const checkVideoStatus = useCallback(async () => {
+    type VideoStatus = "not_found" | "processing" | "ready";
+
+    let status: VideoStatus = "not_found";
+
     try {
       const res = await fetch(`/api/video/${youtubeId}`);
       if (!res.ok) {
         setPageStatus("no_transcript");
-        return;
+        return status;
       }
 
       const data = await res.json();
+      status = data.status as VideoStatus;
 
-      if (data.status === "not_found") {
+      if (status === "not_found") {
         setPageStatus("no_transcript");
-        return;
+        return status;
       }
 
       // We have video data
@@ -358,25 +384,55 @@ export function AnalyzeView({ youtubeId, initialVersion }: AnalyzeViewProps) {
         });
       }
 
-      // Check if transcript exists (processing or ready means we have it)
-      if (data.status === "processing" || data.status === "ready") {
+      if (status === "ready") {
         setPageStatus("ready");
-        // Fetch analysis runs
+        setTranscriptState({
+          status: "completed",
+          progress: 100,
+          message: "Transcript already fetched",
+          error: null,
+        });
         await fetchRuns();
+      } else if (status === "processing") {
+        setPageStatus("fetching_transcript");
+        setTranscriptState((prev) => ({
+          ...prev,
+          status: "fetching",
+          progress: Math.max(prev.progress, 10),
+          message: "Resuming transcript fetch...",
+          error: null,
+        }));
       } else {
         setPageStatus("no_transcript");
       }
+
+      return status;
     } catch (err) {
       console.error("Failed to check video status:", err);
       setPageStatus("no_transcript");
+      return status;
     }
   }, [youtubeId, fetchRuns]);
 
   // Initial load
   useEffect(() => {
-    checkVideoStatus();
-    startProcessing();
-  }, [checkVideoStatus, startProcessing]);
+    let cancelled = false;
+
+    (async () => {
+      const status = await checkVideoStatus();
+      if (cancelled) return;
+
+      if (status !== "ready") {
+        startProcessing();
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      abort();
+      abortProcessing();
+    };
+  }, [abort, abortProcessing, checkVideoStatus, startProcessing]);
 
   // When analysis completes, refresh runs
   useEffect(() => {
@@ -398,6 +454,7 @@ export function AnalyzeView({ youtubeId, initialVersion }: AnalyzeViewProps) {
 
   // Handlers
   const handleFetchTranscript = () => {
+    abortProcessing();
     setPageStatus("fetching_transcript");
     startProcessing();
   };
