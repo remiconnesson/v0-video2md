@@ -414,12 +414,12 @@ function FrameCard({
     : null;
 
   return (
-    <div className="flex gap-3">
+    <div className="flex flex-col gap-3">
       {/* Image container - preserves aspect ratio */}
-      <div className="relative flex-shrink-0 w-48 group">
+      <div className="relative w-full group">
         <button
           type="button"
-          className="relative bg-muted rounded-lg overflow-hidden cursor-zoom-in"
+          className="relative bg-muted rounded-lg overflow-hidden cursor-zoom-in w-full"
           onClick={onZoom}
         >
           {imageUrl ? (
@@ -467,8 +467,8 @@ function FrameCard({
         )}
       </div>
 
-      {/* Side annotation panel */}
-      <div className="flex-1 space-y-3 text-sm">
+      {/* Annotation panel below image */}
+      <div className="w-full space-y-3 text-sm">
         {/* Has Text annotation with validation */}
         <div className="flex items-center justify-between gap-2 p-2 rounded-md bg-muted/50">
           <div className="flex items-center gap-2">
