@@ -9,13 +9,13 @@ import {
   Youtube,
 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import type { AnalysisStreamEvent } from "@/app/workflows/dynamic-analysis";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useDynamicAnalysis } from "@/hooks/use-dynamic-analysis";
-import { useTranscriptFetcher } from "@/hooks/use-transcript-fetcher";
+import type { AnalysisState } from "@/hooks/use-dynamic-analysis";
 import { isRecord } from "@/lib/type-utils";
 import { AnalysisPanel } from "./analysis-panel";
 import { RerollDialog } from "./reroll-dialog";
@@ -40,6 +40,8 @@ interface VideoInfo {
 
 type PageStatus = "loading" | "no_transcript" | "fetching_transcript" | "ready";
 
+type TranscriptStatus = "idle" | "fetching" | "completed" | "error";
+
 interface AnalyzeViewProps {
   youtubeId: string;
   initialVersion?: number;
@@ -56,13 +58,139 @@ export function AnalyzeView({ youtubeId, initialVersion }: AnalyzeViewProps) {
   const [selectedRun, setSelectedRun] = useState<AnalysisRun | null>(null);
   const [rerollOpen, setRerollOpen] = useState(false);
 
-  const {
-    state: analysisState,
-    startAnalysis,
-    abort,
-  } = useDynamicAnalysis(youtubeId);
-  const { state: transcriptState, startFetching } =
-    useTranscriptFetcher(youtubeId);
+  const [transcriptState, setTranscriptState] = useState({
+    status: "idle" as TranscriptStatus,
+    progress: 0,
+    message: "",
+    error: null as string | null,
+  });
+
+  const transcriptStatusRef = useRef<TranscriptStatus>("idle");
+
+  const [analysisState, setAnalysisState] = useState<AnalysisState>({
+    status: "idle",
+    phase: "",
+    message: "",
+    result: null,
+    runId: null,
+    error: null,
+  });
+
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const processingAbortRef = useRef<AbortController | null>(null);
+
+  const abort = useCallback(() => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+  }, []);
+
+  const abortProcessing = useCallback(() => {
+    if (processingAbortRef.current) {
+      processingAbortRef.current.abort();
+      processingAbortRef.current = null;
+    }
+  }, []);
+
+  const startAnalysisRun = useCallback(
+    async (additionalInstructions?: string) => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+
+      abortControllerRef.current = new AbortController();
+
+      setAnalysisState({
+        status: "running",
+        phase: "starting",
+        message: "Starting analysis...",
+        result: null,
+        runId: null,
+        error: null,
+      });
+
+      try {
+        const response = await fetch(`/api/video/${youtubeId}/analyze`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ additionalInstructions }),
+          signal: abortControllerRef.current.signal,
+        });
+
+        if (!response.ok || !response.body) {
+          throw new Error("Failed to start analysis");
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n");
+          buffer = lines.pop() || "";
+
+          for (const line of lines) {
+            if (line.startsWith("data: ")) {
+              try {
+                const event = JSON.parse(line.slice(6)) as AnalysisStreamEvent;
+
+                if (event.type === "progress") {
+                  setAnalysisState((prev) => ({
+                    ...prev,
+                    phase: event.phase,
+                    message: event.message,
+                  }));
+                } else if (event.type === "partial") {
+                  setAnalysisState((prev) => ({
+                    ...prev,
+                    result: event.data,
+                  }));
+                } else if (event.type === "result") {
+                  setAnalysisState((prev) => ({
+                    ...prev,
+                    result: event.data,
+                  }));
+                } else if (event.type === "complete") {
+                  setAnalysisState((prev) => ({
+                    ...prev,
+                    status: "completed",
+                    runId: event.runId,
+                    phase: "complete",
+                    message: "Analysis complete!",
+                  }));
+                } else if (event.type === "error") {
+                  throw new Error(event.message);
+                }
+              } catch (parseError) {
+                if (!(parseError instanceof SyntaxError)) {
+                  throw parseError;
+                }
+              }
+            }
+          }
+        }
+      } catch (err) {
+        if (err instanceof Error && err.name === "AbortError") {
+          return;
+        }
+
+        const errorMessage =
+          err instanceof Error ? err.message : "Analysis failed";
+
+        setAnalysisState((prev) => ({
+          ...prev,
+          status: "error",
+          error: errorMessage,
+        }));
+      }
+    },
+    [youtubeId],
+  );
 
   // Fetch existing analysis runs
   const fetchRuns = useCallback(async (): Promise<AnalysisRun[]> => {
@@ -87,20 +215,170 @@ export function AnalyzeView({ youtubeId, initialVersion }: AnalyzeViewProps) {
     }
   }, [youtubeId, initialVersion]);
 
+  useEffect(() => {
+    transcriptStatusRef.current = transcriptState.status;
+  }, [transcriptState.status]);
+
+  const startProcessing = useCallback(async () => {
+    // Avoid double wiring when the transcript is already present
+    if (transcriptStatusRef.current === "completed") return;
+
+    // Only allow a single live stream subscription at a time so we don't
+    // duplicate work when remounting.
+    if (processingAbortRef.current) return;
+
+    const controller = new AbortController();
+    processingAbortRef.current = controller;
+
+    setPageStatus("fetching_transcript");
+    setTranscriptState({
+      status: "fetching",
+      progress: 10,
+      message: "Connecting to YouTube...",
+      error: null,
+    });
+
+    try {
+      const res = await fetch(`/api/video/${youtubeId}/process`, {
+        method: "POST",
+        signal: controller.signal,
+      });
+
+      if (!res.ok || !res.body) {
+        throw new Error("Failed to start processing");
+      }
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() ?? "";
+
+        for (const line of lines) {
+          if (!line.startsWith("data: ")) continue;
+
+          try {
+            const event = JSON.parse(line.slice(6));
+
+            if (event.source === "meta") {
+              // Meta events currently just expose the slide run id
+              continue;
+            }
+
+            if (event.source === "transcript") {
+              if (event.type === "progress") {
+                setTranscriptState((prev) => ({
+                  ...prev,
+                  status: "fetching",
+                  progress: event.progress ?? prev.progress,
+                  message: event.message ?? prev.message,
+                }));
+              } else if (event.type === "complete") {
+                setTranscriptState({
+                  status: "completed",
+                  progress: 100,
+                  message: "Transcript fetched successfully",
+                  error: null,
+                });
+
+                if (event.video) {
+                  setVideoInfo({
+                    title: event.video.title,
+                    channelName: event.video.channelName,
+                  });
+                }
+
+                setPageStatus("ready");
+              } else if (event.type === "error") {
+                setTranscriptState({
+                  status: "error",
+                  progress: 0,
+                  message: "",
+                  error: event.error,
+                });
+                setPageStatus("no_transcript");
+              }
+            }
+
+            if (event.source === "analysis") {
+              if (event.type === "progress") {
+                setAnalysisState((prev) => ({
+                  ...prev,
+                  status: "running",
+                  phase: event.phase,
+                  message: event.message,
+                }));
+              } else if (event.type === "partial" || event.type === "result") {
+                setAnalysisState((prev) => ({
+                  ...prev,
+                  status: "running",
+                  result: event.data,
+                }));
+              } else if (event.type === "complete") {
+                setAnalysisState((prev) => ({
+                  ...prev,
+                  status: "completed",
+                  runId: event.runId,
+                  phase: "complete",
+                  message: "Analysis complete!",
+                }));
+              } else if (event.type === "error") {
+                setAnalysisState((prev) => ({
+                  ...prev,
+                  status: "error",
+                  error: event.message,
+                }));
+              }
+            }
+          } catch (parseError) {
+            if (!(parseError instanceof SyntaxError)) {
+              throw parseError;
+            }
+          }
+        }
+      }
+    } catch (err) {
+      if (err instanceof Error && err.name === "AbortError") {
+        return;
+      }
+
+      console.error("Failed to start processing:", err);
+      setPageStatus("no_transcript");
+      setTranscriptState((prev) => ({
+        ...prev,
+        status: "error",
+        error: err instanceof Error ? err.message : "Unknown error",
+      }));
+    } finally {
+      processingAbortRef.current = null;
+    }
+  }, [youtubeId]);
+
   // Check video status and fetch runs
   const checkVideoStatus = useCallback(async () => {
+    type VideoStatus = "not_found" | "processing" | "ready";
+
+    let status: VideoStatus = "not_found";
+
     try {
       const res = await fetch(`/api/video/${youtubeId}`);
       if (!res.ok) {
         setPageStatus("no_transcript");
-        return;
+        return status;
       }
 
       const data = await res.json();
+      status = data.status as VideoStatus;
 
-      if (data.status === "not_found") {
+      if (status === "not_found") {
         setPageStatus("no_transcript");
-        return;
+        return status;
       }
 
       // We have video data
@@ -112,37 +390,55 @@ export function AnalyzeView({ youtubeId, initialVersion }: AnalyzeViewProps) {
         });
       }
 
-      // Check if transcript exists (processing or ready means we have it)
-      if (data.status === "processing" || data.status === "ready") {
+      if (status === "ready") {
         setPageStatus("ready");
-        // Fetch analysis runs
+        setTranscriptState({
+          status: "completed",
+          progress: 100,
+          message: "Transcript already fetched",
+          error: null,
+        });
         await fetchRuns();
+      } else if (status === "processing") {
+        setPageStatus("fetching_transcript");
+        setTranscriptState((prev) => ({
+          ...prev,
+          status: "fetching",
+          progress: Math.max(prev.progress, 10),
+          message: "Resuming transcript fetch...",
+          error: null,
+        }));
       } else {
         setPageStatus("no_transcript");
       }
+
+      return status;
     } catch (err) {
       console.error("Failed to check video status:", err);
       setPageStatus("no_transcript");
+      return status;
     }
   }, [youtubeId, fetchRuns]);
 
   // Initial load
   useEffect(() => {
-    checkVideoStatus();
-  }, [checkVideoStatus]);
+    let cancelled = false;
 
-  // Handle transcript fetch completion
-  useEffect(() => {
-    if (transcriptState.status === "completed") {
-      setPageStatus("ready");
-      if (transcriptState.videoInfo) {
-        setVideoInfo({
-          title: transcriptState.videoInfo.title,
-          channelName: transcriptState.videoInfo.channelName,
-        });
+    (async () => {
+      const status = await checkVideoStatus();
+      if (cancelled) return;
+
+      if (status !== "ready") {
+        startProcessing();
       }
-    }
-  }, [transcriptState.status, transcriptState.videoInfo]);
+    })();
+
+    return () => {
+      cancelled = true;
+      abort();
+      abortProcessing();
+    };
+  }, [abort, abortProcessing, checkVideoStatus, startProcessing]);
 
   // When analysis completes, refresh runs
   useEffect(() => {
@@ -164,8 +460,9 @@ export function AnalyzeView({ youtubeId, initialVersion }: AnalyzeViewProps) {
 
   // Handlers
   const handleFetchTranscript = () => {
+    abortProcessing();
     setPageStatus("fetching_transcript");
-    startFetching();
+    startProcessing();
   };
 
   const handleVersionChange = (version: number) => {
@@ -179,12 +476,12 @@ export function AnalyzeView({ youtubeId, initialVersion }: AnalyzeViewProps) {
   };
 
   const handleStartAnalysis = () => {
-    startAnalysis();
+    startAnalysisRun();
   };
 
   const handleReroll = (instructions: string) => {
     setRerollOpen(false);
-    startAnalysis(instructions);
+    startAnalysisRun(instructions);
   };
 
   // Computed state
