@@ -51,9 +51,43 @@ async function startSlidesWorkflow(videoId: string) {
     .limit(1);
 
   if (existing?.status === "in_progress" || existing?.status === "completed") {
-    return existing.runId && !existing.runId.startsWith("CLAIMING-")
-      ? { runId: existing.runId, readable: getRun(existing.runId).readable }
-      : null;
+    if (!existing.runId) {
+      // No runId yet, return null
+      return null;
+    }
+
+    // If it's a real runId (not a placeholder), return it
+    if (!existing.runId.startsWith("CLAIMING-")) {
+      return {
+        runId: existing.runId,
+        readable: getRun(existing.runId).readable,
+      };
+    }
+
+    // It's a placeholder from another request - poll until it becomes real
+    // Max wait time: 10 seconds (20 attempts * 500ms)
+    for (let attempt = 0; attempt < 20; attempt++) {
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
+      const [updated] = await db
+        .select({
+          runId: videoSlideExtractions.runId,
+        })
+        .from(videoSlideExtractions)
+        .where(eq(videoSlideExtractions.videoId, videoId))
+        .limit(1);
+
+      if (updated?.runId && !updated.runId.startsWith("CLAIMING-")) {
+        // Placeholder was replaced with real runId
+        return {
+          runId: updated.runId,
+          readable: getRun(updated.runId).readable,
+        };
+      }
+    }
+
+    // Timeout waiting for placeholder to resolve - return null to retry from scratch
+    return null;
   }
 
   // Ensure the row exists with status in_progress, but don't set runId yet
