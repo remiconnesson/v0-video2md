@@ -1,7 +1,7 @@
 import { desc, eq, isNotNull } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { db } from "@/db";
-import { scrapTranscriptV1, videos } from "@/db/schema";
+import { channels, scrapTranscriptV1, videos } from "@/db/schema";
 import { formatDuration } from "@/lib/time-utils";
 
 // ============================================================================
@@ -18,9 +18,11 @@ export async function GET() {
       durationSeconds: scrapTranscriptV1.durationSeconds,
       thumbnail: scrapTranscriptV1.thumbnail,
       createdAt: scrapTranscriptV1.createdAt,
+      channelName: channels.channelName,
     })
     .from(videos)
     .innerJoin(scrapTranscriptV1, eq(videos.videoId, scrapTranscriptV1.videoId))
+    .innerJoin(channels, eq(videos.channelId, channels.channelId))
     .where(isNotNull(scrapTranscriptV1.transcript))
     .orderBy(desc(scrapTranscriptV1.createdAt))
     .limit(50);
@@ -35,6 +37,7 @@ export async function GET() {
         ? formatDuration(row.durationSeconds)
         : "N/A",
       thumbnail: row.thumbnail ?? "",
+      channelName: row.channelName,
     },
     extractSlides: false,
     completedAt: row.createdAt?.toISOString(),
