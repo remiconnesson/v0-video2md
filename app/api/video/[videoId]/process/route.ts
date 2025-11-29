@@ -51,7 +51,7 @@ async function startSlidesWorkflow(videoId: string) {
     .limit(1);
 
   if (existing?.status === "in_progress" || existing?.status === "completed") {
-    return existing.runId
+    return existing.runId && !existing.runId.startsWith("CLAIMING-")
       ? { runId: existing.runId, readable: getRun(existing.runId).readable }
       : null;
   }
