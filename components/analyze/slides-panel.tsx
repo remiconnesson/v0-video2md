@@ -307,7 +307,8 @@ function FrameCard({
     <div className="flex gap-3">
       {/* Image container - preserves aspect ratio */}
       <div className="relative flex-shrink-0 w-48 group">
-        <div
+        <button
+          type="button"
           className="relative bg-muted rounded-lg overflow-hidden cursor-zoom-in"
           onClick={onZoom}
         >
@@ -334,7 +335,7 @@ function FrameCard({
           <div className="absolute top-1 left-1 bg-black/70 text-white text-xs px-1.5 py-0.5 rounded">
             {label}
           </div>
-        </div>
+        </button>
 
         {/* Mini duplicate preview */}
         {isDuplicate && duplicateImageUrl && (
