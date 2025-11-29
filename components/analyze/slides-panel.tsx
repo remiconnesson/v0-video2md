@@ -21,21 +21,12 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useSlideExtraction } from "@/hooks/use-slides-extraction";
-import type { SlideData } from "@/lib/slides-types";
+import type { SlideData, SlideFeedbackData } from "@/lib/slides-types";
 import { formatTime } from "@/lib/time-utils";
 import { cn } from "@/lib/utils";
 
 interface SlidesPanelProps {
   videoId: string;
-}
-
-interface SlideFeedbackData {
-  slideIndex: number;
-  firstFrameHasTextValidated: boolean | null;
-  firstFrameIsDuplicateValidated: boolean | null;
-  lastFrameHasTextValidated: boolean | null;
-  lastFrameIsDuplicateValidated: boolean | null;
-  framesSameness: "same" | "different" | null;
 }
 
 export function SlidesPanel({ videoId }: SlidesPanelProps) {

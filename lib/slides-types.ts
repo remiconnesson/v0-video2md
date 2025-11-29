@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { SlideFeedback } from "@/db/schema";
 
 // ============================================================================
 // Manifest Schema (matches your S3 output)
@@ -96,6 +97,19 @@ export interface SlideData {
 
   imageProcessingError?: string | null;
   dbError?: string | null;
+}
+
+// ============================================================================
+// Slide Feedback Types
+// ============================================================================
+
+export interface SlideFeedbackData {
+  slideIndex: number;
+  firstFrameHasTextValidated: boolean | null;
+  firstFrameIsDuplicateValidated: boolean | null;
+  lastFrameHasTextValidated: boolean | null;
+  lastFrameIsDuplicateValidated: boolean | null;
+  framesSameness: "same" | "different" | null;
 }
 
 // ============================================================================

@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/db";
 import { slideFeedback, videos } from "@/db/schema";
+import type { SlideFeedbackData } from "@/lib/slides-types";
 
 // ============================================================================
 // Schemas
