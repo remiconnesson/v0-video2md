@@ -582,6 +582,23 @@ function SlideCard({
     initialFeedback?.framesSameness ?? null,
   );
 
+  // Sync state when initialFeedback prop changes
+  useEffect(() => {
+    if (initialFeedback) {
+      setFirstValidation({
+        hasTextValidated: initialFeedback.firstFrameHasTextValidated ?? null,
+        isDuplicateValidated:
+          initialFeedback.firstFrameIsDuplicateValidated ?? null,
+      });
+      setLastValidation({
+        hasTextValidated: initialFeedback.lastFrameHasTextValidated ?? null,
+        isDuplicateValidated:
+          initialFeedback.lastFrameIsDuplicateValidated ?? null,
+      });
+      setSamenessFeedback(initialFeedback.framesSameness ?? null);
+    }
+  }, [initialFeedback]);
+
   // Submit feedback when it changes
   useEffect(() => {
     const feedback: SlideFeedbackData = {
