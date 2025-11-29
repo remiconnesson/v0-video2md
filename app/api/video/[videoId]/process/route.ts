@@ -98,12 +98,43 @@ async function startSlidesWorkflow(videoId: string) {
     .limit(1);
 
   if (claimed?.runId !== placeholderRunId) {
-    // Another concurrent request won the race and already started the workflow
-    // Return the existing workflow run instead of starting a duplicate
-    if (claimed?.runId && !claimed.runId.startsWith("CLAIMING-")) {
-      return { runId: claimed.runId, readable: getRun(claimed.runId).readable };
+    // Another concurrent request won the race and is starting the workflow
+    // Wait for the placeholder to be replaced with a real runId
+    if (claimed?.runId) {
+      if (!claimed.runId.startsWith("CLAIMING-")) {
+        // Already has a real runId, return it
+        return {
+          runId: claimed.runId,
+          readable: getRun(claimed.runId).readable,
+        };
+      }
+
+      // Still a placeholder from another request - poll until it becomes real
+      // Max wait time: 10 seconds (20 attempts * 500ms)
+      for (let attempt = 0; attempt < 20; attempt++) {
+        await new Promise((resolve) => setTimeout(resolve, 500));
+
+        const [updated] = await db
+          .select({
+            runId: videoSlideExtractions.runId,
+          })
+          .from(videoSlideExtractions)
+          .where(eq(videoSlideExtractions.videoId, videoId))
+          .limit(1);
+
+        if (updated?.runId && !updated.runId.startsWith("CLAIMING-")) {
+          // Placeholder was replaced with real runId
+          return {
+            runId: updated.runId,
+            readable: getRun(updated.runId).readable,
+          };
+        }
+      }
+
+      // Timeout waiting for placeholder to resolve - return null to retry from scratch
+      return null;
     }
-    // If it's still a placeholder from another request, wait and retry
+
     return null;
   }
 
