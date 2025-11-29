@@ -21,7 +21,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
 import { useSlideExtraction } from "@/hooks/use-slides-extraction";
-import type { SlideData } from "@/lib/slides-types";
+import type { SlideData, SlideFeedbackData } from "@/lib/slides-types";
 import { formatTime } from "@/lib/time-utils";
 import { cn } from "@/lib/utils";
 
@@ -32,11 +32,63 @@ interface SlidesPanelProps {
 export function SlidesPanel({ videoId }: SlidesPanelProps) {
   const { state, slides, startExtraction, loadExistingSlides } =
     useSlideExtraction(videoId);
+  const [feedbackMap, setFeedbackMap] = useState<
+    Map<number, SlideFeedbackData>
+  >(new Map());
 
-  // Load existing slides on mount
+  const loadFeedback = useCallback(async () => {
+    try {
+      const response = await fetch(`/api/video/${videoId}/slides/feedback`);
+      if (!response.ok) return;
+
+      const data = await response.json();
+      const newMap = new Map<number, SlideFeedbackData>();
+
+      data.feedback.forEach((fb: SlideFeedbackData) => {
+        newMap.set(fb.slideIndex, fb);
+      });
+
+      setFeedbackMap(newMap);
+    } catch (error) {
+      console.error("Failed to load slide feedback:", error);
+    }
+  }, [videoId]);
+
+  const submitFeedback = useCallback(
+    async (feedback: SlideFeedbackData) => {
+      try {
+        // Optimistically update local state
+        setFeedbackMap((prev) => {
+          const next = new Map(prev);
+          next.set(feedback.slideIndex, feedback);
+          return next;
+        });
+
+        const response = await fetch(`/api/video/${videoId}/slides/feedback`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(feedback),
+        });
+
+        if (!response.ok) {
+          console.error("Failed to save slide feedback");
+          // Reload to sync state
+          await loadFeedback();
+        }
+      } catch (error) {
+        console.error("Failed to save slide feedback:", error);
+        // Reload to sync state
+        await loadFeedback();
+      }
+    },
+    [videoId, loadFeedback],
+  );
+
+  // Load existing slides and feedback on mount
   useEffect(() => {
     loadExistingSlides();
-  }, [loadExistingSlides]);
+    loadFeedback();
+  }, [loadExistingSlides, loadFeedback]);
 
   // Idle state - show extract button
   if (state.status === "idle") {
@@ -96,7 +148,12 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
               <p className="text-sm font-medium mb-3">
                 {slides.length} slides found so far
               </p>
-              <SlideGrid slides={slides} allSlides={slides} />
+              <SlideGrid
+                slides={slides}
+                allSlides={slides}
+                feedbackMap={feedbackMap}
+                onSubmitFeedback={submitFeedback}
+              />
             </div>
           )}
         </CardContent>
@@ -135,7 +192,12 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <SlideGrid slides={slides} allSlides={slides} />
+        <SlideGrid
+          slides={slides}
+          allSlides={slides}
+          feedbackMap={feedbackMap}
+          onSubmitFeedback={submitFeedback}
+        />
       </CardContent>
     </Card>
   );
@@ -148,9 +210,13 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
 function SlideGrid({
   slides,
   allSlides,
+  feedbackMap,
+  onSubmitFeedback,
 }: {
   slides: SlideData[];
   allSlides: SlideData[];
+  feedbackMap: Map<number, SlideFeedbackData>;
+  onSubmitFeedback: (feedback: SlideFeedbackData) => Promise<void>;
 }) {
   const parentRef = useRef<HTMLDivElement>(null);
 
@@ -192,7 +258,12 @@ function SlideGrid({
               }}
             >
               <div className="pb-6">
-                <SlideCard slide={slide} allSlides={allSlides} />
+                <SlideCard
+                  slide={slide}
+                  allSlides={allSlides}
+                  initialFeedback={feedbackMap.get(slide.slideIndex)}
+                  onSubmitFeedback={onSubmitFeedback}
+                />
               </div>
             </div>
           );
@@ -515,17 +586,79 @@ type SamenessFeedback = "same" | "different" | null;
 function SlideCard({
   slide,
   allSlides,
+  initialFeedback,
+  onSubmitFeedback,
 }: {
   slide: SlideData;
   allSlides: SlideData[];
+  initialFeedback?: SlideFeedbackData;
+  onSubmitFeedback: (feedback: SlideFeedbackData) => Promise<void>;
 }) {
   const [zoomOpen, setZoomOpen] = useState(false);
   const [zoomFrame, setZoomFrame] = useState<"first" | "last">("first");
 
-  const [firstValidation, setFirstValidation] = useState<FrameValidation>({});
-  const [lastValidation, setLastValidation] = useState<FrameValidation>({});
-  const [samenessFeedback, setSamenessFeedback] =
-    useState<SamenessFeedback>(null);
+  const [firstValidation, setFirstValidation] = useState<FrameValidation>({
+    hasTextValidated: initialFeedback?.firstFrameHasTextValidated ?? null,
+    isDuplicateValidated:
+      initialFeedback?.firstFrameIsDuplicateValidated ?? null,
+  });
+  const [lastValidation, setLastValidation] = useState<FrameValidation>({
+    hasTextValidated: initialFeedback?.lastFrameHasTextValidated ?? null,
+    isDuplicateValidated:
+      initialFeedback?.lastFrameIsDuplicateValidated ?? null,
+  });
+  const [samenessFeedback, setSamenessFeedback] = useState<SamenessFeedback>(
+    initialFeedback?.framesSameness ?? null,
+  );
+
+  // Sync state when initialFeedback prop changes
+  useEffect(() => {
+    if (initialFeedback) {
+      setFirstValidation({
+        hasTextValidated: initialFeedback.firstFrameHasTextValidated ?? null,
+        isDuplicateValidated:
+          initialFeedback.firstFrameIsDuplicateValidated ?? null,
+      });
+      setLastValidation({
+        hasTextValidated: initialFeedback.lastFrameHasTextValidated ?? null,
+        isDuplicateValidated:
+          initialFeedback.lastFrameIsDuplicateValidated ?? null,
+      });
+      setSamenessFeedback(initialFeedback.framesSameness ?? null);
+    }
+  }, [initialFeedback]);
+
+  // Submit feedback when it changes
+  useEffect(() => {
+    const feedback: SlideFeedbackData = {
+      slideIndex: slide.slideIndex,
+      firstFrameHasTextValidated: firstValidation.hasTextValidated ?? null,
+      firstFrameIsDuplicateValidated:
+        firstValidation.isDuplicateValidated ?? null,
+      lastFrameHasTextValidated: lastValidation.hasTextValidated ?? null,
+      lastFrameIsDuplicateValidated:
+        lastValidation.isDuplicateValidated ?? null,
+      framesSameness: samenessFeedback,
+    };
+
+    // Only submit if at least one field has a value
+    const hasAnyValue =
+      feedback.firstFrameHasTextValidated !== null ||
+      feedback.firstFrameIsDuplicateValidated !== null ||
+      feedback.lastFrameHasTextValidated !== null ||
+      feedback.lastFrameIsDuplicateValidated !== null ||
+      feedback.framesSameness !== null;
+
+    if (hasAnyValue) {
+      onSubmitFeedback(feedback);
+    }
+  }, [
+    firstValidation,
+    lastValidation,
+    samenessFeedback,
+    slide.slideIndex,
+    onSubmitFeedback,
+  ]);
 
   const handleZoom = useCallback((frame: "first" | "last") => {
     setZoomFrame(frame);
