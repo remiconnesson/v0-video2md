@@ -114,7 +114,7 @@ export async function POST(
           feedback.lastFrameIsDuplicateValidated ?? null,
         framesSameness: feedback.framesSameness ?? null,
         isFirstFramePicked: feedback.isFirstFramePicked ?? true,
-        isLastFramePicked: feedback.isLastFramePicked ?? true,
+        isLastFramePicked: feedback.isLastFramePicked ?? false,
         updatedAt: new Date(),
       },
     });
