@@ -101,7 +101,7 @@ export async function POST(
         feedback.lastFrameIsDuplicateValidated ?? null,
       framesSameness: feedback.framesSameness ?? null,
       isFirstFramePicked: feedback.isFirstFramePicked ?? true,
-      isLastFramePicked: feedback.isLastFramePicked ?? true,
+      isLastFramePicked: feedback.isLastFramePicked ?? false,
     })
     .onConflictDoUpdate({
       target: [slideFeedback.videoId, slideFeedback.slideIndex],
