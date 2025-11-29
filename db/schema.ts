@@ -260,6 +260,9 @@ export const slideFeedback = pgTable(
     // Sameness feedback
     framesSameness: varchar("frames_sameness", { length: 16 }), // "same" | "different"
 
+    // Slide selection - whether this slide is picked for export
+    isPicked: boolean("is_picked").default(true).notNull(),
+
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
   },
