@@ -234,3 +234,40 @@ export const videoSlides = pgTable(
 
 export type VideoSlide = typeof videoSlides.$inferSelect;
 export type NewVideoSlide = typeof videoSlides.$inferInsert;
+
+/**
+ * Feedback on individual slides - validation of frame annotations and sameness
+ */
+export const slideFeedback = pgTable(
+  "slide_feedback",
+  {
+    id: serial("id").primaryKey(),
+    videoId: varchar("video_id", { length: 32 })
+      .notNull()
+      .references(() => videos.videoId, { onDelete: "cascade" }),
+    slideIndex: integer("slide_index").notNull(),
+
+    // First frame validation
+    firstFrameHasTextValidated: boolean("first_frame_has_text_validated"),
+    firstFrameIsDuplicateValidated: boolean(
+      "first_frame_is_duplicate_validated",
+    ),
+
+    // Last frame validation
+    lastFrameHasTextValidated: boolean("last_frame_has_text_validated"),
+    lastFrameIsDuplicateValidated: boolean("last_frame_is_duplicate_validated"),
+
+    // Sameness feedback
+    framesSameness: varchar("frames_sameness", { length: 16 }), // "same" | "different"
+
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("slide_feedback_video_idx").on(table.videoId),
+    unique("slide_feedback_video_slide").on(table.videoId, table.slideIndex),
+  ],
+);
+
+export type SlideFeedback = typeof slideFeedback.$inferSelect;
+export type NewSlideFeedback = typeof slideFeedback.$inferInsert;
