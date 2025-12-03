@@ -2,6 +2,10 @@ import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { channels, scrapTranscriptV1, videos } from "@/db/schema";
+import {
+  type VideoStatusResponse,
+  videoStatusResponseSchema,
+} from "@/lib/api-types";
 
 // ============================================================================
 // GET - Check video status and get basic info
@@ -38,33 +42,45 @@ export async function GET(
 
   const row = result[0];
 
+  let responseData: VideoStatusResponse;
+
   // Video not found in database
   if (!row) {
-    return NextResponse.json({
+    responseData = {
       status: "not_found",
       video: null,
-    });
-  }
-
-  // Video exists but no transcript yet
-  if (!row.transcript) {
-    return NextResponse.json({
+    };
+  } else if (!row.transcript) {
+    // Video exists but no transcript yet
+    responseData = {
       status: "processing",
       video: {
         title: row.title,
         channelName: row.channelName,
         thumbnail: row.thumbnail,
       },
-    });
+    };
+  } else {
+    // Video has transcript
+    responseData = {
+      status: "ready",
+      video: {
+        title: row.title,
+        channelName: row.channelName,
+        thumbnail: row.thumbnail,
+      },
+    };
   }
 
-  // Video has transcript
-  return NextResponse.json({
-    status: "ready",
-    video: {
-      title: row.title,
-      channelName: row.channelName,
-      thumbnail: row.thumbnail,
-    },
-  });
+  const validationResult = videoStatusResponseSchema.safeParse(responseData);
+
+  if (!validationResult.success) {
+    console.error("Invalid response data:", validationResult.error);
+    return NextResponse.json(
+      { error: "Invalid response data" },
+      { status: 500 },
+    );
+  }
+
+  return NextResponse.json(validationResult.data);
 }

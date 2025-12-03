@@ -1,6 +1,5 @@
-import { and, eq, isNull } from "drizzle-orm";
 import { NextResponse } from "next/server";
-import { getRun, start } from "workflow/api";
+import { start } from "workflow/api";
 import type { AnalysisStreamEvent } from "@/app/workflows/dynamic-analysis";
 import { dynamicAnalysisWorkflow } from "@/app/workflows/dynamic-analysis";
 import { extractSlidesWorkflow } from "@/app/workflows/extract-slides";
@@ -8,21 +7,18 @@ import {
   fetchTranscriptWorkflow,
   type TranscriptStreamEvent,
 } from "@/app/workflows/fetch-transcript";
-import { db } from "@/db";
-import { videoSlideExtractions } from "@/db/schema";
 import type { SlideStreamEvent } from "@/lib/slides-types";
 
-type AnyStreamEvent =
+export type ProcessingStreamEvent =
   | (TranscriptStreamEvent & { source: "transcript" })
   | (AnalysisStreamEvent & { source: "analysis" })
-  | (SlideStreamEvent & { source: "slides" })
-  | { source: "meta"; slidesRunId?: string | number | null };
+  | (SlideStreamEvent & { source: "slides" });
 
 async function streamWorkflow<
   T extends TranscriptStreamEvent | AnalysisStreamEvent | SlideStreamEvent,
 >(
   readable: ReadableStream<T>,
-  source: AnyStreamEvent["source"],
+  source: ProcessingStreamEvent["source"],
   writer: WritableStreamDefaultWriter<string>,
   onEvent?: (event: T) => void,
 ) {
@@ -34,154 +30,13 @@ async function streamWorkflow<
 
     await onEvent?.(value);
 
-    const payload = { source, ...(value as object) } as AnyStreamEvent;
+    // Safety: ensure we are spreading an object
+    const eventData =
+      typeof value === "object" && value !== null ? value : { data: value };
+
+    const payload = { source, ...eventData } as ProcessingStreamEvent;
     await writer.write(`data: ${JSON.stringify(payload)}\n\n`);
   }
-}
-
-async function startSlidesWorkflow(videoId: string) {
-  // Avoid starting a duplicate slide extraction if one already exists
-  const [existing] = await db
-    .select({
-      status: videoSlideExtractions.status,
-      runId: videoSlideExtractions.runId,
-    })
-    .from(videoSlideExtractions)
-    .where(eq(videoSlideExtractions.videoId, videoId))
-    .limit(1);
-
-  if (existing?.status === "in_progress" || existing?.status === "completed") {
-    if (!existing.runId) {
-      // No runId yet, return null
-      return null;
-    }
-
-    // If it's a real runId (not a placeholder), return it
-    if (!existing.runId.startsWith("CLAIMING-")) {
-      return {
-        runId: existing.runId,
-        readable: getRun(existing.runId).readable,
-      };
-    }
-
-    // It's a placeholder from another request - poll until it becomes real
-    // Max wait time: 10 seconds (20 attempts * 500ms)
-    for (let attempt = 0; attempt < 20; attempt++) {
-      await new Promise((resolve) => setTimeout(resolve, 500));
-
-      const [updated] = await db
-        .select({
-          runId: videoSlideExtractions.runId,
-        })
-        .from(videoSlideExtractions)
-        .where(eq(videoSlideExtractions.videoId, videoId))
-        .limit(1);
-
-      if (updated?.runId && !updated.runId.startsWith("CLAIMING-")) {
-        // Placeholder was replaced with real runId
-        return {
-          runId: updated.runId,
-          readable: getRun(updated.runId).readable,
-        };
-      }
-    }
-
-    // Timeout waiting for placeholder to resolve - return null to retry from scratch
-    return null;
-  }
-
-  // Ensure the row exists with status in_progress, but don't set runId yet
-  await db
-    .insert(videoSlideExtractions)
-    .values({
-      videoId,
-      status: "in_progress",
-    })
-    .onConflictDoUpdate({
-      target: videoSlideExtractions.videoId,
-      set: {
-        status: "in_progress",
-        errorMessage: null,
-        updatedAt: new Date(),
-      },
-    });
-
-  // Generate a unique temporary placeholder to atomically claim the workflow slot
-  const placeholderRunId = `CLAIMING-${Date.now()}-${Math.random().toString(36).substring(2, 15)}`;
-
-  // Atomically claim the slot by updating runId ONLY if it's currently NULL
-  // This is the critical race-condition fix: only one request can successfully claim a NULL runId
-  await db
-    .update(videoSlideExtractions)
-    .set({ runId: placeholderRunId })
-    .where(
-      and(
-        eq(videoSlideExtractions.videoId, videoId),
-        isNull(videoSlideExtractions.runId),
-      ),
-    );
-
-  // Check if we successfully claimed the slot by verifying our placeholder is now set
-  const [claimed] = await db
-    .select({
-      status: videoSlideExtractions.status,
-      runId: videoSlideExtractions.runId,
-    })
-    .from(videoSlideExtractions)
-    .where(eq(videoSlideExtractions.videoId, videoId))
-    .limit(1);
-
-  if (claimed?.runId !== placeholderRunId) {
-    // Another concurrent request won the race and is starting the workflow
-    // Wait for the placeholder to be replaced with a real runId
-    if (claimed?.runId) {
-      if (!claimed.runId.startsWith("CLAIMING-")) {
-        // Already has a real runId, return it
-        return {
-          runId: claimed.runId,
-          readable: getRun(claimed.runId).readable,
-        };
-      }
-
-      // Still a placeholder from another request - poll until it becomes real
-      // Max wait time: 10 seconds (20 attempts * 500ms)
-      for (let attempt = 0; attempt < 20; attempt++) {
-        await new Promise((resolve) => setTimeout(resolve, 500));
-
-        const [updated] = await db
-          .select({
-            runId: videoSlideExtractions.runId,
-          })
-          .from(videoSlideExtractions)
-          .where(eq(videoSlideExtractions.videoId, videoId))
-          .limit(1);
-
-        if (updated?.runId && !updated.runId.startsWith("CLAIMING-")) {
-          // Placeholder was replaced with real runId
-          return {
-            runId: updated.runId,
-            readable: getRun(updated.runId).readable,
-          };
-        }
-      }
-
-      // Timeout waiting for placeholder to resolve - return null to retry from scratch
-      return null;
-    }
-
-    return null;
-  }
-
-  // We successfully claimed the slot, now start the workflow
-  const run = await start(extractSlidesWorkflow, [videoId]);
-
-  // Update with the actual workflow runId, replacing our placeholder
-  await db
-    .update(videoSlideExtractions)
-    .set({ runId: run.runId })
-    .where(eq(videoSlideExtractions.videoId, videoId));
-
-  return run;
 }
 
 export async function POST(
@@ -201,20 +56,19 @@ export async function POST(
   const writer = stream.writable.getWriter();
 
   try {
-    const slidesRun = await startSlidesWorkflow(videoId);
+    // 1. Start Slide Extraction (Path B)
+    // We always start a new workflow. The Python service handles deduplication.
+    // We don't track the runId in the DB anymore for locking purposes.
+    const slidesRun = await start(extractSlidesWorkflow, [videoId]);
 
-    // Send meta event so the frontend can resume slide streams if needed
-    await writer.write(
-      `data: ${JSON.stringify({ source: "meta", slidesRunId: slidesRun?.runId ?? null })}\n\n`,
-    );
-
-    // Start transcript workflow first
+    // 2. Start Transcript Fetching (Path A)
     const transcriptRun = await start(fetchTranscriptWorkflow, [videoId]);
 
     const streamPromises: Promise<void>[] = [];
     let analysisStarted = false;
     let analysisPromise: Promise<void> | null = null;
 
+    // Stream Transcript -> then trigger Analysis
     const transcriptPromise = streamWorkflow(
       transcriptRun.readable,
       "transcript",
@@ -235,26 +89,21 @@ export async function POST(
 
     streamPromises.push(transcriptPromise);
 
-    if (slidesRun) {
-      streamPromises.push(streamWorkflow(slidesRun.readable, "slides", writer));
-    }
+    // Stream Slides
+    streamPromises.push(streamWorkflow(slidesRun.readable, "slides", writer));
 
-    Promise.all(streamPromises)
-      .catch((err) => {
-        console.error("Stream concatenation failed:", err);
-        try {
-          writer.abort(err);
-        } catch (_e) {
-          // Ignore abort errors
-        }
-      })
-      .finally(() => {
-        try {
-          writer.close();
-        } catch (_e) {
-          // Ignore close errors
-        }
-      });
+    (async () => {
+      await Promise.all(streamPromises);
+      // Also await the analysis promise if it was created
+      if (analysisPromise) {
+        await analysisPromise;
+      }
+      // Close the stream once all workflows have finished
+      writer.close();
+    })().catch((error) => {
+      console.error("Stream processing error:", error);
+      writer.abort(error);
+    });
   } catch (error) {
     console.error("Failed to start processing workflow:", error);
     writer.abort(error);
