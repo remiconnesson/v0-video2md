@@ -102,6 +102,7 @@ export function SlidesPanel({
       progress: 0,
       message: "Starting slides extraction...",
       error: null,
+      slides: [],
     }));
 
     try {
