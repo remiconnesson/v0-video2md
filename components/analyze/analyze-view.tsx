@@ -530,7 +530,7 @@ export function AnalyzeView({ youtubeId, initialVersion }: AnalyzeViewProps) {
             />
           )}
 
-          {isAnalysisRunning && hasRuns ? (
+          {!isAnalysisRunning && hasRuns ? (
             <Button
               variant="outline"
               onClick={() => setRerollOpen(true)}
