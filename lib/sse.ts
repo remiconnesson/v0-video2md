@@ -38,7 +38,26 @@ export async function consumeSSE<TEvent extends SSEBaseEvent>(
   try {
     while (true) {
       const { done, value } = await reader.read();
-      if (done) break;
+
+      if (done) {
+        // Process any remaining data in buffer to prevent data loss
+        // This handles cases where the stream ends without a trailing newline
+        if (buffer.trim().startsWith(dataPrefix)) {
+          const raw = buffer.slice(dataPrefix.length).trim();
+          if (raw) {
+            try {
+              const parsed = JSON.parse(raw) as TEvent;
+              const eventType = parsed.type as NonNullable<TEvent["type"]> | undefined;
+              if (eventType && handlers[eventType]) {
+                await handlers[eventType](parsed as Extract<TEvent, { type: NonNullable<TEvent["type"]> }>);
+              }
+            } catch {
+              // Ignore parse errors on final chunk - it may be incomplete
+            }
+          }
+        }
+        break;
+      }
 
       buffer += decoder.decode(value, { stream: true });
       const lines = buffer.split(/\r?\n/);
