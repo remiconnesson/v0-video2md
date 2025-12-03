@@ -61,11 +61,6 @@ export async function POST(
     // We don't track the runId in the DB anymore for locking purposes.
     const slidesRun = await start(extractSlidesWorkflow, [videoId]);
 
-    // Send meta event immediately so frontend knows extraction "started"
-    await writer.write(
-      `data: ${JSON.stringify({ source: "meta", slidesRunId: slidesRun.runId })}\n\n`,
-    );
-
     // 2. Start Transcript Fetching (Path A)
     const transcriptRun = await start(fetchTranscriptWorkflow, [videoId]);
 
