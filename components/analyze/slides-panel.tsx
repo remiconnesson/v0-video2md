@@ -730,9 +730,13 @@ function SlideCard({
     initialFeedback?.isLastFramePicked ?? true,
   );
 
+  // Track when we're syncing from external feedback to prevent submission loop
+  const isSyncingFromFeedback = useRef(false);
+
   // Sync state when initialFeedback prop changes
   useEffect(() => {
     if (initialFeedback) {
+      isSyncingFromFeedback.current = true;
       setFirstValidation({
         hasTextValidated: initialFeedback.firstFrameHasTextValidated ?? null,
         isDuplicateValidated:
@@ -751,6 +755,12 @@ function SlideCard({
 
   // Submit feedback when it changes
   useEffect(() => {
+    // Skip submission if we're syncing from external feedback
+    if (isSyncingFromFeedback.current) {
+      isSyncingFromFeedback.current = false;
+      return;
+    }
+
     const feedback: SlideFeedbackData = {
       slideIndex: slide.slideIndex,
       firstFrameHasTextValidated: firstValidation.hasTextValidated ?? null,
