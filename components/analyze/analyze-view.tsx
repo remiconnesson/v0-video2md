@@ -1,5 +1,6 @@
 "use client";
 
+import { Match } from "effect";
 import {
   ExternalLink,
   Loader2,
@@ -188,91 +189,110 @@ export function AnalyzeView({ youtubeId, initialVersion }: AnalyzeViewProps) {
           // unused handler
         },
         progress: (event) => {
-          // SHOULD BE EXHAUSTIVE MATCH, HERE SLIDES IS MISSING
-          if (event.source === "transcript") {
-            setTranscriptState((prev) => ({
-              ...prev,
-              status: "fetching",
-              progress: event.progress ?? prev.progress,
-              message: event.message ?? prev.message,
-            }));
-          }
-
-          if (event.source === "analysis") {
-            setAnalysisState((prev) => ({
-              ...prev,
-              status: "running",
-              phase: event.phase,
-              message: event.message,
-            }));
-          }
+          Match.value(event).pipe(
+            Match.when({ source: "transcript" }, (event) => {
+              setTranscriptState((prev) => ({
+                ...prev,
+                status: "fetching",
+                progress: event.progress ?? prev.progress,
+                message: event.message ?? prev.message,
+              }));
+            }),
+            Match.when({ source: "analysis" }, (event) => {
+              setAnalysisState((prev) => ({
+                ...prev,
+                status: "running",
+                phase: event.phase,
+                message: event.message,
+              }));
+            }),
+            Match.when({ source: "slides" }, () => {
+              // unused handler
+            }),
+            Match.exhaustive,
+          );
         },
         partial: (event) => {
-          if (event.source !== "analysis") return;
-
-          setAnalysisState((prev) => ({
-            ...prev,
-            status: "running",
-            result: event.data,
-          }));
+          Match.value(event).pipe(
+            Match.when({ source: "analysis" }, (event) => {
+              setAnalysisState((prev) => ({
+                ...prev,
+                status: "running",
+                result: event.data,
+              }));
+            }),
+            Match.exhaustive,
+          );
         },
         result: (event) => {
-          if (event.source !== "analysis") return;
-
-          setAnalysisState((prev) => ({
-            ...prev,
-            status: "running",
-            result: event.data,
-          }));
+          Match.value(event).pipe(
+            Match.when({ source: "analysis" }, (event) => {
+              setAnalysisState((prev) => ({
+                ...prev,
+                status: "running",
+                result: event.data,
+              }));
+            }),
+            Match.exhaustive,
+          );
         },
         complete: (event) => {
-          if (event.source === "transcript") {
-            setTranscriptState({
-              status: "completed",
-              progress: 100,
-              message: "Transcript fetched successfully",
-              error: null,
-            });
-
-            if (event.video) {
-              setVideoInfo({
-                title: event.video.title,
-                channelName: event.video.channelName,
+          Match.value(event).pipe(
+            Match.when({ source: "transcript" }, (event) => {
+              setTranscriptState({
+                status: "completed",
+                progress: 100,
+                message: "Transcript fetched successfully",
+                error: null,
               });
-            }
 
-            setPageStatus("ready");
-          }
+              if (event.video) {
+                setVideoInfo({
+                  title: event.video.title,
+                  channelName: event.video.channelName,
+                });
+              }
 
-          if (event.source === "analysis") {
-            setAnalysisState((prev) => ({
-              ...prev,
-              status: "completed",
-              runId: event.runId,
-              phase: "complete",
-              message: "Analysis complete!",
-            }));
-          }
+              setPageStatus("ready");
+            }),
+            Match.when({ source: "analysis" }, (event) => {
+              setAnalysisState((prev) => ({
+                ...prev,
+                status: "completed",
+                runId: event.runId,
+                phase: "complete",
+                message: "Analysis complete!",
+              }));
+            }),
+            Match.when({ source: "slides" }, () => {
+              // unused handler
+            }),
+            Match.exhaustive,
+          );
         },
         error: (event) => {
-          if (event.source === "transcript") {
-            setTranscriptState({
-              status: "error",
-              progress: 0,
-              message: "",
-              error: event.error,
-            });
-            setPageStatus("no_transcript");
-            return;
-          }
-
-          if (event.source === "analysis") {
-            setAnalysisState((prev) => ({
-              ...prev,
-              status: "error",
-              error: event.message,
-            }));
-          }
+          Match.value(event).pipe(
+            Match.when({ source: "transcript" }, (event) => {
+              setTranscriptState({
+                status: "error",
+                progress: 0,
+                message: "",
+                error: event.error,
+              });
+              setPageStatus("no_transcript");
+            }),
+            Match.when({ source: "analysis" }, (event) => {
+              setAnalysisState((prev) => ({
+                ...prev,
+                status: "error",
+                error: event.message,
+              }));
+            }),
+            Match.when({ source: "slides" }, () => {
+              // unused handler
+            }),
+            Match.exhaustive,
+          );
         },
       });
     } catch (err) {
