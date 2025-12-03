@@ -81,7 +81,6 @@ export async function consumeSSE<TEvent extends SSEBaseEvent>(
           parsed = JSON.parse(raw) as TEvent;
         } catch (err) {
           if (err instanceof SyntaxError) continue;
-          await options.onError?.(err);
           throw err;
         }
 
