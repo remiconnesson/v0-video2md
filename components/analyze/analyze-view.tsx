@@ -410,8 +410,7 @@ export function AnalyzeView({ youtubeId, initialVersion }: AnalyzeViewProps) {
           message: "Transcript already fetched",
           error: null,
         });
-        await fetchRuns();
-        await loadExistingSlides();
+        await Promise.all([fetchRuns(), loadExistingSlides()]);
       } else if (status === "processing") {
         setPageStatus("fetching_transcript");
         setTranscriptState((prev) => ({
