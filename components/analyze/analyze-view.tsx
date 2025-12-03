@@ -216,6 +216,14 @@ export function AnalyzeView({ youtubeId, initialVersion }: AnalyzeViewProps) {
       message: "Connecting to YouTube...",
       error: null,
     });
+    setSlidesState((prev) => ({
+      ...prev,
+      status: "extracting",
+      progress: 0,
+      message: "Starting slides extraction...",
+      error: null,
+      slides: [],
+    }));
 
     try {
       const res = await fetch(`/api/video/${youtubeId}/process`, {
