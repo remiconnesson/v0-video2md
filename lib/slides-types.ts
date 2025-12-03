@@ -135,3 +135,15 @@ export interface JobUpdate {
   metadata_uri?: string;
   error?: string;
 }
+
+// ============================================================================
+// Slides State Types
+// ============================================================================
+
+export interface SlidesState {
+  status: "idle" | "loading" | "extracting" | "completed" | "error";
+  progress: number;
+  message: string;
+  error: string | null;
+  slides: SlideData[];
+}

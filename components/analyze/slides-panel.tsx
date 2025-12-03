@@ -8,7 +8,6 @@ import {
   Copy,
   ImageIcon,
   Loader2,
-  Play,
   ThumbsDown,
   ThumbsUp,
   X,
@@ -20,18 +19,29 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
-import { useSlideExtraction } from "@/hooks/use-slides-extraction";
-import type { SlideData, SlideFeedbackData } from "@/lib/slides-types";
+import type {
+  SlideData,
+  SlideFeedbackData,
+  SlideStreamEvent,
+  SlidesState,
+} from "@/lib/slides-types";
+import { consumeSSE } from "@/lib/sse";
 import { formatTime } from "@/lib/time-utils";
 import { cn } from "@/lib/utils";
 
 interface SlidesPanelProps {
   videoId: string;
+  slidesState: SlidesState;
+  onSlidesStateChange: (
+    state: SlidesState | ((prev: SlidesState) => SlidesState),
+  ) => void;
 }
 
-export function SlidesPanel({ videoId }: SlidesPanelProps) {
-  const { state, slides, startExtraction, loadExistingSlides } =
-    useSlideExtraction(videoId);
+export function SlidesPanel({
+  videoId,
+  slidesState,
+  onSlidesStateChange,
+}: SlidesPanelProps) {
   const [feedbackMap, setFeedbackMap] = useState<
     Map<number, SlideFeedbackData>
   >(new Map());
@@ -84,14 +94,85 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
     [videoId, loadFeedback],
   );
 
-  // Load existing slides and feedback on mount
+  const startExtraction = useCallback(async () => {
+    // Set state to extracting
+    onSlidesStateChange((prev) => ({
+      ...prev,
+      status: "extracting",
+      progress: 0,
+      message: "Starting slides extraction...",
+      error: null,
+      slides: [],
+    }));
+
+    try {
+      const response = await fetch(`/api/video/${videoId}/slides`, {
+        method: "POST",
+      });
+
+      if (!response.ok) {
+        const errorData = await response
+          .json()
+          .catch(() => ({ error: "!response.ok and response.json() failed" }));
+        throw new Error(errorData.error);
+      }
+
+      // Consume SSE stream
+      await consumeSSE<SlideStreamEvent>(response, {
+        progress: (e) => {
+          onSlidesStateChange((prev) => ({
+            ...prev,
+            status: "extracting",
+            progress: e.progress ?? prev.progress,
+            message: e.message ?? prev.message,
+          }));
+        },
+        slide: (e) => {
+          onSlidesStateChange((prev) => ({
+            ...prev,
+            slides: [...prev.slides, e.slide],
+          }));
+        },
+        complete: (e) => {
+          onSlidesStateChange((prev) => ({
+            ...prev,
+            status: "completed",
+            progress: 100,
+            message: `Extracted ${e.totalSlides} slides`,
+            error: null,
+          }));
+        },
+        error: (e) => {
+          onSlidesStateChange((prev) => ({
+            ...prev,
+            status: "error",
+            progress: 0,
+            message: "",
+            error: e.message,
+          }));
+        },
+      });
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Failed to extract slides.";
+
+      onSlidesStateChange((prev) => ({
+        ...prev,
+        status: "error",
+        progress: 0,
+        message: "",
+        error: errorMessage,
+      }));
+    }
+  }, [videoId, onSlidesStateChange]);
+
+  // Load feedback on mount
   useEffect(() => {
-    loadExistingSlides();
     loadFeedback();
-  }, [loadExistingSlides, loadFeedback]);
+  }, [loadFeedback]);
 
   // Idle state - show extract button
-  if (state.status === "idle") {
+  if (slidesState.status === "idle") {
     return (
       <Card>
         <CardContent className="py-12">
@@ -105,10 +186,9 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
                 Analyze the video to extract presentation slides
               </p>
             </div>
-            <Button onClick={startExtraction} className="gap-2">
-              <Play className="h-4 w-4" />
-              Start Extraction
-            </Button>
+            <p className="text-sm text-muted-foreground">
+              Slides will be extracted automatically when processing starts.
+            </p>
           </div>
         </CardContent>
       </Card>
@@ -116,7 +196,7 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
   }
 
   // Loading state
-  if (state.status === "loading") {
+  if (slidesState.status === "loading") {
     return (
       <Card>
         <CardContent className="py-12">
@@ -130,7 +210,7 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
   }
 
   // Extracting state
-  if (state.status === "extracting") {
+  if (slidesState.status === "extracting") {
     return (
       <Card>
         <CardHeader>
@@ -140,17 +220,17 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <Progress value={state.progress} className="h-2" />
-          <p className="text-sm text-muted-foreground">{state.message}</p>
+          <Progress value={slidesState.progress} className="h-2" />
+          <p className="text-sm text-muted-foreground">{slidesState.message}</p>
 
-          {slides.length > 0 && (
+          {slidesState.slides.length > 0 && (
             <div className="mt-6">
               <p className="text-sm font-medium mb-3">
-                {slides.length} slides found so far
+                {slidesState.slides.length} slides found so far
               </p>
               <SlideGrid
-                slides={slides}
-                allSlides={slides}
+                slides={slidesState.slides}
+                allSlides={slidesState.slides}
                 feedbackMap={feedbackMap}
                 onSubmitFeedback={submitFeedback}
               />
@@ -162,13 +242,18 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
   }
 
   // Error state
-  if (state.status === "error") {
+  if (slidesState.status === "error") {
     return (
       <Card>
         <CardContent className="py-12">
           <div className="text-center space-y-4">
-            <p className="text-destructive">{state.error}</p>
-            <Button variant="outline" onClick={startExtraction}>
+            <p className="text-destructive">{slidesState.error}</p>
+            <Button
+              variant="outline"
+              onClick={() => {
+                startExtraction();
+              }}
+            >
               Retry
             </Button>
           </div>
@@ -184,17 +269,30 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
         <CardTitle className="flex items-center justify-between">
           <span className="flex items-center gap-2">
             <ImageIcon className="h-5 w-5" />
-            Slides ({slides.length})
+            Slides ({slidesState.slides.length})
           </span>
-          <Button variant="outline" size="sm" onClick={startExtraction}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              // Clear slides and trigger re-extraction
+              onSlidesStateChange((prev) => ({
+                ...prev,
+                slides: [],
+                progress: 0,
+                message: "",
+              }));
+              startExtraction();
+            }}
+          >
             Re-extract
           </Button>
         </CardTitle>
       </CardHeader>
       <CardContent>
         <SlideGrid
-          slides={slides}
-          allSlides={slides}
+          slides={slidesState.slides}
+          allSlides={slidesState.slides}
           feedbackMap={feedbackMap}
           onSubmitFeedback={submitFeedback}
         />
