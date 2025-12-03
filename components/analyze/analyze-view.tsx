@@ -165,6 +165,7 @@ export function AnalyzeView({ youtubeId, initialVersion }: AnalyzeViewProps) {
   // Fetch existing analysis runs
   const fetchRuns = useCallback(async (): Promise<AnalysisRun[]> => {
     try {
+      // BAD: No type safety here
       const res = await fetch(`/api/video/${youtubeId}/analyze`);
       if (!res.ok) return [];
       const data = await res.json();
