@@ -64,19 +64,14 @@ export async function consumeSSE<TEvent extends SSEBaseEvent>(
           | undefined;
 
         if (!eventType) {
-          await options.onUnknownEvent?.(parsed);
-          continue;
-        }
-
-        const handler = handlers[eventType];
-
-        if (handler) {
-          await handler(
-            parsed as Extract<TEvent, { type: NonNullable<TEvent["type"]> }>,
+          throw new Error(
+            `Unknown event type: ${raw}, ${JSON.stringify(parsed)}`,
           );
-        } else {
-          await options.onUnknownEvent?.(parsed);
         }
+
+        await handlers[eventType](
+          parsed as Extract<TEvent, { type: NonNullable<TEvent["type"]> }>,
+        );
       }
     }
   } catch (err) {
