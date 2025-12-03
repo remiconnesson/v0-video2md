@@ -8,9 +8,9 @@ export const videoStatusSchema = z.enum(["not_found", "processing", "ready"]);
 export type VideoStatus = z.infer<typeof videoStatusSchema>;
 
 export const videoInfoSchema = z.object({
-  title: string,
-  channelName: string | null,
-  thumbnail: string | null,
+  title: z.string(),
+  channelName: z.string().nullable(),
+  thumbnail: z.string().nullable(),
 });
 export type VideoInfo = z.infer<typeof videoInfoSchema>;
 
@@ -46,7 +46,7 @@ export const analysisRunSchema = z.object({
   id: z.number(),
   version: z.number(),
   status: analysisStatusSchema,
-  result: z.record(z.unknown()).nullable(),
+  result: z.record(z.string(), z.unknown()).nullable(),
   additionalInstructions: z.string().nullable(),
   createdAt: z.string().datetime(), // ISO string format
 });
