@@ -22,8 +22,10 @@ import { Progress } from "@/components/ui/progress";
 import type {
   SlideData,
   SlideFeedbackData,
+  SlideStreamEvent,
   SlidesState,
 } from "@/lib/slides-types";
+import { consumeSSE } from "@/lib/sse";
 import { formatTime } from "@/lib/time-utils";
 import { cn } from "@/lib/utils";
 
@@ -91,6 +93,77 @@ export function SlidesPanel({
     },
     [videoId, loadFeedback],
   );
+
+  const startExtraction = useCallback(async () => {
+    // Set state to extracting
+    onSlidesStateChange((prev) => ({
+      ...prev,
+      status: "extracting",
+      progress: 0,
+      message: "Starting slides extraction...",
+      error: null,
+    }));
+
+    try {
+      const response = await fetch(`/api/video/${videoId}/slides`, {
+        method: "POST",
+      });
+
+      if (!response.ok) {
+        const errorData = await response
+          .json()
+          .catch(() => ({ error: "!response.ok and response.json() failed" }));
+        throw new Error(errorData.error);
+      }
+
+      // Consume SSE stream
+      await consumeSSE<SlideStreamEvent>(response, {
+        progress: (e) => {
+          onSlidesStateChange((prev) => ({
+            ...prev,
+            status: "extracting",
+            progress: e.progress ?? prev.progress,
+            message: e.message ?? prev.message,
+          }));
+        },
+        slide: (e) => {
+          onSlidesStateChange((prev) => ({
+            ...prev,
+            slides: [...prev.slides, e.slide],
+          }));
+        },
+        complete: (e) => {
+          onSlidesStateChange((prev) => ({
+            ...prev,
+            status: "completed",
+            progress: 100,
+            message: `Extracted ${e.totalSlides} slides`,
+            error: null,
+          }));
+        },
+        error: (e) => {
+          onSlidesStateChange((prev) => ({
+            ...prev,
+            status: "error",
+            progress: 0,
+            message: "",
+            error: e.message,
+          }));
+        },
+      });
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Failed to extract slides.";
+
+      onSlidesStateChange((prev) => ({
+        ...prev,
+        status: "error",
+        progress: 0,
+        message: "",
+        error: errorMessage,
+      }));
+    }
+  }, [videoId, onSlidesStateChange]);
 
   // Load feedback on mount
   useEffect(() => {
@@ -177,12 +250,7 @@ export function SlidesPanel({
             <Button
               variant="outline"
               onClick={() => {
-                // Reset state to idle to allow retry
-                onSlidesStateChange((prev) => ({
-                  ...prev,
-                  status: "idle",
-                  error: null,
-                }));
+                startExtraction();
               }}
             >
               Retry
@@ -206,14 +274,14 @@ export function SlidesPanel({
             variant="outline"
             size="sm"
             onClick={() => {
-              // Reset state to idle to allow re-extraction
+              // Clear slides and trigger re-extraction
               onSlidesStateChange((prev) => ({
                 ...prev,
-                status: "idle",
                 slides: [],
                 progress: 0,
                 message: "",
               }));
+              startExtraction();
             }}
           >
             Re-extract
