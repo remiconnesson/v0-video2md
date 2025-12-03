@@ -149,10 +149,6 @@ export function AnalyzeView({ youtubeId, initialVersion }: AnalyzeViewProps) {
           }
         }
       } catch (err) {
-        if (err instanceof Error && err.name === "AbortError") {
-          return;
-        }
-
         const errorMessage =
           err instanceof Error ? err.message : "Analysis failed";
 
