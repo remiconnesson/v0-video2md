@@ -35,6 +35,7 @@ export async function GET(
 
   // Check if there's a streaming run in progress
   const streamingRun = runs.find((r) => r.status === "streaming");
+  console.log("⚙️⚙️⚙️ streamingRun", streamingRun);
 
   return NextResponse.json({
     videoId,
