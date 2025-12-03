@@ -1,6 +1,5 @@
-import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
-import { getRun, start } from "workflow/api";
+import { start } from "workflow/api";
 import type { AnalysisStreamEvent } from "@/app/workflows/dynamic-analysis";
 import { dynamicAnalysisWorkflow } from "@/app/workflows/dynamic-analysis";
 import { extractSlidesWorkflow } from "@/app/workflows/extract-slides";
@@ -8,8 +7,6 @@ import {
   fetchTranscriptWorkflow,
   type TranscriptStreamEvent,
 } from "@/app/workflows/fetch-transcript";
-import { db } from "@/db";
-import { videoSlideExtractions } from "@/db/schema";
 import type { SlideStreamEvent } from "@/lib/slides-types";
 
 type AnyStreamEvent =
@@ -34,67 +31,13 @@ async function streamWorkflow<
 
     await onEvent?.(value);
 
-    const payload = { source, ...(value as object) } as AnyStreamEvent;
+    // Safety: ensure we are spreading an object
+    const eventData =
+      typeof value === "object" && value !== null ? value : { data: value };
+
+    const payload = { source, ...eventData } as AnyStreamEvent;
     await writer.write(`data: ${JSON.stringify(payload)}\n\n`);
   }
-}
-
-async function startSlidesWorkflow(videoId: string) {
-  // Avoid starting a duplicate slide extraction if one already exists
-  const [existing] = await db
-    .select({
-      status: videoSlideExtractions.status,
-      runId: videoSlideExtractions.runId,
-    })
-    .from(videoSlideExtractions)
-    .where(eq(videoSlideExtractions.videoId, videoId))
-    .limit(1);
-
-  if (existing?.status === "in_progress" || existing?.status === "completed") {
-    return existing.runId
-      ? { runId: existing.runId, readable: getRun(existing.runId).readable }
-      : null;
-  }
-
-  await db
-    .insert(videoSlideExtractions)
-    .values({
-      videoId,
-      status: "in_progress",
-    })
-    .onConflictDoUpdate({
-      target: videoSlideExtractions.videoId,
-      set: {
-        status: "in_progress",
-        errorMessage: null,
-        updatedAt: new Date(),
-      },
-    });
-
-  // After insert/update, check if another concurrent request already set the runId
-  // This prevents duplicate workflow starts in race conditions
-  const [updated] = await db
-    .select({
-      status: videoSlideExtractions.status,
-      runId: videoSlideExtractions.runId,
-    })
-    .from(videoSlideExtractions)
-    .where(eq(videoSlideExtractions.videoId, videoId))
-    .limit(1);
-
-  if (updated?.runId) {
-    // Another concurrent request already started the workflow, reuse it
-    return { runId: updated.runId, readable: getRun(updated.runId).readable };
-  }
-
-  const run = await start(extractSlidesWorkflow, [videoId]);
-
-  await db
-    .update(videoSlideExtractions)
-    .set({ runId: run.runId })
-    .where(eq(videoSlideExtractions.videoId, videoId));
-
-  return run;
 }
 
 export async function POST(
@@ -114,20 +57,24 @@ export async function POST(
   const writer = stream.writable.getWriter();
 
   try {
-    const slidesRun = await startSlidesWorkflow(videoId);
+    // 1. Start Slide Extraction (Path B)
+    // We always start a new workflow. The Python service handles deduplication.
+    // We don't track the runId in the DB anymore for locking purposes.
+    const slidesRun = await start(extractSlidesWorkflow, [videoId]);
 
-    // Send meta event so the frontend can resume slide streams if needed
+    // Send meta event immediately so frontend knows extraction "started"
     await writer.write(
-      `data: ${JSON.stringify({ source: "meta", slidesRunId: slidesRun?.runId ?? null })}\n\n`,
+      `data: ${JSON.stringify({ source: "meta", slidesRunId: slidesRun.runId })}\n\n`,
     );
 
-    // Start transcript workflow first
+    // 2. Start Transcript Fetching (Path A)
     const transcriptRun = await start(fetchTranscriptWorkflow, [videoId]);
 
     const streamPromises: Promise<void>[] = [];
     let analysisStarted = false;
     let analysisPromise: Promise<void> | null = null;
 
+    // Stream Transcript -> then trigger Analysis
     const transcriptPromise = streamWorkflow(
       transcriptRun.readable,
       "transcript",
@@ -148,12 +95,11 @@ export async function POST(
 
     streamPromises.push(transcriptPromise);
 
-    if (slidesRun) {
-      streamPromises.push(streamWorkflow(slidesRun.readable, "slides", writer));
-    }
+    // Stream Slides
+    streamPromises.push(streamWorkflow(slidesRun.readable, "slides", writer));
 
+    // Wait for all active streams to finish
     Promise.all(streamPromises).finally(() => {
-      // Close the stream once the concatenated workflow has finished
       writer.close();
     });
   } catch (error) {
