@@ -97,6 +97,9 @@ export const videoAnalysisRuns = pgTable(
       .references(() => videos.videoId, { onDelete: "cascade" }),
     version: integer("version").notNull().default(1),
 
+    // Workflow run ID for stream resumption
+    workflowRunId: varchar("workflow_run_id", { length: 100 }),
+
     // God prompt output - unified JSONB column
     result: jsonb("result").$type<Record<string, unknown>>(),
 
