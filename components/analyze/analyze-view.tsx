@@ -352,7 +352,7 @@ export function AnalyzeView({ youtubeId, initialVersion }: AnalyzeViewProps) {
     } finally {
       processingAbortRef.current = null;
     }
-  }, [transcriptState.status, youtubeId]);
+  }, [youtubeId]);
 
   // Check video status and fetch runs
   const checkVideoStatus = useCallback(async () => {

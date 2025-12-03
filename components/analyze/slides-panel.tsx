@@ -1,5 +1,6 @@
 "use client";
 
+import { useVirtualizer } from "@tanstack/react-virtual";
 import {
   Check,
   ChevronLeft,
@@ -14,14 +15,13 @@ import {
   ZoomIn,
 } from "lucide-react";
 import Image from "next/image";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { useSlideExtraction } from "@/hooks/use-slides-extraction";
-import type { SlideData } from "@/lib/slides-types";
+import type { SlideData, SlideFeedbackData } from "@/lib/slides-types";
 import { formatTime } from "@/lib/time-utils";
 import { cn } from "@/lib/utils";
 
@@ -32,11 +32,63 @@ interface SlidesPanelProps {
 export function SlidesPanel({ videoId }: SlidesPanelProps) {
   const { state, slides, startExtraction, loadExistingSlides } =
     useSlideExtraction(videoId);
+  const [feedbackMap, setFeedbackMap] = useState<
+    Map<number, SlideFeedbackData>
+  >(new Map());
 
-  // Load existing slides on mount
+  const loadFeedback = useCallback(async () => {
+    try {
+      const response = await fetch(`/api/video/${videoId}/slides/feedback`);
+      if (!response.ok) return;
+
+      const data = await response.json();
+      const newMap = new Map<number, SlideFeedbackData>();
+
+      data.feedback.forEach((fb: SlideFeedbackData) => {
+        newMap.set(fb.slideIndex, fb);
+      });
+
+      setFeedbackMap(newMap);
+    } catch (error) {
+      console.error("Failed to load slide feedback:", error);
+    }
+  }, [videoId]);
+
+  const submitFeedback = useCallback(
+    async (feedback: SlideFeedbackData) => {
+      try {
+        // Optimistically update local state
+        setFeedbackMap((prev) => {
+          const next = new Map(prev);
+          next.set(feedback.slideIndex, feedback);
+          return next;
+        });
+
+        const response = await fetch(`/api/video/${videoId}/slides/feedback`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(feedback),
+        });
+
+        if (!response.ok) {
+          console.error("Failed to save slide feedback");
+          // Reload to sync state
+          await loadFeedback();
+        }
+      } catch (error) {
+        console.error("Failed to save slide feedback:", error);
+        // Reload to sync state
+        await loadFeedback();
+      }
+    },
+    [videoId, loadFeedback],
+  );
+
+  // Load existing slides and feedback on mount
   useEffect(() => {
     loadExistingSlides();
-  }, [loadExistingSlides]);
+    loadFeedback();
+  }, [loadExistingSlides, loadFeedback]);
 
   // Idle state - show extract button
   if (state.status === "idle") {
@@ -96,7 +148,12 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
               <p className="text-sm font-medium mb-3">
                 {slides.length} slides found so far
               </p>
-              <SlideGrid slides={slides} allSlides={slides} />
+              <SlideGrid
+                slides={slides}
+                allSlides={slides}
+                feedbackMap={feedbackMap}
+                onSubmitFeedback={submitFeedback}
+              />
             </div>
           )}
         </CardContent>
@@ -135,30 +192,83 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <ScrollArea className="h-[600px]">
-          <SlideGrid slides={slides} allSlides={slides} />
-        </ScrollArea>
+        <SlideGrid
+          slides={slides}
+          allSlides={slides}
+          feedbackMap={feedbackMap}
+          onSubmitFeedback={submitFeedback}
+        />
       </CardContent>
     </Card>
   );
 }
 
 // ============================================================================
-// Slide Grid
+// Slide Grid with Virtual Scrolling
 // ============================================================================
 
 function SlideGrid({
   slides,
   allSlides,
+  feedbackMap,
+  onSubmitFeedback,
 }: {
   slides: SlideData[];
   allSlides: SlideData[];
+  feedbackMap: Map<number, SlideFeedbackData>;
+  onSubmitFeedback: (feedback: SlideFeedbackData) => Promise<void>;
 }) {
+  const parentRef = useRef<HTMLDivElement>(null);
+
+  const virtualizer = useVirtualizer({
+    count: slides.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => 500, // Estimated height of each slide card
+    overscan: 2, // Number of items to render outside of the visible area
+  });
+
   return (
-    <div className="flex flex-col gap-6">
-      {slides.map((slide) => (
-        <SlideCard key={slide.slideIndex} slide={slide} allSlides={allSlides} />
-      ))}
+    <div
+      ref={parentRef}
+      className="h-[600px] overflow-auto"
+      style={{
+        contain: "strict",
+      }}
+    >
+      <div
+        style={{
+          height: `${virtualizer.getTotalSize()}px`,
+          width: "100%",
+          position: "relative",
+        }}
+      >
+        {virtualizer.getVirtualItems().map((virtualItem) => {
+          const slide = slides[virtualItem.index];
+          return (
+            <div
+              key={virtualItem.key}
+              data-index={virtualItem.index}
+              ref={virtualizer.measureElement}
+              style={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                width: "100%",
+                transform: `translateY(${virtualItem.start}px)`,
+              }}
+            >
+              <div className="pb-6">
+                <SlideCard
+                  slide={slide}
+                  allSlides={allSlides}
+                  initialFeedback={feedbackMap.get(slide.slideIndex)}
+                  onSubmitFeedback={onSubmitFeedback}
+                />
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -278,6 +388,8 @@ function FrameCard({
   onZoom,
   validation,
   onValidate,
+  isPicked,
+  onPickedChange,
 }: {
   label: "First" | "Last";
   imageUrl: string | null;
@@ -290,6 +402,8 @@ function FrameCard({
   onZoom: () => void;
   validation: FrameValidation;
   onValidate: (field: "hasText" | "isDuplicate", value: boolean | null) => void;
+  isPicked: boolean;
+  onPickedChange: (picked: boolean) => void;
 }) {
   // Find duplicate slide if exists
   const duplicateSlide =
@@ -304,12 +418,23 @@ function FrameCard({
     : null;
 
   return (
-    <div className="flex gap-3">
+    <div className="flex flex-col gap-3">
+      {/* Frame header with checkbox */}
+      <label className="flex items-center gap-2 cursor-pointer">
+        <input
+          type="checkbox"
+          checked={isPicked}
+          onChange={(e) => onPickedChange(e.target.checked)}
+          className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-2 focus:ring-primary"
+        />
+        <span className="text-sm font-medium">{label} Frame</span>
+      </label>
+
       {/* Image container - preserves aspect ratio */}
-      <div className="relative flex-shrink-0 w-48 group">
+      <div className="relative w-full group">
         <button
           type="button"
-          className="relative bg-muted rounded-lg overflow-hidden cursor-zoom-in"
+          className="relative bg-muted rounded-lg overflow-hidden cursor-zoom-in w-full"
           onClick={onZoom}
         >
           {imageUrl ? (
@@ -357,8 +482,8 @@ function FrameCard({
         )}
       </div>
 
-      {/* Side annotation panel */}
-      <div className="flex-1 space-y-3 text-sm">
+      {/* Annotation panel below image */}
+      <div className="w-full space-y-3 text-sm">
         {/* Has Text annotation with validation */}
         <div className="flex items-center justify-between gap-2 p-2 rounded-md bg-muted/50">
           <div className="flex items-center gap-2">
@@ -476,17 +601,93 @@ type SamenessFeedback = "same" | "different" | null;
 function SlideCard({
   slide,
   allSlides,
+  initialFeedback,
+  onSubmitFeedback,
 }: {
   slide: SlideData;
   allSlides: SlideData[];
+  initialFeedback?: SlideFeedbackData;
+  onSubmitFeedback: (feedback: SlideFeedbackData) => Promise<void>;
 }) {
   const [zoomOpen, setZoomOpen] = useState(false);
   const [zoomFrame, setZoomFrame] = useState<"first" | "last">("first");
 
-  const [firstValidation, setFirstValidation] = useState<FrameValidation>({});
-  const [lastValidation, setLastValidation] = useState<FrameValidation>({});
-  const [samenessFeedback, setSamenessFeedback] =
-    useState<SamenessFeedback>(null);
+  const [firstValidation, setFirstValidation] = useState<FrameValidation>({
+    hasTextValidated: initialFeedback?.firstFrameHasTextValidated ?? null,
+    isDuplicateValidated:
+      initialFeedback?.firstFrameIsDuplicateValidated ?? null,
+  });
+  const [lastValidation, setLastValidation] = useState<FrameValidation>({
+    hasTextValidated: initialFeedback?.lastFrameHasTextValidated ?? null,
+    isDuplicateValidated:
+      initialFeedback?.lastFrameIsDuplicateValidated ?? null,
+  });
+  const [samenessFeedback, setSamenessFeedback] = useState<SamenessFeedback>(
+    initialFeedback?.framesSameness ?? null,
+  );
+  const [isFirstFramePicked, setIsFirstFramePicked] = useState<boolean>(
+    initialFeedback?.isFirstFramePicked ?? true,
+  );
+  const [isLastFramePicked, setIsLastFramePicked] = useState<boolean>(
+    initialFeedback?.isLastFramePicked ?? true,
+  );
+
+  // Sync state when initialFeedback prop changes
+  useEffect(() => {
+    if (initialFeedback) {
+      setFirstValidation({
+        hasTextValidated: initialFeedback.firstFrameHasTextValidated ?? null,
+        isDuplicateValidated:
+          initialFeedback.firstFrameIsDuplicateValidated ?? null,
+      });
+      setLastValidation({
+        hasTextValidated: initialFeedback.lastFrameHasTextValidated ?? null,
+        isDuplicateValidated:
+          initialFeedback.lastFrameIsDuplicateValidated ?? null,
+      });
+      setSamenessFeedback(initialFeedback.framesSameness ?? null);
+      setIsFirstFramePicked(initialFeedback.isFirstFramePicked ?? true);
+      setIsLastFramePicked(initialFeedback.isLastFramePicked ?? false);
+    }
+  }, [initialFeedback]);
+
+  // Submit feedback when it changes
+  useEffect(() => {
+    const feedback: SlideFeedbackData = {
+      slideIndex: slide.slideIndex,
+      firstFrameHasTextValidated: firstValidation.hasTextValidated ?? null,
+      firstFrameIsDuplicateValidated:
+        firstValidation.isDuplicateValidated ?? null,
+      lastFrameHasTextValidated: lastValidation.hasTextValidated ?? null,
+      lastFrameIsDuplicateValidated:
+        lastValidation.isDuplicateValidated ?? null,
+      framesSameness: samenessFeedback,
+      isFirstFramePicked,
+      isLastFramePicked,
+    };
+
+    // Only submit if at least one field has a value
+    const hasAnyValue =
+      feedback.firstFrameHasTextValidated !== null ||
+      feedback.firstFrameIsDuplicateValidated !== null ||
+      feedback.lastFrameHasTextValidated !== null ||
+      feedback.lastFrameIsDuplicateValidated !== null ||
+      feedback.framesSameness !== null ||
+      feedback.isFirstFramePicked !== null ||
+      feedback.isLastFramePicked !== null;
+
+    if (hasAnyValue) {
+      onSubmitFeedback(feedback);
+    }
+  }, [
+    firstValidation,
+    lastValidation,
+    samenessFeedback,
+    isFirstFramePicked,
+    isLastFramePicked,
+    slide.slideIndex,
+    onSubmitFeedback,
+  ]);
 
   const handleZoom = useCallback((frame: "first" | "last") => {
     setZoomFrame(frame);
@@ -555,6 +756,8 @@ function SlideCard({
             onZoom={() => handleZoom("first")}
             validation={firstValidation}
             onValidate={handleFirstValidate}
+            isPicked={isFirstFramePicked}
+            onPickedChange={setIsFirstFramePicked}
           />
           <FrameCard
             label="Last"
@@ -568,6 +771,8 @@ function SlideCard({
             onZoom={() => handleZoom("last")}
             validation={lastValidation}
             onValidate={handleLastValidate}
+            isPicked={isLastFramePicked}
+            onPickedChange={setIsLastFramePicked}
           />
         </div>
 

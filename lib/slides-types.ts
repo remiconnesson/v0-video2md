@@ -99,6 +99,21 @@ export interface SlideData {
 }
 
 // ============================================================================
+// Slide Feedback Types
+// ============================================================================
+
+export interface SlideFeedbackData {
+  slideIndex: number;
+  firstFrameHasTextValidated: boolean | null;
+  firstFrameIsDuplicateValidated: boolean | null;
+  lastFrameHasTextValidated: boolean | null;
+  lastFrameIsDuplicateValidated: boolean | null;
+  framesSameness: "same" | "different" | null;
+  isFirstFramePicked: boolean | null;
+  isLastFramePicked: boolean | null;
+}
+
+// ============================================================================
 // Job Status (from VPS)
 // ============================================================================
 
