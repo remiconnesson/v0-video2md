@@ -98,9 +98,17 @@ export async function POST(
     // Stream Slides
     streamPromises.push(streamWorkflow(slidesRun.readable, "slides", writer));
 
-    // Wait for all active streams to finish
-    Promise.all(streamPromises).finally(() => {
+    (async () => {
+      await Promise.all(streamPromises);
+      // Also await the analysis promise if it was created
+      if (analysisPromise) {
+        await analysisPromise;
+      }
+      // Close the stream once all workflows have finished
       writer.close();
+    })().catch((error) => {
+      console.error("Stream processing error:", error);
+      writer.abort(error);
     });
   } catch (error) {
     console.error("Failed to start processing workflow:", error);
