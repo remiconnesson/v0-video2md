@@ -223,30 +223,39 @@ async function runGodPrompt(
 }
 
 // ============================================================================
-// Step: Persist run to database
+// Step: Update run status to completed
 // ============================================================================
 
-async function persistRun(
-  videoId: string,
-  version: number,
+async function completeRun(
+  dbRunId: number,
   result: Record<string, unknown>,
-  additionalInstructions?: string,
-): Promise<number> {
+): Promise<void> {
   "use step";
 
-  const [inserted] = await db
-    .insert(videoAnalysisRuns)
-    .values({
-      videoId,
-      version,
+  await db
+    .update(videoAnalysisRuns)
+    .set({
       result,
-      additionalInstructions: additionalInstructions ?? null,
       status: "completed",
       updatedAt: new Date(),
     })
-    .returning({ id: videoAnalysisRuns.id });
+    .where(eq(videoAnalysisRuns.id, dbRunId));
+}
 
-  return inserted.id;
+// ============================================================================
+// Step: Mark run as failed
+// ============================================================================
+
+async function failRun(dbRunId: number): Promise<void> {
+  "use step";
+
+  await db
+    .update(videoAnalysisRuns)
+    .set({
+      status: "failed",
+      updatedAt: new Date(),
+    })
+    .where(eq(videoAnalysisRuns.id, dbRunId));
 }
 
 // ============================================================================
@@ -256,6 +265,7 @@ async function persistRun(
 export async function dynamicAnalysisWorkflow(
   videoId: string,
   additionalInstructions?: string,
+  dbRunId?: number,
 ) {
   "use workflow";
 
@@ -264,35 +274,54 @@ export async function dynamicAnalysisWorkflow(
   const transcriptData = await fetchTranscriptData(videoId);
 
   if (!transcriptData) {
+    if (dbRunId) {
+      await failRun(dbRunId);
+    }
     await emitError(`No transcript found for video: ${videoId}`);
     throw new Error(`No transcript found for video: ${videoId}`);
   }
 
-  // Step 2: Get next version
-  const version = await getNextVersion(videoId);
-
-  // Step 3: Run god prompt
+  // Step 2: Run god prompt
   await emitProgress(
     "analyzing",
     "Analyzing transcript and generating extraction schema...",
   );
-  const result = await runGodPrompt(transcriptData, additionalInstructions);
 
-  // Step 5: Persist to DB
+  let result: Record<string, unknown>;
+  try {
+    result = await runGodPrompt(transcriptData, additionalInstructions);
+  } catch (error) {
+    if (dbRunId) {
+      await failRun(dbRunId);
+    }
+    throw error;
+  }
+
+  // Step 3: Update the run to completed
   await emitProgress("saving", "Saving analysis to database...");
-  const runId = await persistRun(
-    videoId,
-    version,
-    result,
-    additionalInstructions,
-  );
 
-  // Step 6: Signal completion
-  await emitComplete(runId);
+  if (dbRunId) {
+    await completeRun(dbRunId, result);
+    await emitComplete(dbRunId);
+  } else {
+    // Fallback for old-style calls without dbRunId (shouldn't happen in normal flow)
+    const version = await getNextVersion(videoId);
+    const [inserted] = await db
+      .insert(videoAnalysisRuns)
+      .values({
+        videoId,
+        version,
+        result,
+        additionalInstructions: additionalInstructions ?? null,
+        status: "completed",
+        updatedAt: new Date(),
+      })
+      .returning({ id: videoAnalysisRuns.id });
+    await emitComplete(inserted.id);
+  }
 
   return {
     success: true,
-    runId,
-    version,
+    dbRunId,
   };
 }

@@ -32,8 +32,15 @@ interface AnalysisRun {
   version: number;
   status: string;
   result: unknown;
+  workflowRunId: string | null;
   additionalInstructions: string | null;
   createdAt: string;
+}
+
+interface StreamingRunInfo {
+  id: number;
+  version: number;
+  workflowRunId: string | null;
 }
 
 interface VideoInfo {
@@ -86,6 +93,127 @@ export function AnalyzeView({ youtubeId, initialVersion }: AnalyzeViewProps) {
     slides: [],
   });
 
+  // Fetch existing analysis runs and check for streaming runs
+  const fetchRuns = useCallback(async (): Promise<{
+    runs: AnalysisRun[];
+    streamingRun: StreamingRunInfo | null;
+  }> => {
+    try {
+      const res = await fetch(`/api/video/${youtubeId}/analyze`);
+      if (!res.ok) return { runs: [], streamingRun: null };
+      const data = await res.json();
+      setRuns(data.runs);
+
+      if (data.runs.length > 0) {
+        const targetVersion = initialVersion ?? data.runs[0].version;
+        const run = data.runs.find(
+          (r: AnalysisRun) => r.version === targetVersion,
+        );
+        setSelectedRun(run ?? data.runs[0]);
+      }
+
+      return {
+        runs: data.runs,
+        streamingRun: data.streamingRun as StreamingRunInfo | null,
+      };
+    } catch (err) {
+      console.error("Failed to fetch runs:", err);
+      return { runs: [], streamingRun: null };
+    }
+  }, [youtubeId, initialVersion]);
+
+  // Consume analysis stream events (shared between start and resume)
+  const consumeAnalysisStream = useCallback(async (response: Response) => {
+    await consumeSSE<AnalysisStreamEvent>(response, {
+      progress: (event) =>
+        setAnalysisState((prev) => ({
+          ...prev,
+          phase: event.phase,
+          message: event.message,
+        })),
+      partial: (event) =>
+        setAnalysisState((prev) => ({
+          ...prev,
+          result: event.data,
+        })),
+      result: (event) =>
+        setAnalysisState((prev) => ({
+          ...prev,
+          result: event.data,
+        })),
+      complete: (event) =>
+        setAnalysisState((prev) => ({
+          ...prev,
+          status: "completed",
+          runId: event.runId,
+          phase: "complete",
+          message: "Analysis complete!",
+        })),
+      error: (event) => {
+        throw new Error(event.message);
+      },
+    });
+  }, []);
+
+  // Resume an existing streaming analysis
+  const resumeAnalysisStream = useCallback(async () => {
+    setAnalysisState({
+      status: "running",
+      phase: "resuming",
+      message: "Reconnecting to analysis...",
+      result: null,
+      runId: null,
+      error: null,
+    });
+
+    try {
+      const response = await fetch(`/api/video/${youtubeId}/analyze/resume`);
+
+      if (!response.ok) {
+        // Check if analysis completed while we were trying to reconnect
+        let completed = false;
+        try {
+          const errorData = await response.json();
+          completed = errorData.completed === true;
+        } catch {
+          // Ignore JSON parse errors
+        }
+
+        // Refetch runs to get current state
+        const { runs: updatedRuns } = await fetchRuns();
+
+        if (completed || updatedRuns.length > 0) {
+          // Analysis finished - show the completed result
+          const latestRun = updatedRuns[0];
+          if (latestRun?.result) {
+            setSelectedRun(latestRun);
+          }
+          setAnalysisState({
+            status: "idle",
+            phase: "",
+            message: "",
+            result: null,
+            runId: null,
+            error: null,
+          });
+          return;
+        }
+        throw new Error("Failed to resume analysis");
+      }
+
+      await consumeAnalysisStream(response);
+    } catch (err) {
+      const errorMessage =
+        err instanceof Error ? err.message : "Failed to resume analysis";
+
+      setAnalysisState((prev) => ({
+        ...prev,
+        status: "error",
+        error: errorMessage,
+      }));
+    }
+  }, [youtubeId, fetchRuns, consumeAnalysisStream]);
+
   const startAnalysisRun = useCallback(
     async (additionalInstructions?: string) => {
       setAnalysisState({
@@ -108,35 +236,7 @@ export function AnalyzeView({ youtubeId, initialVersion }: AnalyzeViewProps) {
           throw new Error("Failed to start analysis");
         }
 
-        await consumeSSE<AnalysisStreamEvent>(response, {
-          progress: (event) =>
-            setAnalysisState((prev) => ({
-              ...prev,
-              phase: event.phase,
-              message: event.message,
-            })),
-          partial: (event) =>
-            setAnalysisState((prev) => ({
-              ...prev,
-              result: event.data,
-            })),
-          result: (event) =>
-            setAnalysisState((prev) => ({
-              ...prev,
-              result: event.data,
-            })),
-          complete: (event) =>
-            setAnalysisState((prev) => ({
-              ...prev,
-              status: "completed",
-              runId: event.runId,
-              phase: "complete",
-              message: "Analysis complete!",
-            })),
-          error: (event) => {
-            throw new Error(event.message);
-          },
-        });
+        await consumeAnalysisStream(response);
       } catch (err) {
         const errorMessage =
           err instanceof Error ? err.message : "Analysis failed";
@@ -148,32 +248,8 @@ export function AnalyzeView({ youtubeId, initialVersion }: AnalyzeViewProps) {
         }));
       }
     },
-    [youtubeId],
+    [youtubeId, consumeAnalysisStream],
   );
-
-  // Fetch existing analysis runs
-  const fetchRuns = useCallback(async (): Promise<AnalysisRun[]> => {
-    try {
-      // BAD: No type safety here
-      const res = await fetch(`/api/video/${youtubeId}/analyze`);
-      if (!res.ok) return [];
-      const data = await res.json();
-      setRuns(data.runs);
-
-      if (data.runs.length > 0) {
-        const targetVersion = initialVersion ?? data.runs[0].version;
-        const run = data.runs.find(
-          (r: AnalysisRun) => r.version === targetVersion,
-        );
-        setSelectedRun(run ?? data.runs[0]);
-      }
-
-      return data.runs;
-    } catch (err) {
-      console.error("Failed to fetch runs:", err);
-      return [];
-    }
-  }, [youtubeId, initialVersion]);
 
   // Load existing slides from DB
   const loadExistingSlides = useCallback(async () => {
@@ -183,7 +259,9 @@ export function AnalyzeView({ youtubeId, initialVersion }: AnalyzeViewProps) {
 
       const data = await res.json();
 
-      if (data.status === "completed" && data.slides.length > 0) {
+      // If slides exist in DB, show them as completed regardless of extraction status
+      // This handles the case where extraction finished but status wasn't updated
+      if (data.slides.length > 0) {
         setSlidesState({
           status: "completed",
           progress: 100,
@@ -191,6 +269,15 @@ export function AnalyzeView({ youtubeId, initialVersion }: AnalyzeViewProps) {
           error: null,
           slides: data.slides,
         });
+      } else if (data.status === "in_progress") {
+        // Extraction is in progress but no slides yet
+        setSlidesState((prev) => ({
+          ...prev,
+          status: "extracting",
+          progress: 0,
+          message: "Extraction in progress...",
+          slides: [],
+        }));
       } else {
         setSlidesState((prev) => ({
           ...prev,
@@ -385,12 +472,13 @@ export function AnalyzeView({ youtubeId, initialVersion }: AnalyzeViewProps) {
     type VideoStatus = "not_found" | "processing" | "ready";
 
     let status: VideoStatus = "not_found";
+    let hasStreamingAnalysis = false;
 
     try {
       const res = await fetch(`/api/video/${youtubeId}`);
       if (!res.ok) {
         setPageStatus("no_transcript");
-        return status;
+        return { status, hasStreamingAnalysis };
       }
 
       const data = await res.json();
@@ -398,7 +486,7 @@ export function AnalyzeView({ youtubeId, initialVersion }: AnalyzeViewProps) {
 
       if (status === "not_found") {
         setPageStatus("no_transcript");
-        return status;
+        return { status, hasStreamingAnalysis };
       }
 
       // We have video data
@@ -418,7 +506,15 @@ export function AnalyzeView({ youtubeId, initialVersion }: AnalyzeViewProps) {
           message: "Transcript already fetched",
           error: null,
         });
-        await Promise.all([fetchRuns(), loadExistingSlides()]);
+        const [runsResult] = await Promise.all([
+          fetchRuns(),
+          loadExistingSlides(),
+        ]);
+
+        // Check if there's a streaming analysis to resume
+        if (runsResult.streamingRun?.workflowRunId) {
+          hasStreamingAnalysis = true;
+        }
       } else if (status === "processing") {
         setPageStatus("fetching_transcript");
         setTranscriptState((prev) => ({
@@ -432,11 +528,11 @@ export function AnalyzeView({ youtubeId, initialVersion }: AnalyzeViewProps) {
         setPageStatus("no_transcript");
       }
 
-      return status;
+      return { status, hasStreamingAnalysis };
     } catch (err) {
       console.error("Failed to check video status:", err);
       setPageStatus("no_transcript");
-      return status;
+      return { status, hasStreamingAnalysis };
     }
   }, [youtubeId, fetchRuns, loadExistingSlides]);
 
@@ -445,25 +541,28 @@ export function AnalyzeView({ youtubeId, initialVersion }: AnalyzeViewProps) {
     let cancelled = false;
 
     (async () => {
-      const status = await checkVideoStatus();
+      const { status, hasStreamingAnalysis } = await checkVideoStatus();
       if (cancelled) return;
 
       if (status !== "ready") {
         startProcessing();
+      } else if (hasStreamingAnalysis) {
+        // Resume the streaming analysis if one is in progress
+        resumeAnalysisStream();
       }
     })();
 
     return () => {
       cancelled = true;
     };
-  }, [checkVideoStatus, startProcessing]);
+  }, [checkVideoStatus, startProcessing, resumeAnalysisStream]);
 
   // When analysis completes, refresh runs
   useEffect(() => {
     if (analysisState.status === "completed" && analysisState.runId) {
-      fetchRuns().then((updatedRuns) => {
+      fetchRuns().then(({ runs: updatedRuns }) => {
         const params = new URLSearchParams(searchParams.toString());
-        const newVersion = updatedRuns.length + 1;
+        const newVersion = updatedRuns.length;
         params.set("v", newVersion.toString());
         router.push(`?${params.toString()}`, { scroll: false });
       });
