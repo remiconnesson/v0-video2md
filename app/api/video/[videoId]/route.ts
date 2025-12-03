@@ -50,10 +50,8 @@ export async function GET(
       status: "not_found",
       video: null,
     };
-  }
-
-  // Video exists but no transcript yet
-  if (!row.transcript) {
+  } else if (!row.transcript) {
+    // Video exists but no transcript yet
     responseData = {
       status: "processing",
       video: {
@@ -62,17 +60,17 @@ export async function GET(
         thumbnail: row.thumbnail,
       },
     };
+  } else {
+    // Video has transcript
+    responseData = {
+      status: "ready",
+      video: {
+        title: row.title,
+        channelName: row.channelName,
+        thumbnail: row.thumbnail,
+      },
+    };
   }
-
-  // Video has transcript
-  responseData = {
-    status: "ready",
-    video: {
-      title: row.title,
-      channelName: row.channelName,
-      thumbnail: row.thumbnail,
-    },
-  };
 
   const validationResult = videoStatusResponseSchema.safeParse(responseData);
 
