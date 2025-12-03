@@ -259,7 +259,9 @@ export function AnalyzeView({ youtubeId, initialVersion }: AnalyzeViewProps) {
 
       const data = await res.json();
 
-      if (data.status === "completed" && data.slides.length > 0) {
+      // If slides exist in DB, show them as completed regardless of extraction status
+      // This handles the case where extraction finished but status wasn't updated
+      if (data.slides.length > 0) {
         setSlidesState({
           status: "completed",
           progress: 100,
@@ -267,6 +269,15 @@ export function AnalyzeView({ youtubeId, initialVersion }: AnalyzeViewProps) {
           error: null,
           slides: data.slides,
         });
+      } else if (data.status === "in_progress") {
+        // Extraction is in progress but no slides yet
+        setSlidesState((prev) => ({
+          ...prev,
+          status: "extracting",
+          progress: 0,
+          message: "Extraction in progress...",
+          slides: [],
+        }));
       } else {
         setSlidesState((prev) => ({
           ...prev,

@@ -36,20 +36,42 @@ export async function GET(
       firstFrameHasText: videoSlides.firstFrameHasText,
       firstFrameTextConfidence: videoSlides.firstFrameTextConfidence,
       firstFrameIsDuplicate: videoSlides.firstFrameIsDuplicate,
+      firstFrameDuplicateOfSegmentId:
+        videoSlides.firstFrameDuplicateOfSegmentId,
       firstFrameSkipReason: videoSlides.firstFrameSkipReason,
       // Last frame data
       lastFrameImageUrl: videoSlides.lastFrameImageUrl,
       lastFrameHasText: videoSlides.lastFrameHasText,
       lastFrameTextConfidence: videoSlides.lastFrameTextConfidence,
       lastFrameIsDuplicate: videoSlides.lastFrameIsDuplicate,
+      lastFrameDuplicateOfSegmentId: videoSlides.lastFrameDuplicateOfSegmentId,
       lastFrameSkipReason: videoSlides.lastFrameSkipReason,
     })
     .from(videoSlides)
     .where(eq(videoSlides.videoId, videoId))
     .orderBy(asc(videoSlides.slideIndex));
 
+  // If extraction status is "in_progress" but we have slides, fix the status
+  // This handles the case where extraction completed but status wasn't updated
+  let status = extraction?.status ?? "idle";
+  if (extraction && status === "in_progress" && slides.length > 0) {
+    console.log(
+      "⚙️ Found in_progress extraction with slides, marking as completed:",
+      videoId,
+    );
+    await db
+      .update(videoSlideExtractions)
+      .set({
+        status: "completed",
+        totalSlides: slides.length,
+        updatedAt: new Date(),
+      })
+      .where(eq(videoSlideExtractions.videoId, videoId));
+    status = "completed";
+  }
+
   return NextResponse.json({
-    status: extraction?.status ?? "idle",
+    status,
     runId: extraction?.runId ?? null,
     totalSlides: extraction?.totalSlides ?? slides.length,
     slides: slides.map((s) => ({
@@ -62,11 +84,13 @@ export async function GET(
       firstFrameHasText: s.firstFrameHasText,
       firstFrameTextConfidence: s.firstFrameTextConfidence,
       firstFrameIsDuplicate: s.firstFrameIsDuplicate,
+      firstFrameDuplicateOfSegmentId: s.firstFrameDuplicateOfSegmentId,
       firstFrameSkipReason: s.firstFrameSkipReason,
       lastFrameImageUrl: s.lastFrameImageUrl,
       lastFrameHasText: s.lastFrameHasText,
       lastFrameTextConfidence: s.lastFrameTextConfidence,
       lastFrameIsDuplicate: s.lastFrameIsDuplicate,
+      lastFrameDuplicateOfSegmentId: s.lastFrameDuplicateOfSegmentId,
       lastFrameSkipReason: s.lastFrameSkipReason,
     })),
   });

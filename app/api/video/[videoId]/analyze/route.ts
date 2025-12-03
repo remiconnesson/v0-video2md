@@ -34,14 +34,32 @@ export async function GET(
     .orderBy(desc(videoAnalysisRuns.version));
 
   // Check if there's a streaming run in progress
-  const streamingRun = runs.find((r) => r.status === "streaming");
-  console.log("⚙️⚙️⚙️ streamingRun", streamingRun);
+  let streamingRun = runs.find((r) => r.status === "streaming");
+
+  // If a "streaming" run has a result, it actually completed - fix the status
+  if (streamingRun?.result) {
+    console.log(
+      "⚙️⚙️⚙️ Found streaming run with result, marking as completed:",
+      streamingRun.id,
+    );
+    await db
+      .update(videoAnalysisRuns)
+      .set({ status: "completed", updatedAt: new Date() })
+      .where(eq(videoAnalysisRuns.id, streamingRun.id));
+
+    // Update local copy and clear streaming run since it's now completed
+    const idx = runs.findIndex((r) => r.id === streamingRun?.id);
+    if (idx >= 0) {
+      runs[idx] = { ...runs[idx], status: "completed" };
+    }
+    streamingRun = undefined;
+  }
 
   return NextResponse.json({
     videoId,
     runs,
     latestVersion: runs[0]?.version ?? 0,
-    streamingRun: streamingRun
+    streamingRun: streamingRun?.workflowRunId
       ? {
           id: streamingRun.id,
           version: streamingRun.version,
