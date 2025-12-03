@@ -1,5 +1,6 @@
 "use client";
 
+import { Match } from "effect";
 import {
   ExternalLink,
   Loader2,
@@ -10,14 +11,13 @@ import {
 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
+import type { ProcessingStreamEvent } from "@/app/api/video/[videoId]/process/route";
 import type { AnalysisStreamEvent } from "@/app/workflows/dynamic-analysis";
-import type { TranscriptStreamEvent } from "@/app/workflows/fetch-transcript";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { AnalysisState } from "@/hooks/use-dynamic-analysis";
-import type { SlideStreamEvent } from "@/lib/slides-types";
 import { consumeSSE } from "@/lib/sse";
 import { isRecord } from "@/lib/type-utils";
 import { AnalysisPanel } from "./analysis-panel";
@@ -44,27 +44,6 @@ interface VideoInfo {
 type PageStatus = "loading" | "no_transcript" | "fetching_transcript" | "ready";
 
 type TranscriptStatus = "idle" | "fetching" | "completed" | "error";
-
-type ProcessingStreamEvent =
-  | ({ source: "transcript" } & TranscriptStreamEvent)
-  | ({ source: "analysis" } & AnalysisStreamEvent)
-  | ({ source: "slides" } & SlideStreamEvent)
-  | { source: "meta"; slidesRunId?: string | number | null };
-
-type ProcessingProgressEvent = Extract<
-  ProcessingStreamEvent,
-  { type: "progress" }
->;
-type ProcessingPartialEvent = Extract<
-  ProcessingStreamEvent,
-  { type: "partial" }
->;
-type ProcessingResultEvent = Extract<ProcessingStreamEvent, { type: "result" }>;
-type ProcessingCompleteEvent = Extract<
-  ProcessingStreamEvent,
-  { type: "complete" }
->;
-type ProcessingErrorEvent = Extract<ProcessingStreamEvent, { type: "error" }>;
 
 interface AnalyzeViewProps {
   youtubeId: string;
@@ -206,91 +185,114 @@ export function AnalyzeView({ youtubeId, initialVersion }: AnalyzeViewProps) {
       }
 
       await consumeSSE<ProcessingStreamEvent>(res, {
-        progress: (event: ProcessingProgressEvent) => {
-          if (event.source === "transcript") {
-            setTranscriptState((prev) => ({
-              ...prev,
-              status: "fetching",
-              progress: event.progress ?? prev.progress,
-              message: event.message ?? prev.message,
-            }));
-          }
-
-          if (event.source === "analysis") {
-            setAnalysisState((prev) => ({
-              ...prev,
-              status: "running",
-              phase: event.phase,
-              message: event.message,
-            }));
-          }
+        slide: (_event) => {
+          // unused handler
         },
-        partial: (event: ProcessingPartialEvent) => {
-          if (event.source !== "analysis") return;
-
-          setAnalysisState((prev) => ({
-            ...prev,
-            status: "running",
-            result: event.data,
-          }));
+        progress: (event) => {
+          Match.value(event).pipe(
+            Match.when({ source: "transcript" }, (event) => {
+              setTranscriptState((prev) => ({
+                ...prev,
+                status: "fetching",
+                progress: event.progress ?? prev.progress,
+                message: event.message ?? prev.message,
+              }));
+            }),
+            Match.when({ source: "analysis" }, (event) => {
+              setAnalysisState((prev) => ({
+                ...prev,
+                status: "running",
+                phase: event.phase,
+                message: event.message,
+              }));
+            }),
+            Match.when({ source: "slides" }, () => {
+              // unused handler
+            }),
+            Match.exhaustive,
+          );
         },
-        result: (event: ProcessingResultEvent) => {
-          if (event.source !== "analysis") return;
-
-          setAnalysisState((prev) => ({
-            ...prev,
-            status: "running",
-            result: event.data,
-          }));
+        partial: (event) => {
+          Match.value(event).pipe(
+            Match.when({ source: "analysis" }, (event) => {
+              setAnalysisState((prev) => ({
+                ...prev,
+                status: "running",
+                result: event.data,
+              }));
+            }),
+            Match.exhaustive,
+          );
         },
-        complete: (event: ProcessingCompleteEvent) => {
-          if (event.source === "transcript") {
-            setTranscriptState({
-              status: "completed",
-              progress: 100,
-              message: "Transcript fetched successfully",
-              error: null,
-            });
-
-            if (event.video) {
-              setVideoInfo({
-                title: event.video.title,
-                channelName: event.video.channelName,
+        result: (event) => {
+          Match.value(event).pipe(
+            Match.when({ source: "analysis" }, (event) => {
+              setAnalysisState((prev) => ({
+                ...prev,
+                status: "running",
+                result: event.data,
+              }));
+            }),
+            Match.exhaustive,
+          );
+        },
+        complete: (event) => {
+          Match.value(event).pipe(
+            Match.when({ source: "transcript" }, (event) => {
+              setTranscriptState({
+                status: "completed",
+                progress: 100,
+                message: "Transcript fetched successfully",
+                error: null,
               });
-            }
 
-            setPageStatus("ready");
-          }
+              if (event.video) {
+                setVideoInfo({
+                  title: event.video.title,
+                  channelName: event.video.channelName,
+                });
+              }
 
-          if (event.source === "analysis") {
-            setAnalysisState((prev) => ({
-              ...prev,
-              status: "completed",
-              runId: event.runId,
-              phase: "complete",
-              message: "Analysis complete!",
-            }));
-          }
+              setPageStatus("ready");
+            }),
+            Match.when({ source: "analysis" }, (event) => {
+              setAnalysisState((prev) => ({
+                ...prev,
+                status: "completed",
+                runId: event.runId,
+                phase: "complete",
+                message: "Analysis complete!",
+              }));
+            }),
+            Match.when({ source: "slides" }, () => {
+              // unused handler
+            }),
+            Match.exhaustive,
+          );
         },
-        error: (event: ProcessingErrorEvent) => {
-          if (event.source === "transcript") {
-            setTranscriptState({
-              status: "error",
-              progress: 0,
-              message: "",
-              error: event.error,
-            });
-            setPageStatus("no_transcript");
-            return;
-          }
-
-          if (event.source === "analysis") {
-            setAnalysisState((prev) => ({
-              ...prev,
-              status: "error",
-              error: event.message,
-            }));
-          }
+        error: (event) => {
+          Match.value(event).pipe(
+            Match.when({ source: "transcript" }, (event) => {
+              setTranscriptState({
+                status: "error",
+                progress: 0,
+                message: "",
+                error: event.error,
+              });
+              setPageStatus("no_transcript");
+            }),
+            Match.when({ source: "analysis" }, (event) => {
+              setAnalysisState((prev) => ({
+                ...prev,
+                status: "error",
+                error: event.message,
+              }));
+            }),
+            Match.when({ source: "slides" }, () => {
+              // unused handler
+            }),
+            Match.exhaustive,
+          );
         },
       });
     } catch (err) {

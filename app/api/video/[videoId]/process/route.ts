@@ -9,17 +9,16 @@ import {
 } from "@/app/workflows/fetch-transcript";
 import type { SlideStreamEvent } from "@/lib/slides-types";
 
-type AnyStreamEvent =
+export type ProcessingStreamEvent =
   | (TranscriptStreamEvent & { source: "transcript" })
   | (AnalysisStreamEvent & { source: "analysis" })
-  | (SlideStreamEvent & { source: "slides" })
-  | { source: "meta"; slidesRunId?: string | number | null };
+  | (SlideStreamEvent & { source: "slides" });
 
 async function streamWorkflow<
   T extends TranscriptStreamEvent | AnalysisStreamEvent | SlideStreamEvent,
 >(
   readable: ReadableStream<T>,
-  source: AnyStreamEvent["source"],
+  source: ProcessingStreamEvent["source"],
   writer: WritableStreamDefaultWriter<string>,
   onEvent?: (event: T) => void,
 ) {
@@ -35,7 +34,7 @@ async function streamWorkflow<
     const eventData =
       typeof value === "object" && value !== null ? value : { data: value };
 
-    const payload = { source, ...eventData } as AnyStreamEvent;
+    const payload = { source, ...eventData } as ProcessingStreamEvent;
     await writer.write(`data: ${JSON.stringify(payload)}\n\n`);
   }
 }
@@ -61,11 +60,6 @@ export async function POST(
     // We always start a new workflow. The Python service handles deduplication.
     // We don't track the runId in the DB anymore for locking purposes.
     const slidesRun = await start(extractSlidesWorkflow, [videoId]);
-
-    // Send meta event immediately so frontend knows extraction "started"
-    await writer.write(
-      `data: ${JSON.stringify({ source: "meta", slidesRunId: slidesRun.runId })}\n\n`,
-    );
 
     // 2. Start Transcript Fetching (Path A)
     const transcriptRun = await start(fetchTranscriptWorkflow, [videoId]);

@@ -63,6 +63,7 @@
     "cmdk": "latest",
     "dotenv": "latest",
     "drizzle-orm": "latest",
+    "effect": "^3.19.8",
     "embla-carousel-react": "latest",
     "eventsource-parser": "^3.0.6",
     "happy-dom": "latest",
@@ -89,6 +90,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "2.2.0",
+    "@effect/language-service": "^0.59.0",
     "@tailwindcss/postcss": "^4.1.9",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.0",
