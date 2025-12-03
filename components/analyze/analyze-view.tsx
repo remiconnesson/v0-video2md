@@ -10,14 +10,13 @@ import {
 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
+import type { ProcessingStreamEvent } from "@/app/api/video/[videoId]/process/route";
 import type { AnalysisStreamEvent } from "@/app/workflows/dynamic-analysis";
-import type { TranscriptStreamEvent } from "@/app/workflows/fetch-transcript";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { AnalysisState } from "@/hooks/use-dynamic-analysis";
-import type { SlideStreamEvent } from "@/lib/slides-types";
 import { consumeSSE } from "@/lib/sse";
 import { isRecord } from "@/lib/type-utils";
 import { AnalysisPanel } from "./analysis-panel";
@@ -44,27 +43,6 @@ interface VideoInfo {
 type PageStatus = "loading" | "no_transcript" | "fetching_transcript" | "ready";
 
 type TranscriptStatus = "idle" | "fetching" | "completed" | "error";
-
-type ProcessingStreamEvent =
-  | ({ source: "transcript" } & TranscriptStreamEvent)
-  | ({ source: "analysis" } & AnalysisStreamEvent)
-  | ({ source: "slides" } & SlideStreamEvent)
-  | { source: "meta"; slidesRunId?: string | number | null };
-
-type ProcessingProgressEvent = Extract<
-  ProcessingStreamEvent,
-  { type: "progress" }
->;
-type ProcessingPartialEvent = Extract<
-  ProcessingStreamEvent,
-  { type: "partial" }
->;
-type ProcessingResultEvent = Extract<ProcessingStreamEvent, { type: "result" }>;
-type ProcessingCompleteEvent = Extract<
-  ProcessingStreamEvent,
-  { type: "complete" }
->;
-type ProcessingErrorEvent = Extract<ProcessingStreamEvent, { type: "error" }>;
 
 interface AnalyzeViewProps {
   youtubeId: string;
@@ -206,7 +184,11 @@ export function AnalyzeView({ youtubeId, initialVersion }: AnalyzeViewProps) {
       }
 
       await consumeSSE<ProcessingStreamEvent>(res, {
-        progress: (event: ProcessingProgressEvent) => {
+        slide: (_event) => {
+          // unused handler
+        },
+        progress: (event) => {
+          // SHOULD BE EXHAUSTIVE MATCH, HERE SLIDES IS MISSING
           if (event.source === "transcript") {
             setTranscriptState((prev) => ({
               ...prev,
@@ -225,7 +207,7 @@ export function AnalyzeView({ youtubeId, initialVersion }: AnalyzeViewProps) {
             }));
           }
         },
-        partial: (event: ProcessingPartialEvent) => {
+        partial: (event) => {
           if (event.source !== "analysis") return;
 
           setAnalysisState((prev) => ({
@@ -234,7 +216,7 @@ export function AnalyzeView({ youtubeId, initialVersion }: AnalyzeViewProps) {
             result: event.data,
           }));
         },
-        result: (event: ProcessingResultEvent) => {
+        result: (event) => {
           if (event.source !== "analysis") return;
 
           setAnalysisState((prev) => ({
@@ -243,7 +225,7 @@ export function AnalyzeView({ youtubeId, initialVersion }: AnalyzeViewProps) {
             result: event.data,
           }));
         },
-        complete: (event: ProcessingCompleteEvent) => {
+        complete: (event) => {
           if (event.source === "transcript") {
             setTranscriptState({
               status: "completed",
@@ -272,7 +254,7 @@ export function AnalyzeView({ youtubeId, initialVersion }: AnalyzeViewProps) {
             }));
           }
         },
-        error: (event: ProcessingErrorEvent) => {
+        error: (event) => {
           if (event.source === "transcript") {
             setTranscriptState({
               status: "error",

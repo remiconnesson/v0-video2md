@@ -1,16 +1,12 @@
-export type SSEBaseEvent = { type?: string; [key: string]: unknown };
+export type SSEBaseEvent = { type: string; [key: string]: unknown };
 
 export type SSEHandlerMap<TEvent extends SSEBaseEvent> = {
-  [K in NonNullable<TEvent["type"]>]?: (
+  [K in TEvent["type"]]: (
     event: Extract<TEvent, { type: K }>,
   ) => void | Promise<void>;
 };
 
-export interface ConsumeSSEOptions<TEvent extends SSEBaseEvent> {
-  /**
-   * Called when an event has a `type` not present in the handler map or missing entirely.
-   */
-  onUnknownEvent?: (event: TEvent) => void | Promise<void>;
+export interface ConsumeSSEOptions {
   /**
    * Called when something goes wrong while reading/parsing the stream.
    */
@@ -28,7 +24,7 @@ export interface ConsumeSSEOptions<TEvent extends SSEBaseEvent> {
 export async function consumeSSE<TEvent extends SSEBaseEvent>(
   response: Response,
   handlers: SSEHandlerMap<TEvent>,
-  options: ConsumeSSEOptions<TEvent> = {},
+  options: ConsumeSSEOptions = {},
 ): Promise<void> {
   const reader = response.body?.getReader();
   if (!reader) {
