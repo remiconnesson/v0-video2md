@@ -9,7 +9,7 @@ import {
   Youtube,
 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { AnalysisStreamEvent } from "@/app/workflows/dynamic-analysis";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -74,31 +74,8 @@ export function AnalyzeView({ youtubeId, initialVersion }: AnalyzeViewProps) {
     error: null,
   });
 
-  const abortControllerRef = useRef<AbortController | null>(null);
-  const processingAbortRef = useRef<AbortController | null>(null);
-
-  const abort = useCallback(() => {
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-      abortControllerRef.current = null;
-    }
-  }, []);
-
-  const abortProcessing = useCallback(() => {
-    if (processingAbortRef.current) {
-      processingAbortRef.current.abort();
-      processingAbortRef.current = null;
-    }
-  }, []);
-
   const startAnalysisRun = useCallback(
     async (additionalInstructions?: string) => {
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
-
-      abortControllerRef.current = new AbortController();
-
       setAnalysisState({
         status: "running",
         phase: "starting",
@@ -113,7 +90,6 @@ export function AnalyzeView({ youtubeId, initialVersion }: AnalyzeViewProps) {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ additionalInstructions }),
-          signal: abortControllerRef.current.signal,
         });
 
         if (!response.ok || !response.body) {
@@ -214,16 +190,6 @@ export function AnalyzeView({ youtubeId, initialVersion }: AnalyzeViewProps) {
   }, [youtubeId, initialVersion]);
 
   const startProcessing = useCallback(async () => {
-    // Avoid double wiring when the transcript is already present
-    if (transcriptState.status === "completed") return;
-
-    // Only allow a single live stream subscription at a time so we don't
-    // duplicate work when remounting.
-    if (processingAbortRef.current) return;
-
-    const controller = new AbortController();
-    processingAbortRef.current = controller;
-
     setPageStatus("fetching_transcript");
     setTranscriptState({
       status: "fetching",
@@ -235,7 +201,6 @@ export function AnalyzeView({ youtubeId, initialVersion }: AnalyzeViewProps) {
     try {
       const res = await fetch(`/api/video/${youtubeId}/process`, {
         method: "POST",
-        signal: controller.signal,
       });
 
       if (!res.ok || !res.body) {
@@ -349,8 +314,6 @@ export function AnalyzeView({ youtubeId, initialVersion }: AnalyzeViewProps) {
         status: "error",
         error: err instanceof Error ? err.message : "Unknown error",
       }));
-    } finally {
-      processingAbortRef.current = null;
     }
   }, [youtubeId]);
 
@@ -429,10 +392,8 @@ export function AnalyzeView({ youtubeId, initialVersion }: AnalyzeViewProps) {
 
     return () => {
       cancelled = true;
-      abort();
-      abortProcessing();
     };
-  }, [abort, abortProcessing, checkVideoStatus, startProcessing]);
+  }, [checkVideoStatus, startProcessing]);
 
   // When analysis completes, refresh runs
   useEffect(() => {
@@ -454,7 +415,6 @@ export function AnalyzeView({ youtubeId, initialVersion }: AnalyzeViewProps) {
 
   // Handlers
   const handleFetchTranscript = () => {
-    abortProcessing();
     setPageStatus("fetching_transcript");
     startProcessing();
   };
@@ -577,11 +537,7 @@ export function AnalyzeView({ youtubeId, initialVersion }: AnalyzeViewProps) {
             />
           )}
 
-          {isAnalysisRunning ? (
-            <Button variant="outline" onClick={abort}>
-              Cancel
-            </Button>
-          ) : hasRuns ? (
+          {isAnalysisRunning && hasRuns ? (
             <Button
               variant="outline"
               onClick={() => setRerollOpen(true)}
