@@ -19,17 +19,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
-import type { SlideData, SlideFeedbackData } from "@/lib/slides-types";
+import type {
+  SlideData,
+  SlideFeedbackData,
+  SlidesState,
+} from "@/lib/slides-types";
 import { formatTime } from "@/lib/time-utils";
 import { cn } from "@/lib/utils";
-
-interface SlidesState {
-  status: "idle" | "loading" | "extracting" | "completed" | "error";
-  progress: number;
-  message: string;
-  error: string | null;
-  slides: SlideData[];
-}
 
 interface SlidesPanelProps {
   videoId: string;

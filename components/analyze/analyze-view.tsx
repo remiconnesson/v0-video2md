@@ -18,7 +18,7 @@ import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { AnalysisState } from "@/hooks/use-dynamic-analysis";
-import type { SlideData } from "@/lib/slides-types";
+import type { SlidesState } from "@/lib/slides-types";
 import { consumeSSE } from "@/lib/sse";
 import { isRecord } from "@/lib/type-utils";
 import { AnalysisPanel } from "./analysis-panel";
@@ -78,12 +78,12 @@ export function AnalyzeView({ youtubeId, initialVersion }: AnalyzeViewProps) {
     error: null,
   });
 
-  const [slidesState, setSlidesState] = useState({
-    status: "idle" as "idle" | "loading" | "extracting" | "completed" | "error",
+  const [slidesState, setSlidesState] = useState<SlidesState>({
+    status: "idle",
     progress: 0,
     message: "",
-    error: null as string | null,
-    slides: [] as SlideData[],
+    error: null,
+    slides: [],
   });
 
   const startAnalysisRun = useCallback(
