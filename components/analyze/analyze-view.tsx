@@ -170,9 +170,24 @@ export function AnalyzeView({ youtubeId, initialVersion }: AnalyzeViewProps) {
       const response = await fetch(`/api/video/${youtubeId}/analyze/resume`);
 
       if (!response.ok) {
-        // If resume fails (404 or 410), the analysis might have finished - refetch runs
-        const { runs } = await fetchRuns();
-        if (runs.length > 0) {
+        // Check if analysis completed while we were trying to reconnect
+        let completed = false;
+        try {
+          const errorData = await response.json();
+          completed = errorData.completed === true;
+        } catch {
+          // Ignore JSON parse errors
+        }
+
+        // Refetch runs to get current state
+        const { runs: updatedRuns } = await fetchRuns();
+
+        if (completed || updatedRuns.length > 0) {
+          // Analysis finished - show the completed result
+          const latestRun = updatedRuns[0];
+          if (latestRun?.result) {
+            setSelectedRun(latestRun);
+          }
           setAnalysisState({
             status: "idle",
             phase: "",

@@ -170,7 +170,7 @@ export async function POST(
 // Helper: Resume an existing workflow stream
 // ============================================================================
 
-function resumeStream(workflowRunId: string, startIndex?: number) {
+function resumeStream(workflowRunId: string, startIndex = 0) {
   try {
     const run = getRun(workflowRunId);
     const readable = run.getReadable({ startIndex });
