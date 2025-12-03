@@ -1,5 +1,6 @@
 import { useCallback, useRef, useState } from "react";
 import type { AnalysisStreamEvent } from "@/app/workflows/dynamic-analysis";
+import { consumeSSE } from "@/lib/sse";
 
 export type AnalysisStatus = "idle" | "running" | "completed" | "error";
 
@@ -56,65 +57,39 @@ export function useDynamicAnalysis(videoId: string): UseDynamicAnalysisReturn {
           signal: abortControllerRef.current.signal,
         });
 
-        if (!response.ok || !response.body) {
+        if (!response.ok) {
           throw new Error("Failed to start analysis");
         }
 
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder();
-        let buffer = "";
-
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-
-          buffer += decoder.decode(value, { stream: true });
-
-          const lines = buffer.split("\n");
-          buffer = lines.pop() || "";
-
-          for (const line of lines) {
-            if (line.startsWith("data: ")) {
-              try {
-                const event: AnalysisStreamEvent = JSON.parse(line.slice(6));
-
-                if (event.type === "progress") {
-                  setState((prev) => ({
-                    ...prev,
-                    phase: event.phase,
-                    message: event.message,
-                  }));
-                } else if (event.type === "partial") {
-                  setState((prev) => ({
-                    ...prev,
-                    result: event.data,
-                  }));
-                } else if (event.type === "result") {
-                  setState((prev) => ({
-                    ...prev,
-                    result: event.data,
-                  }));
-                } else if (event.type === "complete") {
-                  setState((prev) => ({
-                    ...prev,
-                    status: "completed",
-                    runId: event.runId,
-                    phase: "complete",
-                    message: "Analysis complete!",
-                  }));
-                } else if (event.type === "error") {
-                  throw new Error(event.message);
-                }
-              } catch (parseError) {
-                if (parseError instanceof SyntaxError) {
-                  // Ignore malformed SSE lines
-                } else {
-                  throw parseError;
-                }
-              }
-            }
-          }
-        }
+        await consumeSSE<AnalysisStreamEvent>(response, {
+          progress: (event) =>
+            setState((prev) => ({
+              ...prev,
+              phase: event.phase,
+              message: event.message,
+            })),
+          partial: (event) =>
+            setState((prev) => ({
+              ...prev,
+              result: event.data,
+            })),
+          result: (event) =>
+            setState((prev) => ({
+              ...prev,
+              result: event.data,
+            })),
+          complete: (event) =>
+            setState((prev) => ({
+              ...prev,
+              status: "completed",
+              runId: event.runId,
+              phase: "complete",
+              message: "Analysis complete!",
+            })),
+          error: (event) => {
+            throw new Error(event.message);
+          },
+        });
       } catch (err) {
         // Ignore abort errors
         if (err instanceof Error && err.name === "AbortError") {

@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import type { TranscriptStreamEvent } from "@/app/workflows/fetch-transcript";
+import { consumeSSE } from "@/lib/sse";
 
 interface TranscriptState {
   status: "idle" | "fetching" | "completed" | "error";
@@ -37,46 +39,24 @@ export function useTranscriptFetcher(youtubeId: string) {
         throw new Error(error.error || "Failed to fetch transcript");
       }
 
-      // Handle SSE stream
-      const reader = res.body?.getReader();
-      if (!reader) {
-        throw new Error("No response stream");
-      }
-
-      const decoder = new TextDecoder();
-      let buffer = "";
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n");
-        buffer = lines.pop() ?? "";
-
-        for (const line of lines) {
-          if (line.startsWith("data: ")) {
-            const data = JSON.parse(line.slice(6));
-
-            if (data.type === "progress") {
-              setState((prev) => ({
-                ...prev,
-                progress: data.progress ?? prev.progress,
-                message: data.message ?? prev.message,
-              }));
-            } else if (data.type === "complete") {
-              setState({
-                status: "completed",
-                progress: 100,
-                message: "Transcript fetched successfully",
-                videoInfo: data.video,
-              });
-            } else if (data.type === "error") {
-              throw new Error(data.error);
-            }
-          }
-        }
-      }
+      await consumeSSE<TranscriptStreamEvent>(res, {
+        progress: (data) =>
+          setState((prev) => ({
+            ...prev,
+            progress: data.progress ?? prev.progress,
+            message: data.message ?? prev.message,
+          })),
+        complete: (data) =>
+          setState({
+            status: "completed",
+            progress: 100,
+            message: "Transcript fetched successfully",
+            videoInfo: data.video,
+          }),
+        error: (data) => {
+          throw new Error(data.error);
+        },
+      });
     } catch (err) {
       setState({
         status: "error",

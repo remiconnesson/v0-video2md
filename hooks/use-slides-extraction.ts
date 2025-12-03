@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { SlideData, SlideStreamEvent } from "@/lib/slides-types";
+import { consumeSSE } from "@/lib/sse";
 
 export type SlideExtractionStatus =
   | "idle"
@@ -113,52 +114,29 @@ export function useSlideExtraction(videoId: string): UseSlideExtractionReturn {
         return;
       }
 
-      if (!res.ok || !res.body) {
+      if (!res.ok) {
         throw new Error("Failed to start extraction");
       }
 
-      // Process SSE stream
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n");
-        buffer = lines.pop() ?? "";
-
-        for (const line of lines) {
-          if (line.startsWith("data: ")) {
-            try {
-              const event: SlideStreamEvent = JSON.parse(line.slice(6));
-
-              if (event.type === "progress") {
-                setState((prev) => ({
-                  ...prev,
-                  progress: event.progress,
-                  message: event.message,
-                }));
-              } else if (event.type === "slide") {
-                setSlides((prev) => [...prev, event.slide]);
-              } else if (event.type === "complete") {
-                setState({
-                  status: "completed",
-                  progress: 100,
-                  message: `Extracted ${event.totalSlides} slides`,
-                  error: null,
-                });
-              } else if (event.type === "error") {
-                throw new Error(event.message);
-              }
-            } catch (parseErr) {
-              if (!(parseErr instanceof SyntaxError)) throw parseErr;
-            }
-          }
-        }
-      }
+      await consumeSSE<SlideStreamEvent>(res, {
+        progress: (event) =>
+          setState((prev) => ({
+            ...prev,
+            progress: event.progress,
+            message: event.message,
+          })),
+        slide: (event) => setSlides((prev) => [...prev, event.slide]),
+        complete: (event) =>
+          setState({
+            status: "completed",
+            progress: 100,
+            message: `Extracted ${event.totalSlides} slides`,
+            error: null,
+          }),
+        error: (event) => {
+          throw new Error(event.message);
+        },
+      });
     } catch (err) {
       if (err instanceof Error && err.name === "AbortError") return;
 

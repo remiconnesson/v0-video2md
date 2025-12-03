@@ -11,11 +11,14 @@ import {
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import type { AnalysisStreamEvent } from "@/app/workflows/dynamic-analysis";
+import type { TranscriptStreamEvent } from "@/app/workflows/fetch-transcript";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { AnalysisState } from "@/hooks/use-dynamic-analysis";
+import type { SlideStreamEvent } from "@/lib/slides-types";
+import { consumeSSE } from "@/lib/sse";
 import { isRecord } from "@/lib/type-utils";
 import { AnalysisPanel } from "./analysis-panel";
 import { RerollDialog } from "./reroll-dialog";
@@ -41,6 +44,27 @@ interface VideoInfo {
 type PageStatus = "loading" | "no_transcript" | "fetching_transcript" | "ready";
 
 type TranscriptStatus = "idle" | "fetching" | "completed" | "error";
+
+type ProcessingStreamEvent =
+  | ({ source: "transcript" } & TranscriptStreamEvent)
+  | ({ source: "analysis" } & AnalysisStreamEvent)
+  | ({ source: "slides" } & SlideStreamEvent)
+  | { source: "meta"; slidesRunId?: string | number | null };
+
+type ProcessingProgressEvent = Extract<
+  ProcessingStreamEvent,
+  { type: "progress" }
+>;
+type ProcessingPartialEvent = Extract<
+  ProcessingStreamEvent,
+  { type: "partial" }
+>;
+type ProcessingResultEvent = Extract<ProcessingStreamEvent, { type: "result" }>;
+type ProcessingCompleteEvent = Extract<
+  ProcessingStreamEvent,
+  { type: "complete" }
+>;
+type ProcessingErrorEvent = Extract<ProcessingStreamEvent, { type: "error" }>;
 
 interface AnalyzeViewProps {
   youtubeId: string;
@@ -92,62 +116,39 @@ export function AnalyzeView({ youtubeId, initialVersion }: AnalyzeViewProps) {
           body: JSON.stringify({ additionalInstructions }),
         });
 
-        if (!response.ok || !response.body) {
+        if (!response.ok) {
           throw new Error("Failed to start analysis");
         }
 
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder();
-        let buffer = "";
-
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-
-          buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split("\n");
-          buffer = lines.pop() || "";
-
-          for (const line of lines) {
-            if (line.startsWith("data: ")) {
-              try {
-                const event = JSON.parse(line.slice(6)) as AnalysisStreamEvent;
-
-                if (event.type === "progress") {
-                  setAnalysisState((prev) => ({
-                    ...prev,
-                    phase: event.phase,
-                    message: event.message,
-                  }));
-                } else if (event.type === "partial") {
-                  setAnalysisState((prev) => ({
-                    ...prev,
-                    result: event.data,
-                  }));
-                } else if (event.type === "result") {
-                  setAnalysisState((prev) => ({
-                    ...prev,
-                    result: event.data,
-                  }));
-                } else if (event.type === "complete") {
-                  setAnalysisState((prev) => ({
-                    ...prev,
-                    status: "completed",
-                    runId: event.runId,
-                    phase: "complete",
-                    message: "Analysis complete!",
-                  }));
-                } else if (event.type === "error") {
-                  throw new Error(event.message);
-                }
-              } catch (parseError) {
-                if (!(parseError instanceof SyntaxError)) {
-                  throw parseError;
-                }
-              }
-            }
-          }
-        }
+        await consumeSSE<AnalysisStreamEvent>(response, {
+          progress: (event) =>
+            setAnalysisState((prev) => ({
+              ...prev,
+              phase: event.phase,
+              message: event.message,
+            })),
+          partial: (event) =>
+            setAnalysisState((prev) => ({
+              ...prev,
+              result: event.data,
+            })),
+          result: (event) =>
+            setAnalysisState((prev) => ({
+              ...prev,
+              result: event.data,
+            })),
+          complete: (event) =>
+            setAnalysisState((prev) => ({
+              ...prev,
+              status: "completed",
+              runId: event.runId,
+              phase: "complete",
+              message: "Analysis complete!",
+            })),
+          error: (event) => {
+            throw new Error(event.message);
+          },
+        });
       } catch (err) {
         const errorMessage =
           err instanceof Error ? err.message : "Analysis failed";
@@ -200,105 +201,98 @@ export function AnalyzeView({ youtubeId, initialVersion }: AnalyzeViewProps) {
         method: "POST",
       });
 
-      if (!res.ok || !res.body) {
+      if (!res.ok) {
         throw new Error("Failed to start processing");
       }
 
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n");
-        buffer = lines.pop() ?? "";
-
-        for (const line of lines) {
-          if (!line.startsWith("data: ")) continue;
-
-          try {
-            const event = JSON.parse(line.slice(6));
-
-            if (event.source === "meta") {
-              // Meta events currently just expose the slide run id
-              continue;
-            }
-
-            if (event.source === "transcript") {
-              if (event.type === "progress") {
-                setTranscriptState((prev) => ({
-                  ...prev,
-                  status: "fetching",
-                  progress: event.progress ?? prev.progress,
-                  message: event.message ?? prev.message,
-                }));
-              } else if (event.type === "complete") {
-                setTranscriptState({
-                  status: "completed",
-                  progress: 100,
-                  message: "Transcript fetched successfully",
-                  error: null,
-                });
-
-                if (event.video) {
-                  setVideoInfo({
-                    title: event.video.title,
-                    channelName: event.video.channelName,
-                  });
-                }
-
-                setPageStatus("ready");
-              } else if (event.type === "error") {
-                setTranscriptState({
-                  status: "error",
-                  progress: 0,
-                  message: "",
-                  error: event.error,
-                });
-                setPageStatus("no_transcript");
-              }
-            }
-
-            if (event.source === "analysis") {
-              if (event.type === "progress") {
-                setAnalysisState((prev) => ({
-                  ...prev,
-                  status: "running",
-                  phase: event.phase,
-                  message: event.message,
-                }));
-              } else if (event.type === "partial" || event.type === "result") {
-                setAnalysisState((prev) => ({
-                  ...prev,
-                  status: "running",
-                  result: event.data,
-                }));
-              } else if (event.type === "complete") {
-                setAnalysisState((prev) => ({
-                  ...prev,
-                  status: "completed",
-                  runId: event.runId,
-                  phase: "complete",
-                  message: "Analysis complete!",
-                }));
-              } else if (event.type === "error") {
-                setAnalysisState((prev) => ({
-                  ...prev,
-                  status: "error",
-                  error: event.message,
-                }));
-              }
-            }
-          } catch (parseError) {
-            if (!(parseError instanceof SyntaxError)) {
-              throw parseError;
-            }
+      await consumeSSE<ProcessingStreamEvent>(res, {
+        progress: (event: ProcessingProgressEvent) => {
+          if (event.source === "transcript") {
+            setTranscriptState((prev) => ({
+              ...prev,
+              status: "fetching",
+              progress: event.progress ?? prev.progress,
+              message: event.message ?? prev.message,
+            }));
           }
-        }
-      }
+
+          if (event.source === "analysis") {
+            setAnalysisState((prev) => ({
+              ...prev,
+              status: "running",
+              phase: event.phase,
+              message: event.message,
+            }));
+          }
+        },
+        partial: (event: ProcessingPartialEvent) => {
+          if (event.source !== "analysis") return;
+
+          setAnalysisState((prev) => ({
+            ...prev,
+            status: "running",
+            result: event.data,
+          }));
+        },
+        result: (event: ProcessingResultEvent) => {
+          if (event.source !== "analysis") return;
+
+          setAnalysisState((prev) => ({
+            ...prev,
+            status: "running",
+            result: event.data,
+          }));
+        },
+        complete: (event: ProcessingCompleteEvent) => {
+          if (event.source === "transcript") {
+            setTranscriptState({
+              status: "completed",
+              progress: 100,
+              message: "Transcript fetched successfully",
+              error: null,
+            });
+
+            if (event.video) {
+              setVideoInfo({
+                title: event.video.title,
+                channelName: event.video.channelName,
+              });
+            }
+
+            setPageStatus("ready");
+          }
+
+          if (event.source === "analysis") {
+            setAnalysisState((prev) => ({
+              ...prev,
+              status: "completed",
+              runId: event.runId,
+              phase: "complete",
+              message: "Analysis complete!",
+            }));
+          }
+        },
+        error: (event: ProcessingErrorEvent) => {
+          if (event.source === "transcript") {
+            setTranscriptState({
+              status: "error",
+              progress: 0,
+              message: "",
+              error: event.error,
+            });
+            setPageStatus("no_transcript");
+            return;
+          }
+
+          if (event.source === "analysis") {
+            setAnalysisState((prev) => ({
+              ...prev,
+              status: "error",
+              error: event.message,
+            }));
+          }
+        },
+      });
     } catch (err) {
       if (err instanceof Error && err.name === "AbortError") {
         return;
