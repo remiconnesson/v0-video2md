@@ -18,6 +18,7 @@ import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { AnalysisState } from "@/hooks/use-dynamic-analysis";
+import type { SlideData } from "@/lib/slides-types";
 import { consumeSSE } from "@/lib/sse";
 import { isRecord } from "@/lib/type-utils";
 import { AnalysisPanel } from "./analysis-panel";
@@ -75,6 +76,14 @@ export function AnalyzeView({ youtubeId, initialVersion }: AnalyzeViewProps) {
     result: null,
     runId: null,
     error: null,
+  });
+
+  const [slidesState, setSlidesState] = useState({
+    status: "idle" as "idle" | "loading" | "extracting" | "completed" | "error",
+    progress: 0,
+    message: "",
+    error: null as string | null,
+    slides: [] as SlideData[],
   });
 
   const startAnalysisRun = useCallback(
@@ -166,6 +175,39 @@ export function AnalyzeView({ youtubeId, initialVersion }: AnalyzeViewProps) {
     }
   }, [youtubeId, initialVersion]);
 
+  // Load existing slides from DB
+  const loadExistingSlides = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/video/${youtubeId}/slides`);
+      if (!res.ok) return;
+
+      const data = await res.json();
+
+      if (data.status === "completed" && data.slides.length > 0) {
+        setSlidesState({
+          status: "completed",
+          progress: 100,
+          message: `${data.slides.length} slides loaded`,
+          error: null,
+          slides: data.slides,
+        });
+      } else {
+        setSlidesState((prev) => ({
+          ...prev,
+          status: "idle",
+          slides: [],
+        }));
+      }
+    } catch (err) {
+      console.error("Failed to load existing slides:", err);
+      setSlidesState((prev) => ({
+        ...prev,
+        status: "error",
+        error: "Failed to load existing slides",
+      }));
+    }
+  }, [youtubeId]);
+
   const startProcessing = useCallback(async () => {
     setPageStatus("fetching_transcript");
     setTranscriptState({
@@ -185,8 +227,11 @@ export function AnalyzeView({ youtubeId, initialVersion }: AnalyzeViewProps) {
       }
 
       await consumeSSE<ProcessingStreamEvent>(res, {
-        slide: (_event) => {
-          // unused handler
+        slide: (event) => {
+          setSlidesState((prev) => ({
+            ...prev,
+            slides: [...prev.slides, event.slide],
+          }));
         },
         progress: (event) => {
           Match.value(event).pipe(
@@ -206,8 +251,13 @@ export function AnalyzeView({ youtubeId, initialVersion }: AnalyzeViewProps) {
                 message: event.message,
               }));
             }),
-            Match.when({ source: "slides" }, () => {
-              // unused handler
+            Match.when({ source: "slides" }, (event) => {
+              setSlidesState((prev) => ({
+                ...prev,
+                status: "extracting",
+                progress: event.progress ?? prev.progress,
+                message: event.message ?? prev.message,
+              }));
             }),
             Match.exhaustive,
           );
@@ -264,8 +314,14 @@ export function AnalyzeView({ youtubeId, initialVersion }: AnalyzeViewProps) {
                 message: "Analysis complete!",
               }));
             }),
-            Match.when({ source: "slides" }, () => {
-              // unused handler
+            Match.when({ source: "slides" }, (event) => {
+              setSlidesState((prev) => ({
+                ...prev,
+                status: "completed",
+                progress: 100,
+                message: `Extracted ${event.totalSlides} slides`,
+                error: null,
+              }));
             }),
             Match.exhaustive,
           );
@@ -288,8 +344,14 @@ export function AnalyzeView({ youtubeId, initialVersion }: AnalyzeViewProps) {
                 error: event.message,
               }));
             }),
-            Match.when({ source: "slides" }, () => {
-              // unused handler
+            Match.when({ source: "slides" }, (event) => {
+              setSlidesState((prev) => ({
+                ...prev,
+                status: "error",
+                progress: 0,
+                message: "",
+                error: event.message,
+              }));
             }),
             Match.exhaustive,
           );
@@ -349,6 +411,7 @@ export function AnalyzeView({ youtubeId, initialVersion }: AnalyzeViewProps) {
           error: null,
         });
         await fetchRuns();
+        await loadExistingSlides();
       } else if (status === "processing") {
         setPageStatus("fetching_transcript");
         setTranscriptState((prev) => ({
@@ -368,7 +431,7 @@ export function AnalyzeView({ youtubeId, initialVersion }: AnalyzeViewProps) {
       setPageStatus("no_transcript");
       return status;
     }
-  }, [youtubeId, fetchRuns]);
+  }, [youtubeId, fetchRuns, loadExistingSlides]);
 
   // Initial load
   useEffect(() => {
@@ -570,7 +633,11 @@ export function AnalyzeView({ youtubeId, initialVersion }: AnalyzeViewProps) {
           </TabsContent>
 
           <TabsContent value="slides">
-            <SlidesPanel videoId={youtubeId} />
+            <SlidesPanel
+              videoId={youtubeId}
+              slidesState={slidesState}
+              onSlidesStateChange={setSlidesState}
+            />
           </TabsContent>
         </Tabs>
       )}
