@@ -47,9 +47,16 @@ export async function consumeSSE<TEvent extends SSEBaseEvent>(
           if (raw) {
             try {
               const parsed = JSON.parse(raw) as TEvent;
-              const eventType = parsed.type as NonNullable<TEvent["type"]> | undefined;
+              const eventType = parsed.type as
+                | NonNullable<TEvent["type"]>
+                | undefined;
               if (eventType && handlers[eventType]) {
-                await handlers[eventType](parsed as Extract<TEvent, { type: NonNullable<TEvent["type"]> }>);
+                await handlers[eventType](
+                  parsed as Extract<
+                    TEvent,
+                    { type: NonNullable<TEvent["type"]> }
+                  >,
+                );
               }
             } catch {
               // Ignore parse errors on final chunk - it may be incomplete
