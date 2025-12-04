@@ -160,11 +160,10 @@ export async function PATCH(
     allSlides.map((slide) => [slide.slideIndex, slide]),
   );
 
-  // Update each feedback to reset isPicked fields to defaults
-  // based on skip/duplicate status
-  for (const feedback of allFeedback) {
+  // Build update promises for parallel execution
+  const updatePromises = allFeedback.map((feedback) => {
     const slide = slideMap.get(feedback.slideIndex);
-    if (!slide) continue;
+    if (!slide) return Promise.resolve();
 
     // Calculate defaults: only pick if not skipped and not duplicate
     const defaultIsFirstFramePicked =
@@ -172,7 +171,7 @@ export async function PATCH(
     const defaultIsLastFramePicked =
       !slide.lastFrameSkipReason && !slide.lastFrameIsDuplicate;
 
-    await db
+    return db
       .update(slideFeedback)
       .set({
         isFirstFramePicked: defaultIsFirstFramePicked,
@@ -185,7 +184,9 @@ export async function PATCH(
           eq(slideFeedback.slideIndex, feedback.slideIndex),
         ),
       );
-  }
+  });
+
+  await Promise.all(updatePromises);
 
   return NextResponse.json({ success: true });
 }
