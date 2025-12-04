@@ -1,8 +1,8 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/db";
-import { slideFeedback, videos } from "@/db/schema";
+import { slideFeedback, videoSlides, videos } from "@/db/schema";
 
 // ============================================================================
 // Schemas
@@ -123,10 +123,10 @@ export async function POST(
 }
 
 // ============================================================================
-// DELETE - Delete all slide feedback for a video
+// PATCH - Reset only isPicked fields for all slide feedback
 // ============================================================================
 
-export async function DELETE(
+export async function PATCH(
   _request: Request,
   { params }: { params: Promise<{ videoId: string }> },
 ) {
@@ -143,8 +143,49 @@ export async function DELETE(
     return NextResponse.json({ error: "Video not found" }, { status: 404 });
   }
 
-  // Delete all feedback for this video
-  await db.delete(slideFeedback).where(eq(slideFeedback.videoId, videoId));
+  // Get all slides for this video to calculate defaults
+  const allSlides = await db
+    .select()
+    .from(videoSlides)
+    .where(eq(videoSlides.videoId, videoId));
+
+  // Get all feedback for this video
+  const allFeedback = await db
+    .select()
+    .from(slideFeedback)
+    .where(eq(slideFeedback.videoId, videoId));
+
+  // Create a map of slideIndex to slide data for quick lookup
+  const slideMap = new Map(
+    allSlides.map((slide) => [slide.slideIndex, slide]),
+  );
+
+  // Update each feedback to reset isPicked fields to defaults
+  // based on skip/duplicate status
+  for (const feedback of allFeedback) {
+    const slide = slideMap.get(feedback.slideIndex);
+    if (!slide) continue;
+
+    // Calculate defaults: only pick if not skipped and not duplicate
+    const defaultIsFirstFramePicked =
+      !slide.firstFrameSkipReason && !slide.firstFrameIsDuplicate;
+    const defaultIsLastFramePicked =
+      !slide.lastFrameSkipReason && !slide.lastFrameIsDuplicate;
+
+    await db
+      .update(slideFeedback)
+      .set({
+        isFirstFramePicked: defaultIsFirstFramePicked,
+        isLastFramePicked: defaultIsLastFramePicked,
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(slideFeedback.videoId, videoId),
+          eq(slideFeedback.slideIndex, feedback.slideIndex),
+        ),
+      );
+  }
 
   return NextResponse.json({ success: true });
 }

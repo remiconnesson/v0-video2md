@@ -98,20 +98,20 @@ export function SlidesPanel({
   const resetToDefaults = useCallback(async () => {
     try {
       const response = await fetch(`/api/video/${videoId}/slides/feedback`, {
-        method: "DELETE",
+        method: "PATCH",
       });
 
       if (!response.ok) {
-        console.error("Failed to reset slide feedback");
+        console.error("Failed to reset slide picks");
         return;
       }
 
-      // Clear local feedback map
-      setFeedbackMap(new Map());
+      // Reload feedback to get updated state
+      await loadFeedback();
     } catch (error) {
-      console.error("Failed to reset slide feedback:", error);
+      console.error("Failed to reset slide picks:", error);
     }
-  }, [videoId]);
+  }, [videoId, loadFeedback]);
 
   const startExtraction = useCallback(async () => {
     // Set state to extracting
