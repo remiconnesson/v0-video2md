@@ -38,6 +38,8 @@ export async function GET(
       firstFrameIsDuplicate: videoSlides.firstFrameIsDuplicate,
       firstFrameDuplicateOfSegmentId:
         videoSlides.firstFrameDuplicateOfSegmentId,
+      firstFrameDuplicateOfFramePosition:
+        videoSlides.firstFrameDuplicateOfFramePosition,
       firstFrameSkipReason: videoSlides.firstFrameSkipReason,
       // Last frame data
       lastFrameImageUrl: videoSlides.lastFrameImageUrl,
@@ -45,6 +47,8 @@ export async function GET(
       lastFrameTextConfidence: videoSlides.lastFrameTextConfidence,
       lastFrameIsDuplicate: videoSlides.lastFrameIsDuplicate,
       lastFrameDuplicateOfSegmentId: videoSlides.lastFrameDuplicateOfSegmentId,
+      lastFrameDuplicateOfFramePosition:
+        videoSlides.lastFrameDuplicateOfFramePosition,
       lastFrameSkipReason: videoSlides.lastFrameSkipReason,
     })
     .from(videoSlides)
@@ -85,12 +89,14 @@ export async function GET(
       firstFrameTextConfidence: s.firstFrameTextConfidence,
       firstFrameIsDuplicate: s.firstFrameIsDuplicate,
       firstFrameDuplicateOfSegmentId: s.firstFrameDuplicateOfSegmentId,
+      firstFrameDuplicateOfFramePosition: s.firstFrameDuplicateOfFramePosition,
       firstFrameSkipReason: s.firstFrameSkipReason,
       lastFrameImageUrl: s.lastFrameImageUrl,
       lastFrameHasText: s.lastFrameHasText,
       lastFrameTextConfidence: s.lastFrameTextConfidence,
       lastFrameIsDuplicate: s.lastFrameIsDuplicate,
       lastFrameDuplicateOfSegmentId: s.lastFrameDuplicateOfSegmentId,
+      lastFrameDuplicateOfFramePosition: s.lastFrameDuplicateOfFramePosition,
       lastFrameSkipReason: s.lastFrameSkipReason,
     })),
   });
