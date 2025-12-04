@@ -8,6 +8,7 @@ import {
   Copy,
   ImageIcon,
   Loader2,
+  RotateCcw,
   ThumbsDown,
   ThumbsUp,
   X,
@@ -93,6 +94,24 @@ export function SlidesPanel({
     },
     [videoId, loadFeedback],
   );
+
+  const resetToDefaults = useCallback(async () => {
+    try {
+      const response = await fetch(`/api/video/${videoId}/slides/feedback`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        console.error("Failed to reset slide feedback");
+        return;
+      }
+
+      // Clear local feedback map
+      setFeedbackMap(new Map());
+    } catch (error) {
+      console.error("Failed to reset slide feedback:", error);
+    }
+  }, [videoId]);
 
   const startExtraction = useCallback(async () => {
     // Set state to extracting
@@ -271,22 +290,33 @@ export function SlidesPanel({
             <ImageIcon className="h-5 w-5" />
             Slides ({slidesState.slides.length})
           </span>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              // Clear slides and trigger re-extraction
-              onSlidesStateChange((prev) => ({
-                ...prev,
-                slides: [],
-                progress: 0,
-                message: "",
-              }));
-              startExtraction();
-            }}
-          >
-            Re-extract
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={resetToDefaults}
+              className="gap-2"
+            >
+              <RotateCcw className="h-4 w-4" />
+              Reset Picks to Default
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                // Clear slides and trigger re-extraction
+                onSlidesStateChange((prev) => ({
+                  ...prev,
+                  slides: [],
+                  progress: 0,
+                  message: "",
+                }));
+                startExtraction();
+              }}
+            >
+              Re-extract
+            </Button>
+          </div>
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -724,11 +754,19 @@ function SlideCard({
   const [samenessFeedback, setSamenessFeedback] = useState<SamenessFeedback>(
     initialFeedback?.framesSameness ?? null,
   );
+
+  // Calculate default picking based on slide algorithm results
+  // Only pick frames that are not skipped and not duplicates
+  const defaultIsFirstFramePicked =
+    !slide.firstFrameSkipReason && !slide.firstFrameIsDuplicate;
+  const defaultIsLastFramePicked =
+    !slide.lastFrameSkipReason && !slide.lastFrameIsDuplicate;
+
   const [isFirstFramePicked, setIsFirstFramePicked] = useState<boolean>(
-    initialFeedback?.isFirstFramePicked ?? true,
+    initialFeedback?.isFirstFramePicked ?? defaultIsFirstFramePicked,
   );
   const [isLastFramePicked, setIsLastFramePicked] = useState<boolean>(
-    initialFeedback?.isLastFramePicked ?? true,
+    initialFeedback?.isLastFramePicked ?? defaultIsLastFramePicked,
   );
 
   // Track when we're syncing from external feedback to prevent submission loop
@@ -749,10 +787,14 @@ function SlideCard({
           initialFeedback.lastFrameIsDuplicateValidated ?? null,
       });
       setSamenessFeedback(initialFeedback.framesSameness ?? null);
-      setIsFirstFramePicked(initialFeedback.isFirstFramePicked ?? true);
-      setIsLastFramePicked(initialFeedback.isLastFramePicked ?? false);
+      setIsFirstFramePicked(
+        initialFeedback.isFirstFramePicked ?? defaultIsFirstFramePicked,
+      );
+      setIsLastFramePicked(
+        initialFeedback.isLastFramePicked ?? defaultIsLastFramePicked,
+      );
     }
-  }, [initialFeedback]);
+  }, [initialFeedback, defaultIsFirstFramePicked, defaultIsLastFramePicked]);
 
   // Submit feedback when it changes
   useEffect(() => {

@@ -121,3 +121,30 @@ export async function POST(
 
   return NextResponse.json({ success: true });
 }
+
+// ============================================================================
+// DELETE - Delete all slide feedback for a video
+// ============================================================================
+
+export async function DELETE(
+  _request: Request,
+  { params }: { params: Promise<{ videoId: string }> },
+) {
+  const { videoId } = await params;
+
+  // Verify video exists
+  const [video] = await db
+    .select({ videoId: videos.videoId })
+    .from(videos)
+    .where(eq(videos.videoId, videoId))
+    .limit(1);
+
+  if (!video) {
+    return NextResponse.json({ error: "Video not found" }, { status: 404 });
+  }
+
+  // Delete all feedback for this video
+  await db.delete(slideFeedback).where(eq(slideFeedback.videoId, videoId));
+
+  return NextResponse.json({ success: true });
+}
