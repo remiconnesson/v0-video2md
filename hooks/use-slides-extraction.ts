@@ -103,7 +103,7 @@ export function useSlideExtraction(videoId: string): UseSlideExtractionReturn {
     setSlides([]);
 
     try {
-      const res = await fetch(`/api/video/${videoId}/slides`, {
+      const res = await fetch(`/api/video/${videoId}/slides?force=true`, {
         method: "POST",
         signal: abortControllerRef.current.signal,
       });

@@ -106,7 +106,7 @@ export function SlidesPanel({
     }));
 
     try {
-      const response = await fetch(`/api/video/${videoId}/slides`, {
+      const response = await fetch(`/api/video/${videoId}/slides?force=true`, {
         method: "POST",
       });
 
