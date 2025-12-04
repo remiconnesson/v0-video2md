@@ -74,10 +74,35 @@ export async function GET(
     status = "completed";
   }
 
+  // If extraction status is "in_progress" but hasn't been updated for 30+ minutes,
+  // mark as failed so user can retry
+  if (extraction && status === "in_progress" && slides.length === 0) {
+    const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
+    const lastUpdate = extraction.updatedAt ?? extraction.createdAt;
+
+    if (lastUpdate < thirtyMinutesAgo) {
+      console.log(
+        "⚙️ Found stuck in_progress extraction (>30min old), marking as failed:",
+        videoId,
+      );
+      await db
+        .update(videoSlideExtractions)
+        .set({
+          status: "failed",
+          errorMessage:
+            "Extraction timed out or workflow failed to start. Please try again.",
+          updatedAt: new Date(),
+        })
+        .where(eq(videoSlideExtractions.videoId, videoId));
+      status = "failed";
+    }
+  }
+
   return NextResponse.json({
     status,
     runId: extraction?.runId ?? null,
     totalSlides: extraction?.totalSlides ?? slides.length,
+    errorMessage: extraction?.errorMessage ?? null,
     slides: slides.map((s) => ({
       slideIndex: s.slideIndex,
       frameId: s.frameId,
@@ -107,10 +132,14 @@ export async function GET(
 // ============================================================================
 
 export async function POST(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ videoId: string }> },
 ) {
   const { videoId } = await params;
+
+  // Check if force re-extraction is requested
+  const url = new URL(request.url);
+  const force = url.searchParams.get("force") === "true";
 
   // Check for existing extraction
   const [existing] = await db
@@ -119,22 +148,28 @@ export async function POST(
     .where(eq(videoSlideExtractions.videoId, videoId))
     .limit(1);
 
-  // TODO: This part is problematic, because it can return in progress but it's not actually in progress the job is stuck because the workflow didn't start.
+  // If force is not set, check for conflicts
+  if (!force) {
+    // If already completed, return existing data
+    if (existing?.status === "completed") {
+      return NextResponse.json(
+        { error: "Slides already extracted", status: "completed" },
+        { status: 409 },
+      );
+    }
 
-  // If already completed, return existing data
-  if (existing?.status === "completed") {
-    return NextResponse.json(
-      { error: "Slides already extracted", status: "completed" },
-      { status: 409 },
-    );
+    // If in progress, return conflict
+    if (existing?.status === "in_progress") {
+      return NextResponse.json(
+        { error: "Extraction already in progress", runId: existing.runId },
+        { status: 409 },
+      );
+    }
   }
 
-  // If in progress, return conflict
-  if (existing?.status === "in_progress") {
-    return NextResponse.json(
-      { error: "Extraction already in progress", runId: existing.runId },
-      { status: 409 },
-    );
+  // If forcing re-extraction, delete existing slides first
+  if (force) {
+    await db.delete(videoSlides).where(eq(videoSlides.videoId, videoId));
   }
 
   // Create or update extraction record
