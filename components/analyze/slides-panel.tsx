@@ -46,6 +46,7 @@ export function SlidesPanel({
   const [feedbackMap, setFeedbackMap] = useState<
     Map<number, SlideFeedbackData>
   >(new Map());
+  const [isResetting, setIsResetting] = useState(false);
 
   const loadFeedback = useCallback(async () => {
     try {
@@ -96,6 +97,7 @@ export function SlidesPanel({
   );
 
   const resetToDefaults = useCallback(async () => {
+    setIsResetting(true);
     try {
       const response = await fetch(`/api/video/${videoId}/slides/feedback`, {
         method: "PATCH",
@@ -110,6 +112,8 @@ export function SlidesPanel({
       await loadFeedback();
     } catch (error) {
       console.error("Failed to reset slide picks:", error);
+    } finally {
+      setIsResetting(false);
     }
   }, [videoId, loadFeedback]);
 
@@ -296,8 +300,13 @@ export function SlidesPanel({
               size="sm"
               onClick={resetToDefaults}
               className="gap-2"
+              disabled={isResetting}
             >
-              <RotateCcw className="h-4 w-4" />
+              {isResetting ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <RotateCcw className="h-4 w-4" />
+              )}
               Reset Picks to Default
             </Button>
             <Button

@@ -156,9 +156,7 @@ export async function PATCH(
     .where(eq(slideFeedback.videoId, videoId));
 
   // Create a map of slideIndex to slide data for quick lookup
-  const slideMap = new Map(
-    allSlides.map((slide) => [slide.slideIndex, slide]),
-  );
+  const slideMap = new Map(allSlides.map((slide) => [slide.slideIndex, slide]));
 
   // Build update promises for parallel execution
   const updatePromises = allFeedback.map((feedback) => {
