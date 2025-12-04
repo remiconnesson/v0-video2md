@@ -106,7 +106,7 @@ export function SlidesPanel({
     }));
 
     try {
-      const response = await fetch(`/api/video/${videoId}/slides`, {
+      const response = await fetch(`/api/video/${videoId}/slides?force=true`, {
         method: "POST",
       });
 
@@ -186,9 +186,13 @@ export function SlidesPanel({
                 Analyze the video to extract presentation slides
               </p>
             </div>
-            <p className="text-sm text-muted-foreground">
-              Slides will be extracted automatically when processing starts.
-            </p>
+            <Button
+              onClick={() => {
+                startExtraction();
+              }}
+            >
+              Extract Slides
+            </Button>
           </div>
         </CardContent>
       </Card>

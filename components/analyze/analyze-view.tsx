@@ -278,6 +278,14 @@ export function AnalyzeView({ youtubeId, initialVersion }: AnalyzeViewProps) {
           message: "Extraction in progress...",
           slides: [],
         }));
+      } else if (data.status === "failed") {
+        // Extraction failed
+        setSlidesState((prev) => ({
+          ...prev,
+          status: "error",
+          error: data.errorMessage || "Extraction failed",
+          slides: [],
+        }));
       } else {
         setSlidesState((prev) => ({
           ...prev,
