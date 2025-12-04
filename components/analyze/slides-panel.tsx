@@ -637,10 +637,9 @@ function FrameCard({
                 isDuplicate ? "text-orange-600" : "text-muted-foreground",
               )}
             >
-              Duplicate:{" "}
               {isDuplicate
-                ? `Yes (of #${(duplicateOfSegmentId ?? 0) + 1})`
-                : "No"}
+                ? `${label} frame duplicates Slide #${(duplicateOfSegmentId ?? 0) + 1}`
+                : `${label} frame is unique`}
             </span>
           </div>
           <div className="flex items-center gap-1">
