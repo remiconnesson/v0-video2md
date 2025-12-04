@@ -1,6 +1,9 @@
 "use client";
 
+import { Check, Copy } from "lucide-react";
+import { useState } from "react";
 import { Streamdown } from "streamdown";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { isRecord } from "@/lib/type-utils";
 import { SectionFeedback } from "./section-feedback";
@@ -11,14 +14,108 @@ interface AnalysisPanelProps {
   videoId: string;
 }
 
+// Convert analysis object to markdown format
+function analysisToMarkdown(analysis: Record<string, unknown>): string {
+  let markdown = "";
+
+  for (const [key, value] of Object.entries(analysis)) {
+    // Add section title
+    markdown += `## ${formatSectionTitle(key)}\n\n`;
+
+    // Convert content to markdown
+    markdown += contentToMarkdown(value);
+    markdown += "\n\n";
+  }
+
+  return markdown.trim();
+}
+
+// Convert various content types to markdown
+function contentToMarkdown(content: unknown): string {
+  if (content === null || content === undefined || content === "") {
+    return "_No content_";
+  }
+
+  if (typeof content === "string") {
+    return content;
+  }
+
+  if (Array.isArray(content)) {
+    if (content.length === 0) {
+      return "_No items_";
+    }
+    return content
+      .map((item) => {
+        if (typeof item === "string") {
+          // Check if already starts with - * or numbered list
+          return item.trim().match(/^\s*[-*]\s+|^\s*\d+\.\s+|^\s*\d+\)\s+/)
+            ? item
+            : `- ${item}`;
+        }
+        return `\`\`\`json\n${JSON.stringify(item, null, 2)}\n\`\`\``;
+      })
+      .join("\n");
+  }
+
+  if (isRecord(content)) {
+    let markdown = "";
+    for (const [key, value] of Object.entries(content)) {
+      markdown += `**${key}**: `;
+      if (typeof value === "string") {
+        markdown += value;
+      } else {
+        markdown += `\`\`\`json\n${JSON.stringify(value, null, 2)}\n\`\`\``;
+      }
+      markdown += "\n\n";
+    }
+    return markdown;
+  }
+
+  return String(content);
+}
+
 export function AnalysisPanel({
   analysis,
   runId,
   videoId,
 }: AnalysisPanelProps) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopyMarkdown = async () => {
+    const markdown = analysisToMarkdown(analysis);
+
+    try {
+      await navigator.clipboard.writeText(markdown);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error("Failed to copy:", err);
+    }
+  };
+
   console.log(analysis);
   return (
     <div className="space-y-4">
+      <div className="flex justify-end">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleCopyMarkdown}
+          className="gap-2"
+        >
+          {copied ? (
+            <>
+              <Check className="h-4 w-4" />
+              Copied!
+            </>
+          ) : (
+            <>
+              <Copy className="h-4 w-4" />
+              Copy Markdown
+            </>
+          )}
+        </Button>
+      </div>
       {Object.entries(analysis).map(([key, value]) => (
         <Section
           key={key}
