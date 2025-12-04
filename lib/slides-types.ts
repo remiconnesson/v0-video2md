@@ -84,6 +84,7 @@ export interface SlideData {
   firstFrameTextConfidence: number;
   firstFrameIsDuplicate: boolean;
   firstFrameDuplicateOfSegmentId: number | null;
+  firstFrameDuplicateOfFramePosition: string | null; // "first" | "last"
   firstFrameSkipReason: string | null;
 
   // Last frame data
@@ -92,6 +93,7 @@ export interface SlideData {
   lastFrameTextConfidence: number;
   lastFrameIsDuplicate: boolean;
   lastFrameDuplicateOfSegmentId: number | null;
+  lastFrameDuplicateOfFramePosition: string | null; // "first" | "last"
   lastFrameSkipReason: string | null;
 
   imageProcessingError?: string | null;

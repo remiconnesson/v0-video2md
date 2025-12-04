@@ -481,6 +481,7 @@ function FrameCard({
   textConfidence,
   isDuplicate,
   duplicateOfSegmentId,
+  duplicateOfFramePosition,
   skipReason,
   allSlides,
   onZoom,
@@ -495,6 +496,7 @@ function FrameCard({
   textConfidence: number;
   isDuplicate: boolean;
   duplicateOfSegmentId: number | null;
+  duplicateOfFramePosition: string | null;
   skipReason: string | null;
   allSlides: SlideData[];
   onZoom: () => void;
@@ -638,8 +640,8 @@ function FrameCard({
               )}
             >
               {isDuplicate
-                ? `${label} frame duplicates Slide #${(duplicateOfSegmentId ?? 0) + 1}`
-                : `${label} frame is unique`}
+                ? `Duplicate of #${(duplicateOfSegmentId ?? 0) + 1}-${duplicateOfFramePosition || "?"}`
+                : "Unique"}
             </span>
           </div>
           <div className="flex items-center gap-1">
@@ -858,6 +860,7 @@ function SlideCard({
             textConfidence={slide.firstFrameTextConfidence}
             isDuplicate={slide.firstFrameIsDuplicate}
             duplicateOfSegmentId={slide.firstFrameDuplicateOfSegmentId}
+            duplicateOfFramePosition={slide.firstFrameDuplicateOfFramePosition}
             skipReason={slide.firstFrameSkipReason}
             allSlides={allSlides}
             onZoom={() => handleZoom("first")}
@@ -873,6 +876,7 @@ function SlideCard({
             textConfidence={slide.lastFrameTextConfidence}
             isDuplicate={slide.lastFrameIsDuplicate}
             duplicateOfSegmentId={slide.lastFrameDuplicateOfSegmentId}
+            duplicateOfFramePosition={slide.lastFrameDuplicateOfFramePosition}
             skipReason={slide.lastFrameSkipReason}
             allSlides={allSlides}
             onZoom={() => handleZoom("last")}

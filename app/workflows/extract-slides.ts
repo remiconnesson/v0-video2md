@@ -599,6 +599,8 @@ async function processSlidesFromManifest(
       firstFrameIsDuplicate: firstFrame?.duplicate_of !== null,
       firstFrameDuplicateOfSegmentId:
         firstFrame?.duplicate_of?.segment_id ?? null,
+      firstFrameDuplicateOfFramePosition:
+        firstFrame?.duplicate_of?.frame_position ?? null,
       firstFrameSkipReason: firstFrame?.skip_reason ?? null,
       lastFrameImageUrl: lastFrameImageUrl || null,
       lastFrameHasText: lastFrame?.has_text || false,
@@ -608,6 +610,8 @@ async function processSlidesFromManifest(
       lastFrameIsDuplicate: lastFrame?.duplicate_of !== null,
       lastFrameDuplicateOfSegmentId:
         lastFrame?.duplicate_of?.segment_id ?? null,
+      lastFrameDuplicateOfFramePosition:
+        lastFrame?.duplicate_of?.frame_position ?? null,
       lastFrameSkipReason: lastFrame?.skip_reason ?? null,
       imageProcessingError,
     };
@@ -640,6 +644,8 @@ async function processSlidesFromManifest(
           firstFrameIsDuplicate: firstFrame?.duplicate_of !== null,
           firstFrameDuplicateOfSegmentId:
             firstFrame?.duplicate_of?.segment_id ?? null,
+          firstFrameDuplicateOfFramePosition:
+            firstFrame?.duplicate_of?.frame_position ?? null,
           firstFrameSkipReason: firstFrame?.skip_reason ?? null,
 
           // Last frame data
@@ -655,6 +661,8 @@ async function processSlidesFromManifest(
           lastFrameIsDuplicate: lastFrame?.duplicate_of !== null,
           lastFrameDuplicateOfSegmentId:
             lastFrame?.duplicate_of?.segment_id ?? null,
+          lastFrameDuplicateOfFramePosition:
+            lastFrame?.duplicate_of?.frame_position ?? null,
           lastFrameSkipReason: lastFrame?.skip_reason ?? null,
         })
         .onConflictDoNothing();

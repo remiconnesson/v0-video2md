@@ -211,6 +211,10 @@ export const videoSlides = pgTable(
     firstFrameDuplicateOfSegmentId: integer(
       "first_frame_duplicate_of_segment_id",
     ),
+    firstFrameDuplicateOfFramePosition: varchar(
+      "first_frame_duplicate_of_frame_position",
+      { length: 16 },
+    ), // "first" | "last"
     firstFrameSkipReason: text("first_frame_skip_reason"),
 
     // Last frame data
@@ -225,6 +229,10 @@ export const videoSlides = pgTable(
     lastFrameDuplicateOfSegmentId: integer(
       "last_frame_duplicate_of_segment_id",
     ),
+    lastFrameDuplicateOfFramePosition: varchar(
+      "last_frame_duplicate_of_frame_position",
+      { length: 16 },
+    ), // "first" | "last"
     lastFrameSkipReason: text("last_frame_skip_reason"),
 
     createdAt: timestamp("created_at").defaultNow().notNull(),
