@@ -74,6 +74,25 @@ export async function GET(
     status = "completed";
   }
 
+  // If extraction status is "completed" but we have no slides, this is a data inconsistency
+  // Mark as failed so user can retry
+  if (extraction && status === "completed" && slides.length === 0) {
+    console.log(
+      "⚙️ Found completed extraction with no slides (data inconsistency), marking as failed:",
+      videoId,
+    );
+    await db
+      .update(videoSlideExtractions)
+      .set({
+        status: "failed",
+        errorMessage:
+          "Extraction completed but no slides were saved. Please try again.",
+        updatedAt: new Date(),
+      })
+      .where(eq(videoSlideExtractions.videoId, videoId));
+    status = "failed";
+  }
+
   // If extraction status is "in_progress" but hasn't been updated for 30+ minutes,
   // mark as failed so user can retry
   if (extraction && status === "in_progress" && slides.length === 0) {
