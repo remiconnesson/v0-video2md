@@ -186,8 +186,8 @@ export async function POST(
     }
   }
 
-  // If forcing re-extraction, delete existing slides first
-  if (force) {
+  // If forcing re-extraction or retrying after failure, delete existing slides first
+  if (force || existing?.status === "failed") {
     await db.delete(videoSlides).where(eq(videoSlides.videoId, videoId));
   }
 
