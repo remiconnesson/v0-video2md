@@ -1,3 +1,4 @@
+import { desc, eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { start } from "workflow/api";
 import type { AnalysisStreamEvent } from "@/app/workflows/dynamic-analysis";
@@ -7,6 +8,8 @@ import {
   fetchTranscriptWorkflow,
   type TranscriptStreamEvent,
 } from "@/app/workflows/fetch-transcript";
+import { db } from "@/db";
+import { videoAnalysisRuns } from "@/db/schema";
 import type { SlideStreamEvent } from "@/lib/slides-types";
 
 export type ProcessingStreamEvent =
@@ -76,7 +79,41 @@ export async function POST(
       async (event) => {
         if (event.type === "complete" && !analysisStarted) {
           analysisStarted = true;
-          const analysisRun = await start(dynamicAnalysisWorkflow, [videoId]);
+
+          // Create a DB record for the analysis run before starting the workflow
+          const versionResult = await db
+            .select({ version: videoAnalysisRuns.version })
+            .from(videoAnalysisRuns)
+            .where(eq(videoAnalysisRuns.videoId, videoId))
+            .orderBy(desc(videoAnalysisRuns.version))
+            .limit(1);
+
+          const nextVersion = (versionResult[0]?.version ?? 0) + 1;
+
+          const [insertedRun] = await db
+            .insert(videoAnalysisRuns)
+            .values({
+              videoId,
+              version: nextVersion,
+              status: "streaming",
+              additionalInstructions: null,
+              updatedAt: new Date(),
+            })
+            .returning({ id: videoAnalysisRuns.id });
+
+          // Start the workflow with the DB run ID
+          const analysisRun = await start(dynamicAnalysisWorkflow, [
+            videoId,
+            undefined, // no additional instructions
+            insertedRun.id,
+          ]);
+
+          // Update the record with the workflow run ID
+          await db
+            .update(videoAnalysisRuns)
+            .set({ workflowRunId: analysisRun.runId })
+            .where(eq(videoAnalysisRuns.id, insertedRun.id));
+
           analysisPromise = streamWorkflow(
             analysisRun.readable,
             "analysis",
