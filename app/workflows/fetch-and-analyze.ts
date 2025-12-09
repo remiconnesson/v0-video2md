@@ -186,7 +186,7 @@ export async function fetchAndAnalyzeWorkflow(
     }
 
     // Emit the final result
-    await emitResult(result);
+    // await emitResult(result);
 
     // ========================================================================
     // Phase C: Persistence (90% - 100%)
