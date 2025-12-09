@@ -139,7 +139,7 @@ export async function createAnalysisRun(
 
   const nextVersion = (versionResult[0]?.version ?? 0) + 1;
 
-  // Insert the run
+  // Insert the run with conflict resolution for idempotency during workflow replay
   const [createdRun] = await db
     .insert(videoAnalysisRuns)
     .values({
@@ -148,6 +148,14 @@ export async function createAnalysisRun(
       additionalInstructions: additionalInstructions ?? null,
       status: "streaming",
       updatedAt: new Date(),
+    })
+    .onConflictDoUpdate({
+      target: [videoAnalysisRuns.videoId, videoAnalysisRuns.version],
+      set: {
+        additionalInstructions: additionalInstructions ?? null,
+        status: "streaming",
+        updatedAt: new Date(),
+      },
     })
     .returning({ id: videoAnalysisRuns.id });
 
