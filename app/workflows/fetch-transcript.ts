@@ -1,3 +1,4 @@
+import type { TranscriptResult } from "@/db/save-transcript";
 import {
   emitComplete,
   emitError,
@@ -5,7 +6,11 @@ import {
   stepCheckDbForTranscript,
   stepFetchFromApify,
   stepSaveToDb,
+  type TranscriptStreamEvent,
 } from "./steps/fetch-transcript";
+
+// Re-export the event type for external use
+export type { TranscriptStreamEvent };
 
 // ============================================================================
 // Main Workflow

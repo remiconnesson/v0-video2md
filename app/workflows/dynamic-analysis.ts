@@ -1,4 +1,7 @@
+import { db } from "@/db";
+import { videoAnalysisRuns } from "@/db/schema";
 import {
+  type AnalysisStreamEvent,
   completeRun,
   emitComplete,
   emitError,
@@ -8,6 +11,9 @@ import {
   getNextVersion,
   runGodPrompt,
 } from "./steps/dynamic-analysis";
+
+// Re-export the event type for external use
+export type { AnalysisStreamEvent };
 
 // ============================================================================
 // Main Workflow
