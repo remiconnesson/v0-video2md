@@ -1,7 +1,7 @@
 "use client";
 
 import { Match } from "effect";
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import type { ProcessingStreamEvent } from "@/app/api/video/[videoId]/process/route";
 import type { AnalysisState } from "@/hooks/use-dynamic-analysis";
 import type { SlidesState } from "@/lib/slides-types";
@@ -56,11 +56,30 @@ export function useTranscriptFetch(
     error: null,
   });
 
+  // Ref to track if processing is in progress and for abort control
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const isProcessingRef = useRef(false);
+
   // ============================================================================
   // Start Processing
   // ============================================================================
 
   const startProcessing = useCallback(async () => {
+    // Prevent multiple simultaneous starts
+    if (isProcessingRef.current) {
+      return;
+    }
+
+    // Cancel any previous processing
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+
+    // Create new abort controller for this processing session
+    const abortController = new AbortController();
+    abortControllerRef.current = abortController;
+    isProcessingRef.current = true;
+
     setPageStatus("fetching_transcript");
     setTranscriptState({
       status: "fetching",
@@ -80,6 +99,7 @@ export function useTranscriptFetch(
     try {
       const res = await fetch(`/api/video/${youtubeId}/process`, {
         method: "POST",
+        signal: abortController.signal,
       });
 
       if (!res.ok) {
@@ -227,6 +247,9 @@ export function useTranscriptFetch(
         status: "error",
         error: err instanceof Error ? err.message : "Unknown error",
       }));
+    } finally {
+      isProcessingRef.current = false;
+      abortControllerRef.current = null;
     }
   }, [youtubeId, onSlidesStateChange, onAnalysisStateChange]);
 

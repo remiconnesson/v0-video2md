@@ -89,14 +89,20 @@ export function useVideoProcessing(
   // Initialize smaller hooks
   // ============================================================================
 
-  const transcriptFetch = useTranscriptFetch(
+  const {
+    checkVideoStatus: checkTranscriptStatus,
+    startProcessing,
+    handleFetchTranscript,
+    pageStatus,
+    videoInfo,
+    transcriptState,
+  } = useTranscriptFetch(youtubeId, setSlidesState, setAnalysisState);
+
+  const { resumeAnalysisStream, startAnalysisRun } = useAnalysisStream(
     youtubeId,
-    setSlidesState,
     setAnalysisState,
   );
-
-  const analysisStream = useAnalysisStream(youtubeId, setAnalysisState);
-  const slidesLoader = useSlidesLoader(youtubeId, setSlidesState);
+  const { loadExistingSlides } = useSlidesLoader(youtubeId, setSlidesState);
   const videoStatus = useVideoStatus(youtubeId, initialVersion);
 
   // ============================================================================
@@ -104,13 +110,13 @@ export function useVideoProcessing(
   // ============================================================================
 
   const checkVideoStatus = useCallback(async () => {
-    const result = await transcriptFetch.checkVideoStatus();
+    const result = await checkTranscriptStatus();
 
     // If ready, also load runs and slides
     if (result.status === "ready") {
       const [runsResult] = await Promise.all([
         videoStatus.fetchRuns(),
-        slidesLoader.loadExistingSlides(),
+        loadExistingSlides(),
       ]);
 
       if (runsResult.streamingRun?.workflowRunId) {
@@ -119,7 +125,7 @@ export function useVideoProcessing(
     }
 
     return result;
-  }, [transcriptFetch, videoStatus, slidesLoader]);
+  }, [checkTranscriptStatus, videoStatus.fetchRuns, loadExistingSlides]);
 
   // ============================================================================
   // Effects
@@ -134,21 +140,27 @@ export function useVideoProcessing(
       if (cancelled) return;
 
       if (status !== "ready") {
-        transcriptFetch.startProcessing();
+        await startProcessing();
       } else if (hasStreamingAnalysis) {
-        analysisStream.resumeAnalysisStream();
+        resumeAnalysisStream();
       }
     })();
 
     return () => {
       cancelled = true;
     };
-  }, [checkVideoStatus, transcriptFetch, analysisStream]);
+  }, [checkVideoStatus, startProcessing, resumeAnalysisStream]);
 
   // When analysis completes, refresh runs
   useEffect(() => {
     if (analysisState.status === "completed" && analysisState.runId) {
       videoStatus.fetchRuns().then(({ runs: updatedRuns }) => {
+        // Select the latest run to match the new `v` param
+        const latestRun = updatedRuns[updatedRuns.length - 1] ?? null;
+        if (latestRun) {
+          videoStatus.setSelectedRun(latestRun);
+        }
+
         const params = new URLSearchParams(searchParams.toString());
         const newVersion = updatedRuns.length;
         params.set("v", newVersion.toString());
@@ -158,7 +170,8 @@ export function useVideoProcessing(
   }, [
     analysisState.status,
     analysisState.runId,
-    videoStatus,
+    videoStatus.fetchRuns,
+    videoStatus.setSelectedRun,
     router,
     searchParams,
   ]);
@@ -178,25 +191,26 @@ export function useVideoProcessing(
   );
 
   const handleStartAnalysis = useCallback(() => {
-    analysisStream.startAnalysisRun();
-  }, [analysisStream]);
+    startAnalysisRun();
+  }, [startAnalysisRun]);
 
   const handleReroll = useCallback(
     (instructions: string) => {
-      analysisStream.startAnalysisRun(instructions);
+      startAnalysisRun(instructions);
     },
-    [analysisStream],
+    [startAnalysisRun],
   );
 
   // ============================================================================
   // Computed State
   // ============================================================================
 
+  const { runs, selectedRun } = videoStatus;
   const isAnalysisRunning = analysisState.status === "running";
-  const hasRuns = videoStatus.runs.length > 0;
+  const hasRuns = runs.length > 0;
   const displayResult: unknown = isAnalysisRunning
     ? analysisState.result
-    : (videoStatus.selectedRun?.result ?? null);
+    : (selectedRun?.result ?? null);
 
   // ============================================================================
   // Return
@@ -204,11 +218,11 @@ export function useVideoProcessing(
 
   return {
     // State
-    pageStatus: transcriptFetch.pageStatus,
-    videoInfo: transcriptFetch.videoInfo,
-    runs: videoStatus.runs,
-    selectedRun: videoStatus.selectedRun,
-    transcriptState: transcriptFetch.transcriptState,
+    pageStatus,
+    videoInfo,
+    runs,
+    selectedRun,
+    transcriptState,
     analysisState,
     slidesState,
     isAnalysisRunning,
@@ -216,7 +230,7 @@ export function useVideoProcessing(
     displayResult,
 
     // Actions
-    handleFetchTranscript: transcriptFetch.handleFetchTranscript,
+    handleFetchTranscript,
     handleVersionChange,
     handleStartAnalysis,
     handleReroll,

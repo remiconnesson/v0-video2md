@@ -33,7 +33,10 @@ describe("useTranscriptFetch", () => {
         ),
       );
 
-      let statusResult: { status: "not_found" | "processing" | "ready"; hasStreamingAnalysis: boolean } = { status: "not_found", hasStreamingAnalysis: false };
+      let statusResult: {
+        status: "not_found" | "processing" | "ready";
+        hasStreamingAnalysis: boolean;
+      } = { status: "not_found", hasStreamingAnalysis: false };
       await act(async () => {
         statusResult = await result.current.checkVideoStatus();
       });
@@ -66,7 +69,10 @@ describe("useTranscriptFetch", () => {
         ),
       );
 
-      let statusResult: { status: "not_found" | "processing" | "ready"; hasStreamingAnalysis: boolean } = { status: "not_found", hasStreamingAnalysis: false };
+      let statusResult: {
+        status: "not_found" | "processing" | "ready";
+        hasStreamingAnalysis: boolean;
+      } = { status: "not_found", hasStreamingAnalysis: false };
       await act(async () => {
         statusResult = await result.current.checkVideoStatus();
       });
@@ -94,7 +100,10 @@ describe("useTranscriptFetch", () => {
         ),
       );
 
-      let statusResult: { status: "not_found" | "processing" | "ready"; hasStreamingAnalysis: boolean } = { status: "not_found", hasStreamingAnalysis: false };
+      let statusResult: {
+        status: "not_found" | "processing" | "ready";
+        hasStreamingAnalysis: boolean;
+      } = { status: "not_found", hasStreamingAnalysis: false };
       await act(async () => {
         statusResult = await result.current.checkVideoStatus();
       });
@@ -119,7 +128,10 @@ describe("useTranscriptFetch", () => {
         ),
       );
 
-      let statusResult: { status: "not_found" | "processing" | "ready"; hasStreamingAnalysis: boolean } = { status: "not_found", hasStreamingAnalysis: false };
+      let statusResult: {
+        status: "not_found" | "processing" | "ready";
+        hasStreamingAnalysis: boolean;
+      } = { status: "not_found", hasStreamingAnalysis: false };
       await act(async () => {
         statusResult = await result.current.checkVideoStatus();
       });
@@ -165,11 +177,12 @@ describe("useTranscriptFetch", () => {
       });
 
       // Mock successful SSE consumption that completes
-      mockConsumeSSE.mockImplementationOnce(async (response, handlers) => {
+      mockConsumeSSE.mockImplementationOnce(async (_response, handlers) => {
         // Simulate successful completion
         if (handlers.complete) {
           await handlers.complete({
             type: "complete",
+            source: "unified",
             runId: 123,
             video: { title: "Test Video", channelName: "Test Channel" },
           });
@@ -190,9 +203,10 @@ describe("useTranscriptFetch", () => {
 
       expect(mockFetch).toHaveBeenCalledWith(
         "/api/video/test-video-id/process",
-        {
+        expect.objectContaining({
           method: "POST",
-        },
+          signal: expect.any(AbortSignal),
+        }),
       );
       expect(mockConsumeSSE).toHaveBeenCalled();
     });
