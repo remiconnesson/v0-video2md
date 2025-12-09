@@ -12,13 +12,11 @@ export function TranscriptFetcher() {
   const [state, action, isPending] = useActionState(triggerTranscript, null);
   const router = useRouter();
 
-  const hasSuccessfulResult = state?.success && state?.videoId;
-
   useEffect(() => {
-    if (hasSuccessfulResult) {
+    if (state?.success && state?.videoId) {
       router.push(`/video/youtube/${state.videoId}/analyze`);
     }
-  }, [hasSuccessfulResult, state?.videoId, router]);
+  }, [state?.success, state?.videoId, router]);
 
   return (
     <Card className="border-2 shadow-lg">
