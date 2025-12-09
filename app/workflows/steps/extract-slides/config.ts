@@ -33,12 +33,3 @@ export function makeAwsClient(): AwsClient {
     region: "us-east-1",
   });
 }
-
-// RESTORED: Your custom S3 URL parser
-export function parseS3Uri(s3Uri: string) {
-  const urlParts = s3Uri.replace("s3://", "").split("/");
-  const bucket = urlParts.shift();
-  const key = urlParts.join("/");
-  if (!bucket || !key) throw new Error(`Invalid S3 URI: ${s3Uri}`);
-  return { bucket, key };
-}

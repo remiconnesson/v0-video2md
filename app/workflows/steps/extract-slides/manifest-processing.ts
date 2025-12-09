@@ -198,7 +198,7 @@ export async function processSlidesFromManifest(
         const parsedS3Uri = parseS3Uri(frame.s3_uri);
 
         if (!parsedS3Uri) {
-          throw new Error(`${frameType} frame missing S3 URI`);
+          throw new Error(`${frameType} frame has invalid S3 URI format`);
         }
 
         const s3Url = buildS3HttpUrl(

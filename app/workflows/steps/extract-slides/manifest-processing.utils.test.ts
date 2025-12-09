@@ -40,6 +40,23 @@ describe("manifest-processing utils", () => {
     expect(
       hasUsableFrames({ ...baseSegment, first_frame: { ...sampleFrame } }),
     ).toBe(true);
+    expect(
+      hasUsableFrames({ ...baseSegment, last_frame: { ...sampleFrame } }),
+    ).toBe(true);
+    expect(
+      hasUsableFrames({
+        ...baseSegment,
+        first_frame: { ...sampleFrame },
+        last_frame: { ...sampleFrame },
+      }),
+    ).toBe(true);
+    expect(
+      hasUsableFrames({
+        ...baseSegment,
+        first_frame: { ...sampleFrame, s3_uri: null },
+        last_frame: { ...sampleFrame, s3_uri: null },
+      }),
+    ).toBe(false);
     expect(hasUsableFrames({ ...baseSegment, first_frame: undefined })).toBe(
       false,
     );
@@ -56,6 +73,14 @@ describe("manifest-processing utils", () => {
       duplicateOfFramePosition: "last",
       skipReason: "duplicate",
     });
+
+    const nonDuplicate = normalizeFrameMetadata(
+      { ...sampleFrame, duplicate_of: null },
+      "https://image",
+    );
+    expect(nonDuplicate.isDuplicate).toBe(false);
+    expect(nonDuplicate.duplicateOfSegmentId).toBeNull();
+    expect(nonDuplicate.duplicateOfFramePosition).toBeNull();
 
     const missing = normalizeFrameMetadata(undefined, null);
     expect(missing).toEqual({
@@ -74,14 +99,36 @@ describe("manifest-processing utils", () => {
       bucket: "bucket",
       key: "key",
     });
+    expect(parseS3Uri("s3://bucket/path/to/nested/key")).toEqual({
+      bucket: "bucket",
+      key: "path/to/nested/key",
+    });
+    expect(parseS3Uri("s3://bucket/key/")).toEqual({
+      bucket: "bucket",
+      key: "key/",
+    });
+    expect(parseS3Uri("")).toBeNull();
     expect(parseS3Uri("invalid://bucket/key")).toBeNull();
-    expect(parseS3Uri("s3://missing-bucket")).toBeNull();
+    expect(parseS3Uri("s3://bucket")).toBeNull();
+    expect(parseS3Uri("s3://")).toBeNull();
   });
 
   it("builds HTTP URLs without double slashes", () => {
     expect(buildS3HttpUrl("https://example.com/", "bucket", "key")).toBe(
       "https://example.com/bucket/key",
     );
+    expect(buildS3HttpUrl("https://example.com", "bucket", "key")).toBe(
+      "https://example.com/bucket/key",
+    );
+    expect(buildS3HttpUrl("https://example.com", "", "key")).toBe(
+      "https://example.com//key",
+    );
+    expect(buildS3HttpUrl("https://example.com", "bucket", "")).toBe(
+      "https://example.com/bucket/",
+    );
+    expect(
+      buildS3HttpUrl("https://example.com", "bucket with space", "key%20one"),
+    ).toBe("https://example.com/bucket with space/key%20one");
   });
 
   it("builds blob paths using frame IDs when available", () => {
@@ -94,10 +141,7 @@ describe("manifest-processing utils", () => {
   });
 
   it("filters static segments", () => {
-    const segments = [
-      { ...baseSegment },
-      { ...baseSegment, kind: "moving" as const },
-    ];
+    const segments = [{ ...baseSegment }, { ...baseSegment, kind: "moving" }];
     expect(filterStaticSegments(segments)).toEqual([{ ...baseSegment }]);
   });
 
