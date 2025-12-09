@@ -120,6 +120,41 @@ export async function getNextVersion(videoId: string): Promise<number> {
 }
 
 // ============================================================================
+// Step: Create analysis run (atomic version calculation + insert)
+// ============================================================================
+
+export async function createAnalysisRun(
+  videoId: string,
+  additionalInstructions?: string,
+): Promise<number> {
+  "use step";
+
+  // Get next version
+  const versionResult = await db
+    .select({ version: videoAnalysisRuns.version })
+    .from(videoAnalysisRuns)
+    .where(eq(videoAnalysisRuns.videoId, videoId))
+    .orderBy(desc(videoAnalysisRuns.version))
+    .limit(1);
+
+  const nextVersion = (versionResult[0]?.version ?? 0) + 1;
+
+  // Insert the run
+  const [createdRun] = await db
+    .insert(videoAnalysisRuns)
+    .values({
+      videoId,
+      version: nextVersion,
+      additionalInstructions: additionalInstructions ?? null,
+      status: "streaming",
+      updatedAt: new Date(),
+    })
+    .returning({ id: videoAnalysisRuns.id });
+
+  return createdRun.id;
+}
+
+// ============================================================================
 // Step: Run god prompt
 // ============================================================================
 
