@@ -18,7 +18,24 @@ export function useSlidesLoader(
   const loadExistingSlides = useCallback(async () => {
     try {
       const res = await fetch(`/api/video/${youtubeId}/slides`);
-      if (!res.ok) return;
+      if (!res.ok) {
+        let errorMessage = `Failed to load slides (${res.status})`;
+        try {
+          const errorData = await res.text();
+          if (errorData) {
+            errorMessage += `: ${errorData}`;
+          }
+        } catch {
+          // Ignore errors when trying to read response body
+        }
+        onSlidesStateChange((prev) => ({
+          ...prev,
+          status: "error",
+          error: errorMessage,
+          slides: [],
+        }));
+        return;
+      }
 
       const data = await res.json();
       const slides = Array.isArray(data.slides) ? data.slides : [];
