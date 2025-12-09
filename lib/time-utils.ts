@@ -21,3 +21,31 @@ export function formatDuration(seconds: number | null): string {
   }
   return `${minutes}:${secs.toString().padStart(2, "0")}`;
 }
+
+export function parseDuration(value?: string): number | null {
+  if (!value) return null;
+
+  const parts = value.trim().split(":");
+  if (parts.length !== 2 && parts.length !== 3) return null;
+
+  const normalized = parts.map((part) => {
+    const numericValue = Number(part);
+    if (!Number.isFinite(numericValue) || numericValue < 0) return null;
+
+    const floored = Math.floor(numericValue);
+    return Number.isInteger(floored) ? floored : null;
+  });
+
+  if (normalized.some((part) => part === null)) return null;
+
+  const [hoursOrMinutes, minutesOrSeconds, seconds] = normalized as number[];
+
+  // For MM:SS format, validate that minutes <= 255
+  if (parts.length === 2 && hoursOrMinutes > 255) return null;
+
+  if (parts.length === 2) {
+    return hoursOrMinutes * 60 + minutesOrSeconds;
+  }
+
+  return hoursOrMinutes * 3600 + minutesOrSeconds * 60 + seconds;
+}
