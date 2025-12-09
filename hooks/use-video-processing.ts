@@ -104,6 +104,7 @@ export function useVideoProcessing(
   );
   const { loadExistingSlides } = useSlidesLoader(youtubeId, setSlidesState);
   const videoStatus = useVideoStatus(youtubeId, initialVersion);
+  const { fetchRuns, setSelectedRun } = videoStatus;
 
   // ============================================================================
   // Enhanced checkVideoStatus that coordinates with other hooks
@@ -154,11 +155,11 @@ export function useVideoProcessing(
   // When analysis completes, refresh runs
   useEffect(() => {
     if (analysisState.status === "completed" && analysisState.runId) {
-      videoStatus.fetchRuns().then(({ runs: updatedRuns }) => {
+      fetchRuns().then(({ runs: updatedRuns }) => {
         // Select the latest run to match the new `v` param
         const latestRun = updatedRuns[updatedRuns.length - 1] ?? null;
         if (latestRun) {
-          videoStatus.setSelectedRun(latestRun);
+          setSelectedRun(latestRun);
         }
 
         const params = new URLSearchParams(searchParams.toString());
@@ -170,8 +171,8 @@ export function useVideoProcessing(
   }, [
     analysisState.status,
     analysisState.runId,
-    videoStatus.fetchRuns,
-    videoStatus.setSelectedRun,
+    fetchRuns,
+    setSelectedRun,
     router,
     searchParams,
   ]);
