@@ -10,18 +10,18 @@ import { useTranscriptFetch } from "./use-transcript-fetch";
 import { useVideoStatus } from "./use-video-status";
 
 // ============================================================================
-// Re-export types for backward compatibility
-// ============================================================================
-
-export type { PageStatus, VideoInfo };
-export type { AnalysisRun };
-
-// ============================================================================
 // Import types for backward compatibility
 // ============================================================================
 
 import type { PageStatus, VideoInfo } from "./use-transcript-fetch";
 import type { AnalysisRun } from "./use-video-status";
+
+// ============================================================================
+// Re-export types for backward compatibility
+// ============================================================================
+
+export type { PageStatus, VideoInfo };
+export type { AnalysisRun };
 
 // ============================================================================
 // Hook Return Type (unchanged for backward compatibility)
