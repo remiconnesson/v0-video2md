@@ -220,7 +220,7 @@ export function SlidesPanel({
 }
 
 // ============================================================================
-// Slide Grid with Virtual Scrolling
+// State-specific Components
 // ============================================================================
 
 function IdleState({ onExtract }: { onExtract: () => void }) {

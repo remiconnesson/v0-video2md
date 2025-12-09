@@ -270,21 +270,6 @@ function SectionHeader({
   );
 }
 
-// Convert snake_case to Title Case
-function formatSectionTitle(key: string): string {
-  if (!key || typeof key !== "string") {
-    return "";
-  }
-  return key
-    .split("_")
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ");
-}
-
-// ============================================================================
-// Object Section Component
-// ============================================================================
-
 export function ObjectSection({ data }: { data: Record<string, unknown> }) {
   return (
     <dl className="divide-y divide-gray-100">
@@ -310,4 +295,19 @@ export function ObjectSection({ data }: { data: Record<string, unknown> }) {
       })}
     </dl>
   );
+}
+
+// ============================================================================
+// Utility Functions
+// ============================================================================
+
+// Convert snake_case to Title Case
+function formatSectionTitle(key: string): string {
+  if (!key || typeof key !== "string") {
+    return "";
+  }
+  return key
+    .split("_")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
 }
