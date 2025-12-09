@@ -13,7 +13,11 @@ import { useVideoStatus } from "./use-video-status";
 // Import types for backward compatibility
 // ============================================================================
 
-import type { PageStatus, VideoInfo } from "./use-transcript-fetch";
+import type {
+  PageStatus,
+  TranscriptState,
+  VideoInfo,
+} from "./use-transcript-fetch";
 import type { AnalysisRun } from "./use-video-status";
 
 // ============================================================================
@@ -47,13 +51,6 @@ export interface UseVideoProcessingReturn {
   handleReroll: (instructions: string) => void;
   setSlidesState: React.Dispatch<React.SetStateAction<SlidesState>>;
 }
-
-type TranscriptState = {
-  status: "idle" | "fetching" | "completed" | "error";
-  progress: number;
-  message: string;
-  error: string | null;
-};
 
 // ============================================================================
 // Main Hook - Now orchestrates smaller hooks
