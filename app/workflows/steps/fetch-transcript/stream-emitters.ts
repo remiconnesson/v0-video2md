@@ -26,7 +26,10 @@ export async function emitProgress(progress: number, message: string) {
 // Step: Emit completion
 // ============================================================================
 
-export async function emitComplete(video: { title: string; channelName: string }) {
+export async function emitComplete(video: {
+  title: string;
+  channelName: string;
+}) {
   "use step";
 
   const writable = getWritable<TranscriptStreamEvent>();

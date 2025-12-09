@@ -1,14 +1,11 @@
-import { FatalError } from "workflow";
 import {
-  emitProgress,
-  emitSlide,
   emitComplete,
   emitError,
-  triggerExtraction,
-  checkJobStatus,
-  monitorJobProgress,
+  emitProgress,
   fetchManifest,
+  monitorJobProgress,
   processSlidesFromManifest,
+  triggerExtraction,
   updateExtractionStatus,
 } from "./steps/extract-slides";
 

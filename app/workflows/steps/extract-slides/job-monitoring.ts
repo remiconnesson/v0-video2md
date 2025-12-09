@@ -1,9 +1,6 @@
 import { createParser } from "eventsource-parser";
 import { FatalError, fetch } from "workflow";
-import {
-  JobStatus,
-  type JobUpdate,
-} from "@/lib/slides-types";
+import { JobStatus, type JobUpdate } from "@/lib/slides-types";
 import { CONFIG } from "./config";
 
 // ============================================================================
@@ -186,7 +183,7 @@ export async function checkJobStatus(videoId: string): Promise<{
                   update.status,
                   update.progress,
                   update.message,
-                ).catch(() => {})
+                ).catch(() => {}),
               );
             }
           } catch (parseError) {

@@ -1,3 +1,5 @@
+import { db } from "@/db";
+import { videoSlides } from "@/db/schema";
 import {
   type FrameMetadata,
   type SlideData,
@@ -5,9 +7,7 @@ import {
   type VideoManifest,
   VideoManifestSchema,
 } from "@/lib/slides-types";
-import { db } from "@/db";
-import { videoSlides } from "@/db/schema";
-import { makeAwsClient, parseS3Uri, CONFIG } from "./config";
+import { CONFIG, makeAwsClient, parseS3Uri } from "./config";
 
 // ============================================================================
 // Step: Fetch manifest (Restored Old URL Logic)

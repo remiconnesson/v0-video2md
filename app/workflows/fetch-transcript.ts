@@ -1,11 +1,10 @@
 import {
-  emitProgress,
   emitComplete,
   emitError,
+  emitProgress,
   stepCheckDbForTranscript,
   stepFetchFromApify,
   stepSaveToDb,
-  type TranscriptStreamEvent,
 } from "./steps/fetch-transcript";
 
 // ============================================================================

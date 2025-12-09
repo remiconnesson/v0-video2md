@@ -1,2 +1,2 @@
-export * from "./stream-emitters";
 export * from "./analysis-processing";
+export * from "./stream-emitters";
