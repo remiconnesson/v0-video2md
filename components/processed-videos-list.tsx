@@ -188,7 +188,6 @@ function VirtualizedVideoCard({
 }: VirtualizedVideoCardProps) {
   return (
     <div
-      key={virtualItem.key}
       data-index={virtualItem.index}
       ref={measureElement}
       style={{
