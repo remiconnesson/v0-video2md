@@ -1,6 +1,12 @@
 import { act, renderHook } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { useVideoStatus } from "./use-video-status";
+import { type AnalysisRun, useVideoStatus } from "./use-video-status";
+
+interface StreamingRunInfo {
+  id: number;
+  version: number;
+  workflowRunId: string | null;
+}
 
 // Mock global fetch
 const mockFetch = vi.fn();
@@ -51,7 +57,10 @@ describe("useVideoStatus", () => {
 
       const { result } = renderHook(() => useVideoStatus("test-video-id", 2));
 
-      let fetchResult: { runs: any[]; streamingRun: any } = {
+      let fetchResult: {
+        runs: AnalysisRun[];
+        streamingRun: StreamingRunInfo | null;
+      } = {
         runs: [],
         streamingRun: null,
       };
@@ -110,7 +119,10 @@ describe("useVideoStatus", () => {
 
       const { result } = renderHook(() => useVideoStatus("test-video-id"));
 
-      let fetchResult: { runs: any[]; streamingRun: any } = {
+      let fetchResult: {
+        runs: AnalysisRun[];
+        streamingRun: StreamingRunInfo | null;
+      } = {
         runs: [],
         streamingRun: null,
       };
@@ -132,7 +144,10 @@ describe("useVideoStatus", () => {
 
       const { result } = renderHook(() => useVideoStatus("test-video-id"));
 
-      let fetchResult: { runs: any[]; streamingRun: any } = {
+      let fetchResult: {
+        runs: AnalysisRun[];
+        streamingRun: StreamingRunInfo | null;
+      } = {
         runs: [],
         streamingRun: null,
       };
@@ -158,7 +173,10 @@ describe("useVideoStatus", () => {
 
       const { result } = renderHook(() => useVideoStatus("test-video-id"));
 
-      let fetchResult: { runs: any[]; streamingRun: any } = {
+      let fetchResult: {
+        runs: AnalysisRun[];
+        streamingRun: StreamingRunInfo | null;
+      } = {
         runs: [],
         streamingRun: null,
       };
