@@ -10,7 +10,7 @@ import {
   fetchTranscriptData,
   getNextVersion,
   runGodPrompt,
-} from "./steps/dynamic-analysis";
+} from "./steps/analysis";
 
 // Re-export the event type for external use
 export type { AnalysisStreamEvent };

@@ -1,4 +1,5 @@
 import { desc, eq } from "drizzle-orm";
+import { getWritable } from "workflow";
 import { z } from "zod";
 import { streamDynamicAnalysis } from "@/ai/dynamic-analysis";
 import { db } from "@/db";
@@ -11,14 +12,66 @@ import {
 import { formatTranscriptForLLM } from "@/lib/transcript-format";
 
 // ============================================================================
-// Transcript Schema (for validation)
+// Stream Event Types
 // ============================================================================
 
-const TranscriptSegmentSchema = z.object({
-  start: z.number(),
-  end: z.number(),
-  text: z.string(),
-});
+export type AnalysisStreamEvent =
+  | { type: "progress"; phase: string; message: string }
+  | { type: "partial"; data: unknown }
+  | { type: "result"; data: unknown }
+  | { type: "complete"; runId: number }
+  | { type: "error"; message: string };
+
+// ============================================================================
+// Stream Emitters
+// ============================================================================
+
+export async function emitProgress(phase: string, message: string) {
+  "use step";
+
+  const writable = getWritable<AnalysisStreamEvent>();
+  const writer = writable.getWriter();
+  await writer.write({ type: "progress", phase, message });
+  writer.releaseLock();
+}
+
+export async function emitResult(data: unknown) {
+  "use step";
+
+  const writable = getWritable<AnalysisStreamEvent>();
+  const writer = writable.getWriter();
+  await writer.write({ type: "result", data });
+  writer.releaseLock();
+}
+
+export async function emitPartialResult(data: unknown) {
+  "use step";
+
+  const writable = getWritable<AnalysisStreamEvent>();
+  const writer = writable.getWriter();
+  await writer.write({ type: "partial", data });
+  writer.releaseLock();
+}
+
+export async function emitComplete(runId: number) {
+  "use step";
+
+  const writable = getWritable<AnalysisStreamEvent>();
+  const writer = writable.getWriter();
+  await writer.write({ type: "complete", runId });
+  writer.releaseLock();
+  await writable.close();
+}
+
+export async function emitError(message: string) {
+  "use step";
+
+  const writable = getWritable<AnalysisStreamEvent>();
+  const writer = writable.getWriter();
+  await writer.write({ type: "error", message });
+  writer.releaseLock();
+  await writable.close();
+}
 
 // ============================================================================
 // Transcript Data Interface
@@ -31,6 +84,16 @@ export interface TranscriptData {
   description: string | null;
   transcript: string;
 }
+
+// ============================================================================
+// Schemas
+// ============================================================================
+
+const TranscriptSegmentSchema = z.object({
+  start: z.number(),
+  end: z.number(),
+  text: z.string(),
+});
 
 // ============================================================================
 // Step: Fetch transcript data from DB
@@ -60,7 +123,6 @@ export async function fetchTranscriptData(
     return null;
   }
 
-  // Validate transcript structure
   const transcriptParseResult = z
     .array(TranscriptSegmentSchema)
     .safeParse(row.transcript);
@@ -80,7 +142,7 @@ export async function fetchTranscriptData(
 }
 
 // ============================================================================
-// Step: Get next version number for a video
+// Step: Get next version number
 // ============================================================================
 
 export async function getNextVersion(videoId: string): Promise<number> {
@@ -98,7 +160,7 @@ export async function getNextVersion(videoId: string): Promise<number> {
 }
 
 // ============================================================================
-// Step: Create analysis run (atomic version calculation + insert)
+// Step: Create analysis run
 // ============================================================================
 
 export async function createAnalysisRun(
@@ -107,7 +169,6 @@ export async function createAnalysisRun(
 ): Promise<number> {
   "use step";
 
-  // Get next version
   const versionResult = await db
     .select({ version: videoAnalysisRuns.version })
     .from(videoAnalysisRuns)
@@ -117,7 +178,6 @@ export async function createAnalysisRun(
 
   const nextVersion = (versionResult[0]?.version ?? 0) + 1;
 
-  // Insert the run with conflict resolution for idempotency during workflow replay
   const [createdRun] = await db
     .insert(videoAnalysisRuns)
     .values({
@@ -159,21 +219,17 @@ export async function runGodPrompt(
   });
 
   for await (const partial of stream.partialObjectStream) {
-    // Import emitPartialResult dynamically to avoid circular dependency
-    const { emitPartialResult } = await import("./stream-emitters");
     await emitPartialResult(partial);
   }
 
   const result = await stream.object;
-
-  // Import emitResult dynamically to avoid circular dependency
-  const { emitResult } = await import("./stream-emitters");
   await emitResult(result);
+
   return result as Record<string, unknown>;
 }
 
 // ============================================================================
-// Step: Update run status to completed
+// Step: Complete run
 // ============================================================================
 
 export async function completeRun(
@@ -193,7 +249,7 @@ export async function completeRun(
 }
 
 // ============================================================================
-// Step: Mark run as failed
+// Step: Fail run
 // ============================================================================
 
 export async function failRun(dbRunId: number): Promise<void> {

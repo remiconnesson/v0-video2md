@@ -7,7 +7,7 @@ import {
   processSlidesFromManifest,
   triggerExtraction,
   updateExtractionStatus,
-} from "./steps/extract-slides";
+} from "./steps/slides";
 
 // ============================================================================
 // Main Workflow

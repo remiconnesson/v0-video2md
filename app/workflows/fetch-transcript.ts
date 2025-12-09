@@ -7,7 +7,7 @@ import {
   stepFetchFromApify,
   stepSaveToDb,
   type TranscriptStreamEvent,
-} from "./steps/fetch-transcript";
+} from "./steps/transcript";
 
 // Re-export the event type for external use
 export type { TranscriptStreamEvent };

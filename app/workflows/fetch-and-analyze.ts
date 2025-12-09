@@ -7,12 +7,12 @@ import {
   failRun,
   runGodPrompt,
   type TranscriptData,
-} from "./steps/dynamic-analysis";
+} from "./steps/analysis";
 import {
   stepCheckDbForTranscript,
   stepFetchFromApify,
   stepSaveToDb,
-} from "./steps/fetch-transcript";
+} from "./steps/transcript";
 
 // ============================================================================
 // Unified Stream Event Types

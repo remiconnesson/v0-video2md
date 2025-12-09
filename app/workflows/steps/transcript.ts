@@ -1,4 +1,5 @@
 import { eq } from "drizzle-orm";
+import { getWritable } from "workflow";
 import { z } from "zod";
 import { db } from "@/db";
 import {
@@ -7,8 +8,56 @@ import {
 } from "@/db/save-transcript";
 import { channels, scrapTranscriptV1, videos } from "@/db/schema";
 
+// Re-export for consumers
+export type { TranscriptResult };
+
 // ============================================================================
-// Zod schema for validating Apify API response (snake_case as returned by API)
+// Stream Event Types
+// ============================================================================
+
+export type TranscriptStreamEvent =
+  | { type: "progress"; progress: number; message: string }
+  | { type: "complete"; video: { title: string; channelName: string } }
+  | { type: "error"; error: string };
+
+// ============================================================================
+// Stream Emitters
+// ============================================================================
+
+export async function emitProgress(progress: number, message: string) {
+  "use step";
+
+  const writable = getWritable<TranscriptStreamEvent>();
+  const writer = writable.getWriter();
+  await writer.write({ type: "progress", progress, message });
+  writer.releaseLock();
+}
+
+export async function emitComplete(video: {
+  title: string;
+  channelName: string;
+}) {
+  "use step";
+
+  const writable = getWritable<TranscriptStreamEvent>();
+  const writer = writable.getWriter();
+  await writer.write({ type: "complete", video });
+  writer.releaseLock();
+  await writable.close();
+}
+
+export async function emitError(error: string) {
+  "use step";
+
+  const writable = getWritable<TranscriptStreamEvent>();
+  const writer = writable.getWriter();
+  await writer.write({ type: "error", error });
+  writer.releaseLock();
+  await writable.close();
+}
+
+// ============================================================================
+// Schemas
 // ============================================================================
 
 const TranscriptSegmentSchema = z.object({
@@ -35,8 +84,19 @@ const ApifyTranscriptResponseSchema = z.object({
 });
 
 // ============================================================================
-// Transform snake_case API response to camelCase internal format
+// Helpers
 // ============================================================================
+
+function formatDurationFromSeconds(seconds: number): string {
+  const hours = Math.floor(seconds / 3600);
+  const mins = Math.floor((seconds % 3600) / 60);
+  const secs = Math.floor(seconds % 60);
+
+  if (hours > 0) {
+    return `${hours}:${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+  }
+  return `${mins}:${secs.toString().padStart(2, "0")}`;
+}
 
 function transformApifyResponse(
   data: z.infer<typeof ApifyTranscriptResponseSchema>,
@@ -57,18 +117,6 @@ function transformApifyResponse(
     thumbnailUrl: data.thumbnail,
     transcript: data.transcript,
   };
-}
-
-// Convert seconds to duration string (e.g., "50:20" or "1:23:45")
-function formatDurationFromSeconds(seconds: number): string {
-  const hours = Math.floor(seconds / 3600);
-  const mins = Math.floor((seconds % 3600) / 60);
-  const secs = Math.floor(seconds % 60);
-
-  if (hours > 0) {
-    return `${hours}:${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
-  }
-  return `${mins}:${secs.toString().padStart(2, "0")}`;
 }
 
 // ============================================================================
@@ -109,7 +157,6 @@ export async function stepCheckDbForTranscript(
 
   const data = result[0];
 
-  // Validate transcript data with Zod
   if (!data.transcript || !Array.isArray(data.transcript)) {
     return null;
   }
@@ -120,14 +167,9 @@ export async function stepCheckDbForTranscript(
 
   if (!transcriptParseResult.success) {
     console.error("[DB] Transcript validation failed for video:", data.videoId);
-    console.error(
-      "[DB] Validation errors:",
-      JSON.stringify(transcriptParseResult.error.format(), null, 2),
-    );
     return null;
   }
 
-  // Format duration from seconds to string
   const duration =
     data.durationSeconds !== null
       ? formatDurationFromSeconds(data.durationSeconds)
@@ -178,7 +220,6 @@ export async function stepFetchFromApify(
     return null;
   }
 
-  // Validate the API response with Zod
   const parseResult = ApifyTranscriptResponseSchema.safeParse(rawResult);
 
   if (!parseResult.success) {
@@ -186,16 +227,11 @@ export async function stepFetchFromApify(
       "[Apify] Validation failed. Raw response keys:",
       Object.keys(rawResult),
     );
-    console.error(
-      "[Apify] Validation errors:",
-      JSON.stringify(parseResult.error.format(), null, 2),
-    );
     throw new Error(
       `Invalid Apify response: ${parseResult.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join(", ")}`,
     );
   }
 
-  // Transform snake_case API response to camelCase
   return transformApifyResponse(parseResult.data);
 }
 
