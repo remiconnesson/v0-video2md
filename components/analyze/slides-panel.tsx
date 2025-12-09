@@ -173,132 +173,193 @@ export function SlidesPanel({
 
   // Idle state - show extract button
   if (slidesState.status === "idle") {
-    return (
-      <Card>
-        <CardContent className="py-12">
-          <div className="text-center space-y-4">
-            <div className="mx-auto w-16 h-16 rounded-full bg-muted flex items-center justify-center">
-              <ImageIcon className="h-8 w-8 text-muted-foreground" />
-            </div>
-            <div>
-              <h3 className="text-lg font-semibold">Extract Slides</h3>
-              <p className="text-sm text-muted-foreground mt-1">
-                Analyze the video to extract presentation slides
-              </p>
-            </div>
-            <Button
-              onClick={() => {
-                startExtraction();
-              }}
-            >
-              Extract Slides
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-    );
+    return <IdleState onExtract={startExtraction} />;
   }
 
   // Loading state
   if (slidesState.status === "loading") {
-    return (
-      <Card>
-        <CardContent className="py-12">
-          <div className="flex items-center justify-center gap-3">
-            <Loader2 className="h-5 w-5 animate-spin" />
-            <span>Loading slides...</span>
-          </div>
-        </CardContent>
-      </Card>
-    );
+    return <LoadingState />;
   }
 
   // Extracting state
   if (slidesState.status === "extracting") {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Loader2 className="h-5 w-5 animate-spin" />
-            Extracting Slides
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <Progress value={slidesState.progress} className="h-2" />
-          <p className="text-sm text-muted-foreground">{slidesState.message}</p>
-
-          {slidesState.slides.length > 0 && (
-            <div className="mt-6">
-              <p className="text-sm font-medium mb-3">
-                {slidesState.slides.length} slides found so far
-              </p>
-              <SlideGrid
-                slides={slidesState.slides}
-                allSlides={slidesState.slides}
-                feedbackMap={feedbackMap}
-                onSubmitFeedback={submitFeedback}
-              />
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      <ExtractingState
+        progress={slidesState.progress}
+        message={slidesState.message}
+        slides={slidesState.slides}
+        feedbackMap={feedbackMap}
+        onSubmitFeedback={submitFeedback}
+      />
     );
   }
 
   // Error state
   if (slidesState.status === "error") {
-    return (
-      <Card>
-        <CardContent className="py-12">
-          <div className="text-center space-y-4">
-            <p className="text-destructive">{slidesState.error}</p>
-            <Button
-              variant="outline"
-              onClick={() => {
-                startExtraction();
-              }}
-            >
-              Retry
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-    );
+    return <ErrorState error={slidesState.error} onRetry={startExtraction} />;
   }
 
   // Completed state - show slides
+  return (
+    <CompletedState
+      slidesCount={slidesState.slides.length}
+      slides={slidesState.slides}
+      feedbackMap={feedbackMap}
+      onSubmitFeedback={submitFeedback}
+      onReExtract={() => {
+        onSlidesStateChange((prev) => ({
+          ...prev,
+          slides: [],
+          progress: 0,
+          message: "",
+        }));
+        startExtraction();
+      }}
+    />
+  );
+}
+
+// ============================================================================
+// State-specific Components
+// ============================================================================
+
+function IdleState({ onExtract }: { onExtract: () => void }) {
+  return (
+    <Card>
+      <CardContent className="py-12">
+        <div className="text-center space-y-4">
+          <div className="mx-auto w-16 h-16 rounded-full bg-muted flex items-center justify-center">
+            <ImageIcon className="h-8 w-8 text-muted-foreground" />
+          </div>
+
+          <div>
+            <h3 className="text-lg font-semibold">Extract Slides</h3>
+            <p className="text-sm text-muted-foreground mt-1">
+              Analyze the video to extract presentation slides
+            </p>
+          </div>
+
+          <Button onClick={onExtract}>Extract Slides</Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function LoadingState() {
+  return (
+    <Card>
+      <CardContent className="py-12">
+        <div className="flex items-center justify-center gap-3">
+          <Loader2 className="h-5 w-5 animate-spin" />
+          <span>Loading slides...</span>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function ExtractingState({
+  progress,
+  message,
+  slides,
+  feedbackMap,
+  onSubmitFeedback,
+}: {
+  progress: number;
+  message: string;
+  slides: SlideData[];
+  feedbackMap: Map<number, SlideFeedbackData>;
+  onSubmitFeedback: (feedback: SlideFeedbackData) => Promise<void>;
+}) {
+  const hasSlidesFound = slides.length > 0;
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Loader2 className="h-5 w-5 animate-spin" />
+          Extracting Slides
+        </CardTitle>
+      </CardHeader>
+
+      <CardContent className="space-y-4">
+        <Progress value={progress} className="h-2" />
+        <p className="text-sm text-muted-foreground">{message}</p>
+
+        {hasSlidesFound && (
+          <div className="mt-6">
+            <p className="text-sm font-medium mb-3">
+              {slides.length} slides found so far
+            </p>
+            <SlideGrid
+              slides={slides}
+              allSlides={slides}
+              feedbackMap={feedbackMap}
+              onSubmitFeedback={onSubmitFeedback}
+            />
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function ErrorState({
+  error,
+  onRetry,
+}: {
+  error: string | null;
+  onRetry: () => void;
+}) {
+  return (
+    <Card>
+      <CardContent className="py-12">
+        <div className="text-center space-y-4">
+          <p className="text-destructive">{error}</p>
+          <Button variant="outline" onClick={onRetry}>
+            Retry
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function CompletedState({
+  slidesCount,
+  slides,
+  feedbackMap,
+  onSubmitFeedback,
+  onReExtract,
+}: {
+  slidesCount: number;
+  slides: SlideData[];
+  feedbackMap: Map<number, SlideFeedbackData>;
+  onSubmitFeedback: (feedback: SlideFeedbackData) => Promise<void>;
+  onReExtract: () => void;
+}) {
   return (
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center justify-between">
           <span className="flex items-center gap-2">
             <ImageIcon className="h-5 w-5" />
-            Slides ({slidesState.slides.length})
+            Slides ({slidesCount})
           </span>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              // Clear slides and trigger re-extraction
-              onSlidesStateChange((prev) => ({
-                ...prev,
-                slides: [],
-                progress: 0,
-                message: "",
-              }));
-              startExtraction();
-            }}
-          >
+
+          <Button variant="outline" size="sm" onClick={onReExtract}>
             Re-extract
           </Button>
         </CardTitle>
       </CardHeader>
+
       <CardContent>
         <SlideGrid
-          slides={slidesState.slides}
-          allSlides={slidesState.slides}
+          slides={slides}
+          allSlides={slides}
           feedbackMap={feedbackMap}
-          onSubmitFeedback={submitFeedback}
+          onSubmitFeedback={onSubmitFeedback}
         />
       </CardContent>
     </Card>
