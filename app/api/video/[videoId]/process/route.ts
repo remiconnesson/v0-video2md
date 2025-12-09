@@ -61,11 +61,11 @@ export async function POST(
       await Promise.all(streamPromises);
       writer.close();
     })().catch((error) => {
-      console.error("Stream processing error:", error);
+      console.error("Stream processing error:", { error, videoId });
       writer.abort(error);
     });
   } catch (error) {
-    console.error("Failed to start processing workflow:", error);
+    console.error("Failed to start processing workflow:", { error, videoId });
     writer.abort(error);
     return NextResponse.json(
       { error: "Failed to start processing workflow" },
