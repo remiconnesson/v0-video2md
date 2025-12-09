@@ -101,7 +101,11 @@ export function useVideoProcessing(
   );
   const { loadExistingSlides } = useSlidesLoader(youtubeId, setSlidesState);
   const videoStatus = useVideoStatus(youtubeId, initialVersion);
-  const { fetchRuns, setSelectedRun } = videoStatus;
+  const {
+    fetchRuns,
+    setSelectedRun,
+    handleVersionChange: handleVideoVersionChange,
+  } = videoStatus;
 
   // ============================================================================
   // Enhanced checkVideoStatus that coordinates with other hooks
