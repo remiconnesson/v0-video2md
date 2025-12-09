@@ -36,7 +36,7 @@ describe("manifest-processing utils", () => {
     url: null,
   };
 
-  it("detects usable frames", () => {
+  it("should detect usable frames", () => {
     expect(
       hasUsableFrames({ ...baseSegment, first_frame: { ...sampleFrame } }),
     ).toBe(true);
@@ -62,7 +62,7 @@ describe("manifest-processing utils", () => {
     );
   });
 
-  it("normalizes frame metadata and handles missing frames", () => {
+  it("should normalize frame metadata and handle missing frames", () => {
     const normalized = normalizeFrameMetadata(sampleFrame, "https://image");
     expect(normalized).toEqual({
       imageUrl: "https://image",
@@ -94,7 +94,7 @@ describe("manifest-processing utils", () => {
     });
   });
 
-  it("parses valid s3 URIs and rejects invalid ones", () => {
+  it("should parse valid s3 URIs and reject invalid ones", () => {
     expect(parseS3Uri("s3://bucket/key")).toEqual({
       bucket: "bucket",
       key: "key",
@@ -113,7 +113,7 @@ describe("manifest-processing utils", () => {
     expect(parseS3Uri("s3://")).toBeNull();
   });
 
-  it("builds HTTP URLs without double slashes", () => {
+  it("should build HTTP URLs without double slashes", () => {
     expect(buildS3HttpUrl("https://example.com/", "bucket", "key")).toBe(
       "https://example.com/bucket/key",
     );
@@ -131,7 +131,7 @@ describe("manifest-processing utils", () => {
     ).toBe("https://example.com/bucket with space/key%20one");
   });
 
-  it("builds blob paths using frame IDs when available", () => {
+  it("should build blob paths using frame IDs when available", () => {
     expect(generateBlobPath("video1", "frame-1", 0, "first")).toBe(
       "slides/video1/frame-1.webp",
     );
@@ -140,12 +140,12 @@ describe("manifest-processing utils", () => {
     );
   });
 
-  it("filters static segments", () => {
+  it("should filter static segments", () => {
     const segments = [{ ...baseSegment }, { ...baseSegment, kind: "moving" }];
     expect(filterStaticSegments(segments)).toEqual([{ ...baseSegment }]);
   });
 
-  it("extracts slide timings", () => {
+  it("should extract slide timings", () => {
     expect(extractSlideTimings(baseSegment)).toEqual({
       startTime: 0,
       endTime: 10,
