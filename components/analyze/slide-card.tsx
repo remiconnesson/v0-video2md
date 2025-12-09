@@ -310,7 +310,7 @@ export function SlideCard({
       });
       setSamenessFeedback(initialFeedback.framesSameness ?? null);
       setIsFirstFramePicked(initialFeedback.isFirstFramePicked ?? true);
-      setIsLastFramePicked(initialFeedback.isLastFramePicked ?? false);
+      setIsLastFramePicked(initialFeedback.isLastFramePicked ?? true);
     }
   }, [initialFeedback]);
 
