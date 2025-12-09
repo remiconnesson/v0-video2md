@@ -1,5 +1,6 @@
 import { getWritable } from "workflow";
 import type { TranscriptResult } from "@/db/save-transcript";
+import { formatTranscriptForLLMPadded } from "@/lib/transcript-format";
 import {
   completeRun,
   createAnalysisRun,
@@ -141,15 +142,7 @@ export async function fetchAndAnalyzeWorkflow(
       channelName: transcriptData.channelName,
       description: transcriptData.description,
       // Format transcript with timestamps for LLM
-      transcript: transcriptData.transcript
-        .map((seg) => {
-          const hours = Math.floor(seg.start / 3600);
-          const minutes = Math.floor((seg.start % 3600) / 60);
-          const seconds = Math.floor(seg.start % 60);
-          const time = `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
-          return `[${time}] ${seg.text}`;
-        })
-        .join("\n"),
+      transcript: formatTranscriptForLLMPadded(transcriptData.transcript),
     };
 
     const result = await runGodPrompt(dataForAnalysis, additionalInstructions);
