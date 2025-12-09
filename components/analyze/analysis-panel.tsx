@@ -5,6 +5,7 @@ import { useState } from "react";
 import { Streamdown } from "streamdown";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { analysisToMarkdown, formatSectionTitle } from "@/lib/analysis-format";
 import { isRecord } from "@/lib/type-utils";
 import { SectionFeedback } from "./section-feedback";
 
@@ -18,69 +19,9 @@ interface AnalysisPanelProps {
   videoId: string;
 }
 
-// Convert analysis object to markdown format
-function analysisToMarkdown(analysis: Record<string, unknown>): string {
-  let markdown = "";
-
-  for (const [key, value] of Object.entries(analysis)) {
-    // Add section title
-    markdown += `## ${formatSectionTitle(key)}\n\n`;
-
-    // Convert content to markdown
-    markdown += contentToMarkdown(value);
-    markdown += "\n\n";
-  }
-
-  return markdown.trim();
-}
-
 // ============================================================================
 // Content Conversion Utilities
 // ============================================================================
-
-// Convert various content types to markdown
-function contentToMarkdown(content: unknown): string {
-  if (content === null || content === undefined || content === "") {
-    return "_No content_";
-  }
-
-  if (typeof content === "string") {
-    return content;
-  }
-
-  if (Array.isArray(content)) {
-    if (content.length === 0) {
-      return "_No items_";
-    }
-    return content
-      .map((item) => {
-        if (typeof item === "string") {
-          // Check if already starts with - * or numbered list
-          return item.trim().match(/^\s*[-*]\s+|^\s*\d+\.\s+|^\s*\d+\)\s+/)
-            ? item
-            : `- ${item}`;
-        }
-        return `\`\`\`json\n${JSON.stringify(item, null, 2)}\n\`\`\``;
-      })
-      .join("\n");
-  }
-
-  if (isRecord(content)) {
-    let markdown = "";
-    for (const [key, value] of Object.entries(content)) {
-      markdown += `**${key}**: `;
-      if (typeof value === "string") {
-        markdown += value;
-      } else {
-        markdown += `\`\`\`json\n${JSON.stringify(value, null, 2)}\n\`\`\``;
-      }
-      markdown += "\n\n";
-    }
-    return markdown;
-  }
-
-  return String(content);
-}
 
 // ============================================================================
 // Main Panel Component
@@ -295,19 +236,4 @@ export function ObjectSection({ data }: { data: Record<string, unknown> }) {
       })}
     </dl>
   );
-}
-
-// ============================================================================
-// Utility Functions
-// ============================================================================
-
-// Convert snake_case to Title Case
-function formatSectionTitle(key: string): string {
-  if (!key || typeof key !== "string") {
-    return "";
-  }
-  return key
-    .split("_")
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ");
 }
