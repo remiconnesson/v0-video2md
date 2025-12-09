@@ -10,6 +10,7 @@ import {
   videos,
 } from "@/db/schema";
 import { formatTranscriptForLLM } from "@/lib/transcript-format";
+import { TranscriptSegmentSchema } from "@/lib/transcript-types";
 
 // ============================================================================
 // Stream Event Types
@@ -84,16 +85,6 @@ export interface TranscriptData {
   description: string | null;
   transcript: string;
 }
-
-// ============================================================================
-// Schemas
-// ============================================================================
-
-const TranscriptSegmentSchema = z.object({
-  start: z.number(),
-  end: z.number(),
-  text: z.string(),
-});
 
 // ============================================================================
 // Step: Fetch transcript data from DB

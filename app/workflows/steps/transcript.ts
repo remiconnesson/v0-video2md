@@ -7,6 +7,7 @@ import {
   type TranscriptResult,
 } from "@/db/save-transcript";
 import { channels, scrapTranscriptV1, videos } from "@/db/schema";
+import { TranscriptSegmentSchema } from "@/lib/transcript-types";
 
 // Re-export for consumers
 export type { TranscriptResult };
@@ -59,12 +60,6 @@ export async function emitError(error: string) {
 // ============================================================================
 // Schemas
 // ============================================================================
-
-const TranscriptSegmentSchema = z.object({
-  start: z.number(),
-  end: z.number(),
-  text: z.string(),
-});
 
 const ApifyTranscriptResponseSchema = z.object({
   video_id: z.string(),

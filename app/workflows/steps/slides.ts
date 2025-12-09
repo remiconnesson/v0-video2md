@@ -222,7 +222,7 @@ async function checkJobStatus(videoId: string): Promise<{
                 update.status,
                 update.progress,
                 update.message,
-              ).catch(() => {});
+              ).catch((e) => console.warn("Failed to emit progress:", e));
             }
           } catch {
             // Ignore parse errors
@@ -533,7 +533,7 @@ export async function processSlidesFromManifest(
     `💾 processSlidesFromManifest: Completed - ${successfulSlides} successful, ${failedSlides} failed`,
   );
 
-  return slideIndex;
+  return successfulSlides;
 }
 
 // ============================================================================
