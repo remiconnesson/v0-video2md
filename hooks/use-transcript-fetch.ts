@@ -13,9 +13,9 @@ export type PageStatus =
   | "fetching_transcript"
   | "ready";
 
-type TranscriptStatus = "idle" | "fetching" | "completed" | "error";
+export type TranscriptStatus = "idle" | "fetching" | "completed" | "error";
 
-interface TranscriptState {
+export interface TranscriptState {
   status: TranscriptStatus;
   progress: number;
   message: string;
