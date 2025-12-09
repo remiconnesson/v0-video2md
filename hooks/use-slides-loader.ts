@@ -21,14 +21,15 @@ export function useSlidesLoader(
       if (!res.ok) return;
 
       const data = await res.json();
+      const slides = Array.isArray(data.slides) ? data.slides : [];
 
-      if (data.slides.length > 0) {
+      if (slides.length > 0) {
         onSlidesStateChange({
           status: "completed",
           progress: 100,
-          message: `${data.slides.length} slides loaded`,
+          message: `${slides.length} slides loaded`,
           error: null,
-          slides: data.slides,
+          slides,
         });
       } else if (data.status === "in_progress") {
         onSlidesStateChange((prev) => ({
@@ -36,6 +37,7 @@ export function useSlidesLoader(
           status: "extracting",
           progress: 0,
           message: "Extraction in progress...",
+          error: null,
           slides: [],
         }));
       } else if (data.status === "failed") {
@@ -49,6 +51,9 @@ export function useSlidesLoader(
         onSlidesStateChange((prev) => ({
           ...prev,
           status: "idle",
+          progress: 0,
+          message: "",
+          error: null,
           slides: [],
         }));
       }
