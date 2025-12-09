@@ -372,7 +372,7 @@ export async function processSlidesFromManifest(
 
     let firstFrameImageUrl = "";
     let lastFrameImageUrl = "";
-    let imageProcessingError: string | null = null;
+    const imageProcessingErrors: string[] = [];
 
     async function processFrame(
       frame: FrameMetadata,
@@ -422,9 +422,9 @@ export async function processSlidesFromManifest(
       try {
         firstFrameImageUrl = await processFrame(firstFrame, "first");
       } catch (e) {
-        imageProcessingError =
-          (imageProcessingError ? `${imageProcessingError}; ` : "") +
-          (e instanceof Error ? e.message : "Unknown error");
+        imageProcessingErrors.push(
+          e instanceof Error ? e.message : "Unknown error",
+        );
       }
     }
 
@@ -432,9 +432,9 @@ export async function processSlidesFromManifest(
       try {
         lastFrameImageUrl = await processFrame(lastFrame, "last");
       } catch (e) {
-        imageProcessingError =
-          (imageProcessingError ? `${imageProcessingError}; ` : "") +
-          (e instanceof Error ? e.message : "Unknown error");
+        imageProcessingErrors.push(
+          e instanceof Error ? e.message : "Unknown error",
+        );
       }
     }
 
@@ -466,7 +466,10 @@ export async function processSlidesFromManifest(
       lastFrameDuplicateOfFramePosition:
         lastFrame?.duplicate_of?.frame_position ?? null,
       lastFrameSkipReason: lastFrame?.skip_reason ?? null,
-      imageProcessingError,
+      imageProcessingError:
+        imageProcessingErrors.length > 0
+          ? imageProcessingErrors.join("; ")
+          : null,
     };
 
     try {
