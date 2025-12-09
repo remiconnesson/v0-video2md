@@ -127,9 +127,7 @@ export async function fetchAndAnalyzeWorkflow(
       transcriptData = fetchedResult;
     }
 
-    if (!transcriptData) {
-      throw new Error("Failed to obtain transcript data");
-    }
+    // transcriptData is guaranteed to be assigned at this point
 
     // ========================================================================
     // Phase B: AI Analysis (40% - 90%)
