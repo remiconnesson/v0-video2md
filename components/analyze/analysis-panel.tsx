@@ -8,6 +8,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { isRecord } from "@/lib/type-utils";
 import { SectionFeedback } from "./section-feedback";
 
+// ============================================================================
+// Analysis Panel - Main Component
+// ============================================================================
+
 interface AnalysisPanelProps {
   analysis: Record<string, unknown>;
   runId: number | null;
@@ -29,6 +33,10 @@ function analysisToMarkdown(analysis: Record<string, unknown>): string {
 
   return markdown.trim();
 }
+
+// ============================================================================
+// Content Conversion Utilities
+// ============================================================================
 
 // Convert various content types to markdown
 function contentToMarkdown(content: unknown): string {
@@ -74,6 +82,10 @@ function contentToMarkdown(content: unknown): string {
   return String(content);
 }
 
+// ============================================================================
+// Main Panel Component
+// ============================================================================
+
 export function AnalysisPanel({
   analysis,
   runId,
@@ -96,26 +108,8 @@ export function AnalysisPanel({
   console.log(analysis);
   return (
     <div className="space-y-4">
-      <div className="flex justify-end">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleCopyMarkdown}
-          className="gap-2"
-        >
-          {copied ? (
-            <>
-              <Check className="h-4 w-4" />
-              Copied!
-            </>
-          ) : (
-            <>
-              <Copy className="h-4 w-4" />
-              Copy Markdown
-            </>
-          )}
-        </Button>
-      </div>
+      <CopyButton copied={copied} onCopy={handleCopyMarkdown} />
+
       {Object.entries(analysis).map(([key, value]) => (
         <Section
           key={key}
@@ -125,6 +119,36 @@ export function AnalysisPanel({
           videoId={videoId}
         />
       ))}
+    </div>
+  );
+}
+
+// ============================================================================
+// Sub-components
+// ============================================================================
+
+function CopyButton({
+  copied,
+  onCopy,
+}: {
+  copied: boolean;
+  onCopy: () => void;
+}) {
+  return (
+    <div className="flex justify-end">
+      <Button variant="outline" size="sm" onClick={onCopy} className="gap-2">
+        {copied ? (
+          <>
+            <Check className="h-4 w-4" />
+            Copied!
+          </>
+        ) : (
+          <>
+            <Copy className="h-4 w-4" />
+            Copy Markdown
+          </>
+        )}
+      </Button>
     </div>
   );
 }
@@ -169,6 +193,10 @@ function SectionContent({ content }: { content: unknown }): React.ReactNode {
   return <p>{String(content)}</p>;
 }
 
+// ============================================================================
+// Section Components
+// ============================================================================
+
 function Section({
   title,
   content,
@@ -184,31 +212,61 @@ function Section({
   description?: string;
 }) {
   const key = title;
+  const formattedTitle = formatSectionTitle(title) || title;
+  const hasFeedback = runId !== null;
+
   return (
     <Card key={key}>
       <CardHeader>
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <CardTitle className="text-base">
-              {formatSectionTitle(title) || title}
-            </CardTitle>
-            {description && (
-              <p className="text-xs text-muted-foreground mt-0.5">
-                {description}
-              </p>
-            )}
-          </div>
-
-          {runId && (
-            <SectionFeedback videoId={videoId} runId={runId} sectionKey={key} />
-          )}
-        </div>
+        <SectionHeader
+          title={formattedTitle}
+          description={description}
+          videoId={videoId}
+          runId={runId}
+          sectionKey={key}
+          hasFeedback={hasFeedback}
+        />
       </CardHeader>
 
       <CardContent>
         <SectionContent content={content} />
       </CardContent>
     </Card>
+  );
+}
+
+function SectionHeader({
+  title,
+  description,
+  videoId,
+  runId,
+  sectionKey,
+  hasFeedback,
+}: {
+  title: string;
+  description?: string;
+  videoId: string;
+  runId: number | null;
+  sectionKey: string;
+  hasFeedback: boolean;
+}) {
+  return (
+    <div className="flex items-start justify-between gap-4">
+      <div>
+        <CardTitle className="text-base">{title}</CardTitle>
+        {description && (
+          <p className="text-xs text-muted-foreground mt-0.5">{description}</p>
+        )}
+      </div>
+
+      {hasFeedback && runId !== null && (
+        <SectionFeedback
+          videoId={videoId}
+          runId={runId}
+          sectionKey={sectionKey}
+        />
+      )}
+    </div>
   );
 }
 
@@ -222,6 +280,10 @@ function formatSectionTitle(key: string): string {
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(" ");
 }
+
+// ============================================================================
+// Object Section Component
+// ============================================================================
 
 export function ObjectSection({ data }: { data: Record<string, unknown> }) {
   return (

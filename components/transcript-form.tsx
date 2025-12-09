@@ -12,11 +12,13 @@ export function TranscriptFetcher() {
   const [state, action, isPending] = useActionState(triggerTranscript, null);
   const router = useRouter();
 
+  const hasSuccessfulResult = state?.success && state?.videoId;
+
   useEffect(() => {
-    if (state?.success && state?.videoId) {
+    if (hasSuccessfulResult) {
       router.push(`/video/youtube/${state.videoId}/analyze`);
     }
-  }, [state, router]);
+  }, [hasSuccessfulResult, state?.videoId, router]);
 
   return (
     <Card className="border-2 shadow-lg">
@@ -25,30 +27,52 @@ export function TranscriptFetcher() {
           Fetch YouTube Transcript
         </CardTitle>
       </CardHeader>
+
       <CardContent className="space-y-4">
-        <form action={action} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="videoId">YouTube URL or Video ID</Label>
-            <Input
-              name="videoId"
-              id="videoId"
-              placeholder="e.g. https://youtu.be/gN07gbipMoY or gN07gbipMoY"
-              disabled={isPending}
-              required
-            />
-          </div>
-
-          <Button type="submit" disabled={isPending} className="w-full">
-            {isPending ? "Starting Workflow..." : "Fetch Transcript"}
-          </Button>
-        </form>
-
-        {state?.error && (
-          <div className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
-            ❌ {state.error}
-          </div>
-        )}
+        <TranscriptForm action={action} isPending={isPending} />
+        {state?.error && <ErrorMessage message={state.error} />}
       </CardContent>
     </Card>
+  );
+}
+
+// ============================================================================
+// Sub-components
+// ============================================================================
+
+function TranscriptForm({
+  action,
+  isPending,
+}: {
+  action: (formData: FormData) => void;
+  isPending: boolean;
+}) {
+  const buttonText = isPending ? "Starting Workflow..." : "Fetch Transcript";
+
+  return (
+    <form action={action} className="space-y-4">
+      <div className="space-y-2">
+        <Label htmlFor="videoId">YouTube URL or Video ID</Label>
+        <Input
+          name="videoId"
+          id="videoId"
+          placeholder="e.g. https://youtu.be/gN07gbipMoY or gN07gbipMoY"
+          disabled={isPending}
+          required
+        />
+      </div>
+
+      <Button type="submit" disabled={isPending} className="w-full">
+        {buttonText}
+      </Button>
+    </form>
+  );
+}
+
+function ErrorMessage({ message }: { message: string }) {
+  return (
+    <div className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
+      ❌ {message}
+    </div>
   );
 }

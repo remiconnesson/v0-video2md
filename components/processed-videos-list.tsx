@@ -1,5 +1,6 @@
 "use client";
 
+import type { VirtualItem } from "@tanstack/react-virtual";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { CheckCircle2, Clock, FileVideo, Search } from "lucide-react";
 import Image from "next/image";
@@ -154,71 +155,12 @@ export function ProcessedVideosList() {
               {virtualizer.getVirtualItems().map((virtualItem) => {
                 const video = filteredVideos[virtualItem.index];
                 return (
-                  <div
+                  <VirtualizedVideoCard
                     key={virtualItem.key}
-                    data-index={virtualItem.index}
-                    ref={virtualizer.measureElement}
-                    style={{
-                      position: "absolute",
-                      top: 0,
-                      left: 0,
-                      width: "100%",
-                      transform: `translateY(${virtualItem.start}px)`,
-                    }}
-                  >
-                    <div className="pb-4">
-                      <Link
-                        href={`/video/youtube/${video.videoId}`}
-                        className="block group"
-                      >
-                        <div className="flex gap-4 p-4 rounded-lg border hover:bg-accent transition-colors">
-                          <div className="flex-shrink-0">
-                            <Image
-                              src={
-                                video.videoData?.thumbnail ||
-                                "/placeholder.svg?height=90&width=160"
-                              }
-                              alt={video.videoData?.title || "Video thumbnail"}
-                              width={160}
-                              height={90}
-                              className="w-40 h-24 object-cover rounded"
-                            />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <h3 className="font-semibold text-lg mb-1 truncate group-hover:text-primary transition-colors">
-                              {video.videoData?.title || "Untitled Video"}
-                            </h3>
-                            <p className="text-sm text-muted-foreground mb-2">
-                              {video.videoData?.channelName ||
-                                "Unknown Channel"}
-                            </p>
-                            <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
-                              {video.videoData?.description ||
-                                "No description available"}
-                            </p>
-                            <div className="flex items-center gap-3 text-sm">
-                              <div className="flex items-center gap-1 text-muted-foreground">
-                                <Clock className="h-4 w-4" />
-                                <span>
-                                  {video.videoData?.duration || "N/A"}
-                                </span>
-                              </div>
-                              <Badge
-                                variant="secondary"
-                                className="flex items-center gap-1"
-                              >
-                                <CheckCircle2 className="h-3 w-3" />
-                                Completed
-                              </Badge>
-                              {video.extractSlides && (
-                                <Badge variant="outline">With Slides</Badge>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      </Link>
-                    </div>
-                  </div>
+                    virtualItem={virtualItem}
+                    video={video}
+                    measureElement={virtualizer.measureElement}
+                  />
                 );
               })}
             </div>
@@ -226,5 +168,133 @@ export function ProcessedVideosList() {
         )}
       </CardContent>
     </Card>
+  );
+}
+
+// ============================================================================
+// Sub-components for better readability
+// ============================================================================
+
+interface VirtualizedVideoCardProps {
+  virtualItem: VirtualItem;
+  video: VideoData;
+  measureElement: (node: Element | null) => void;
+}
+
+function VirtualizedVideoCard({
+  virtualItem,
+  video,
+  measureElement,
+}: VirtualizedVideoCardProps) {
+  return (
+    <div
+      key={virtualItem.key}
+      data-index={virtualItem.index}
+      ref={measureElement}
+      style={{
+        position: "absolute",
+        top: 0,
+        left: 0,
+        width: "100%",
+        transform: `translateY(${virtualItem.start}px)`,
+      }}
+    >
+      <div className="pb-4">
+        <VideoCard video={video} />
+      </div>
+    </div>
+  );
+}
+
+function VideoCard({ video }: { video: VideoData }) {
+  const thumbnailUrl =
+    video.videoData?.thumbnail || "/placeholder.svg?height=90&width=160";
+  const title = video.videoData?.title || "Untitled Video";
+  const channelName = video.videoData?.channelName || "Unknown Channel";
+  const description =
+    video.videoData?.description || "No description available";
+  const duration = video.videoData?.duration || "N/A";
+
+  return (
+    <Link href={`/video/youtube/${video.videoId}`} className="block group">
+      <div className="flex gap-4 p-4 rounded-lg border hover:bg-accent transition-colors">
+        <VideoThumbnail src={thumbnailUrl} alt={title} />
+        <VideoDetails
+          title={title}
+          channelName={channelName}
+          description={description}
+          duration={duration}
+          hasSlides={video.extractSlides}
+        />
+      </div>
+    </Link>
+  );
+}
+
+function VideoThumbnail({ src, alt }: { src: string; alt: string }) {
+  return (
+    <div className="flex-shrink-0">
+      <Image
+        src={src}
+        alt={alt}
+        width={160}
+        height={90}
+        className="w-40 h-24 object-cover rounded"
+      />
+    </div>
+  );
+}
+
+function VideoDetails({
+  title,
+  channelName,
+  description,
+  duration,
+  hasSlides,
+}: {
+  title: string;
+  channelName: string;
+  description: string;
+  duration: string;
+  hasSlides: boolean;
+}) {
+  return (
+    <div className="flex-1 min-w-0">
+      <h3 className="font-semibold text-lg mb-1 truncate group-hover:text-primary transition-colors">
+        {title}
+      </h3>
+
+      <p className="text-sm text-muted-foreground mb-2">{channelName}</p>
+
+      <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
+        {description}
+      </p>
+
+      <VideoMetadata duration={duration} hasSlides={hasSlides} />
+    </div>
+  );
+}
+
+function VideoMetadata({
+  duration,
+  hasSlides,
+}: {
+  duration: string;
+  hasSlides: boolean;
+}) {
+  return (
+    <div className="flex items-center gap-3 text-sm">
+      <div className="flex items-center gap-1 text-muted-foreground">
+        <Clock className="h-4 w-4" />
+        <span>{duration}</span>
+      </div>
+
+      <Badge variant="secondary" className="flex items-center gap-1">
+        <CheckCircle2 className="h-3 w-3" />
+        Completed
+      </Badge>
+
+      {hasSlides && <Badge variant="outline">With Slides</Badge>}
+    </div>
   );
 }
