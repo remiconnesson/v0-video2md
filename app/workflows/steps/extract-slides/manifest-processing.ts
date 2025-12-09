@@ -3,11 +3,19 @@ import { videoSlides } from "@/db/schema";
 import {
   type FrameMetadata,
   type SlideData,
-  type StaticSegment,
   type VideoManifest,
   VideoManifestSchema,
 } from "@/lib/slides-types";
-import { CONFIG, makeAwsClient, parseS3Uri } from "./config";
+import { CONFIG, makeAwsClient } from "./config";
+import {
+  buildS3HttpUrl,
+  extractSlideTimings,
+  filterStaticSegments,
+  generateBlobPath,
+  hasUsableFrames,
+  normalizeFrameMetadata,
+  parseS3Uri,
+} from "./manifest-processing.utils";
 
 // ============================================================================
 // Step: Fetch manifest (Restored Old URL Logic)
@@ -20,10 +28,16 @@ export async function fetchManifest(s3Uri: string): Promise<VideoManifest> {
     console.log(`📥 fetchManifest: Fetching manifest from S3 URI: ${s3Uri}`);
 
     const client = makeAwsClient();
-    const { bucket, key } = parseS3Uri(s3Uri);
+    const parsedS3Uri = parseS3Uri(s3Uri);
+
+    if (!parsedS3Uri) {
+      throw new Error(`Invalid S3 URI: ${s3Uri}`);
+    }
+
+    const { bucket, key } = parsedS3Uri;
 
     // RESTORED: Using your custom S3 domain
-    const httpUrl = `${CONFIG.S3_BASE_URL}/${bucket}/${key}`;
+    const httpUrl = buildS3HttpUrl(CONFIG.S3_BASE_URL, bucket, key);
 
     console.log(
       `📥 fetchManifest: Fetching manifest from HTTP URL: ${httpUrl}`,
@@ -132,9 +146,7 @@ export async function processSlidesFromManifest(
     );
   }
 
-  const staticSegments = videoData.segments.filter(
-    (s): s is StaticSegment => s.kind === "static",
-  );
+  const staticSegments = filterStaticSegments(videoData.segments);
 
   console.log(
     `💾 processSlidesFromManifest: Found ${staticSegments.length} static segments for video ${videoId}`,
@@ -150,10 +162,7 @@ export async function processSlidesFromManifest(
     const lastFrame = segment.last_frame;
 
     // Skip if no frames available
-    if (
-      (!firstFrame || !firstFrame.s3_uri) &&
-      (!lastFrame || !lastFrame.s3_uri)
-    ) {
+    if (!hasUsableFrames(segment)) {
       console.warn(
         `💾 processSlidesFromManifest: Skipping segment ${slideIndex} for video ${videoId}: missing frames or S3 URIs`,
         {
@@ -186,8 +195,17 @@ export async function processSlidesFromManifest(
         if (!frame.s3_uri) {
           throw new Error(`${frameType} frame missing S3 URI`);
         }
-        const { bucket, key } = parseS3Uri(frame.s3_uri);
-        const s3Url = `${CONFIG.S3_BASE_URL}/${bucket}/${key}`;
+        const parsedS3Uri = parseS3Uri(frame.s3_uri);
+
+        if (!parsedS3Uri) {
+          throw new Error(`${frameType} frame has invalid S3 URI format`);
+        }
+
+        const s3Url = buildS3HttpUrl(
+          CONFIG.S3_BASE_URL,
+          parsedS3Uri.bucket,
+          parsedS3Uri.key,
+        );
 
         console.log(
           `💾 processSlidesFromManifest: Downloading ${frameType} frame image from S3: ${s3Url}`,
@@ -208,7 +226,12 @@ export async function processSlidesFromManifest(
         );
 
         // 2. Upload to Vercel Blob (MANUAL FETCH - RESTORED)
-        const blobPath = `slides/${videoId}/${frame.frame_id || `${slideIndex}-${frameType}`}.webp`;
+        const blobPath = generateBlobPath(
+          videoId,
+          frame.frame_id,
+          slideIndex,
+          frameType,
+        );
         const blobUrl = `https://blob.vercel-storage.com/${blobPath}`;
 
         const blobResponse = await fetch(blobUrl, {
@@ -272,34 +295,35 @@ export async function processSlidesFromManifest(
       }
     }
 
+    const timings = extractSlideTimings(segment);
+    const firstFrameData = normalizeFrameMetadata(
+      firstFrame,
+      firstFrameImageUrl || null,
+    );
+    const lastFrameData = normalizeFrameMetadata(
+      lastFrame,
+      lastFrameImageUrl || null,
+    );
+
     const slideData: SlideData = {
       slideIndex,
       frameId: firstFrame?.frame_id || lastFrame?.frame_id || null,
-      startTime: segment.start_time,
-      endTime: segment.end_time,
-      duration: segment.duration,
-      firstFrameImageUrl: firstFrameImageUrl || null,
-      firstFrameHasText: firstFrame?.has_text || false,
-      firstFrameTextConfidence: firstFrame
-        ? Math.round(firstFrame.text_confidence * 100)
-        : 0,
-      firstFrameIsDuplicate: firstFrame?.duplicate_of !== null,
-      firstFrameDuplicateOfSegmentId:
-        firstFrame?.duplicate_of?.segment_id ?? null,
+      ...timings,
+      firstFrameImageUrl: firstFrameData.imageUrl,
+      firstFrameHasText: firstFrameData.hasText,
+      firstFrameTextConfidence: firstFrameData.textConfidence,
+      firstFrameIsDuplicate: firstFrameData.isDuplicate,
+      firstFrameDuplicateOfSegmentId: firstFrameData.duplicateOfSegmentId,
       firstFrameDuplicateOfFramePosition:
-        firstFrame?.duplicate_of?.frame_position ?? null,
-      firstFrameSkipReason: firstFrame?.skip_reason ?? null,
-      lastFrameImageUrl: lastFrameImageUrl || null,
-      lastFrameHasText: lastFrame?.has_text || false,
-      lastFrameTextConfidence: lastFrame
-        ? Math.round(lastFrame.text_confidence * 100)
-        : 0,
-      lastFrameIsDuplicate: lastFrame?.duplicate_of !== null,
-      lastFrameDuplicateOfSegmentId:
-        lastFrame?.duplicate_of?.segment_id ?? null,
-      lastFrameDuplicateOfFramePosition:
-        lastFrame?.duplicate_of?.frame_position ?? null,
-      lastFrameSkipReason: lastFrame?.skip_reason ?? null,
+        firstFrameData.duplicateOfFramePosition,
+      firstFrameSkipReason: firstFrameData.skipReason,
+      lastFrameImageUrl: lastFrameData.imageUrl,
+      lastFrameHasText: lastFrameData.hasText,
+      lastFrameTextConfidence: lastFrameData.textConfidence,
+      lastFrameIsDuplicate: lastFrameData.isDuplicate,
+      lastFrameDuplicateOfSegmentId: lastFrameData.duplicateOfSegmentId,
+      lastFrameDuplicateOfFramePosition: lastFrameData.duplicateOfFramePosition,
+      lastFrameSkipReason: lastFrameData.skipReason,
       imageProcessingError,
     };
 
