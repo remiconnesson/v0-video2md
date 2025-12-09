@@ -12,7 +12,7 @@ export interface AnalysisRun {
   createdAt: string;
 }
 
-interface StreamingRunInfo {
+export interface StreamingRunInfo {
   id: number;
   version: number;
   workflowRunId: string | null;

@@ -13,7 +13,11 @@ import { useVideoStatus } from "./use-video-status";
 // Import types for backward compatibility
 // ============================================================================
 
-import type { PageStatus, VideoInfo } from "./use-transcript-fetch";
+import type {
+  PageStatus,
+  TranscriptState,
+  VideoInfo,
+} from "./use-transcript-fetch";
 import type { AnalysisRun } from "./use-video-status";
 
 // ============================================================================
@@ -47,13 +51,6 @@ export interface UseVideoProcessingReturn {
   handleReroll: (instructions: string) => void;
   setSlidesState: React.Dispatch<React.SetStateAction<SlidesState>>;
 }
-
-type TranscriptState = {
-  status: "idle" | "fetching" | "completed" | "error";
-  progress: number;
-  message: string;
-  error: string | null;
-};
 
 // ============================================================================
 // Main Hook - Now orchestrates smaller hooks
@@ -116,7 +113,7 @@ export function useVideoProcessing(
     // If ready, also load runs and slides
     if (result.status === "ready") {
       const [runsResult] = await Promise.all([
-        videoStatus.fetchRuns(),
+        fetchRuns(),
         loadExistingSlides(),
       ]);
 
@@ -126,7 +123,7 @@ export function useVideoProcessing(
     }
 
     return result;
-  }, [checkTranscriptStatus, videoStatus.fetchRuns, loadExistingSlides]);
+  }, [checkTranscriptStatus, fetchRuns, loadExistingSlides]);
 
   // ============================================================================
   // Effects
@@ -183,12 +180,12 @@ export function useVideoProcessing(
 
   const handleVersionChange = useCallback(
     (version: number) => {
-      videoStatus.handleVersionChange(version);
+      handleVideoVersionChange(version);
       const params = new URLSearchParams(searchParams.toString());
       params.set("v", version.toString());
       router.push(`?${params.toString()}`, { scroll: false });
     },
-    [videoStatus, router, searchParams],
+    [handleVideoVersionChange, router, searchParams],
   );
 
   const handleStartAnalysis = useCallback(() => {
