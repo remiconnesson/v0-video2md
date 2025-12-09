@@ -1,11 +1,9 @@
 import { getWritable } from "workflow";
-import { db } from "@/db";
 import type { TranscriptResult } from "@/db/save-transcript";
-import { videoAnalysisRuns } from "@/db/schema";
 import {
   completeRun,
+  createAnalysisRun,
   failRun,
-  getNextVersion,
   runGodPrompt,
   type TranscriptData,
 } from "./steps/dynamic-analysis";
@@ -124,22 +122,10 @@ export async function fetchAndAnalyzeWorkflow(
     // Phase B: AI Analysis (40% - 90%)
     // ========================================================================
 
-    // Step 4: Create analysis run record
+    // Step 4: Create analysis run record (atomic step)
     await emitProgress(40, "analyzing", "Preparing analysis run...");
 
-    const version = await getNextVersion(videoId);
-    const [createdRun] = await db
-      .insert(videoAnalysisRuns)
-      .values({
-        videoId,
-        version,
-        additionalInstructions: additionalInstructions ?? null,
-        status: "streaming",
-        updatedAt: new Date(),
-      })
-      .returning({ id: videoAnalysisRuns.id });
-
-    dbRunId = createdRun.id;
+    dbRunId = await createAnalysisRun(videoId, additionalInstructions);
 
     // Step 5: Run AI analysis
     await emitProgress(
