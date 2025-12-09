@@ -181,7 +181,6 @@ export async function fetchAndAnalyzeWorkflow(
     try {
       result = await runGodPrompt(dataForAnalysis, additionalInstructions);
     } catch (error) {
-      await failRun(dbRunId);
       throw error;
     }
 
