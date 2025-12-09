@@ -1,30 +1,21 @@
-import { desc, eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { start } from "workflow/api";
-import type { AnalysisStreamEvent } from "@/app/workflows/dynamic-analysis";
-import { dynamicAnalysisWorkflow } from "@/app/workflows/dynamic-analysis";
 import { extractSlidesWorkflow } from "@/app/workflows/extract-slides";
 import {
-  fetchTranscriptWorkflow,
-  type TranscriptStreamEvent,
-} from "@/app/workflows/fetch-transcript";
-import { db } from "@/db";
-import { videoAnalysisRuns } from "@/db/schema";
+  fetchAndAnalyzeWorkflow,
+  type UnifiedStreamEvent,
+} from "@/app/workflows/fetch-and-analyze";
 import { validateYouTubeVideoId } from "@/lib/api-utils";
 import type { SlideStreamEvent } from "@/lib/slides-types";
 
 export type ProcessingStreamEvent =
-  | (TranscriptStreamEvent & { source: "transcript" })
-  | (AnalysisStreamEvent & { source: "analysis" })
+  | (UnifiedStreamEvent & { source: "unified" })
   | (SlideStreamEvent & { source: "slides" });
 
-async function streamWorkflow<
-  T extends TranscriptStreamEvent | AnalysisStreamEvent | SlideStreamEvent,
->(
+async function streamWorkflow<T extends UnifiedStreamEvent | SlideStreamEvent>(
   readable: ReadableStream<T>,
   source: ProcessingStreamEvent["source"],
   writer: WritableStreamDefaultWriter<string>,
-  onEvent?: (event: T) => void,
 ) {
   const reader = readable.getReader();
 
@@ -32,13 +23,7 @@ async function streamWorkflow<
     const { done, value } = await reader.read();
     if (done || !value) break;
 
-    await onEvent?.(value);
-
-    // Safety: ensure we are spreading an object
-    const eventData =
-      typeof value === "object" && value !== null ? value : { data: value };
-
-    const payload = { source, ...eventData } as ProcessingStreamEvent;
+    const payload = { source, ...value } as ProcessingStreamEvent;
     await writer.write(`data: ${JSON.stringify(payload)}\n\n`);
   }
 }
@@ -56,90 +41,27 @@ export async function POST(
   const writer = stream.writable.getWriter();
 
   try {
-    // 1. Start Slide Extraction (Path B)
-    // We always start a new workflow. The Python service handles deduplication.
-    // We don't track the runId in the DB anymore for locking purposes.
-    const slidesRun = await start(extractSlidesWorkflow, [videoId]);
+    // Start both workflows in parallel
+    const [unifiedRun, slidesRun] = await Promise.all([
+      start(fetchAndAnalyzeWorkflow, [videoId]),
+      start(extractSlidesWorkflow, [videoId]),
+    ]);
 
-    // 2. Start Transcript Fetching (Path A)
-    const transcriptRun = await start(fetchTranscriptWorkflow, [videoId]);
-
-    const streamPromises: Promise<void>[] = [];
-    let analysisStarted = false;
-    let analysisPromise: Promise<void> | null = null;
-
-    // Stream Transcript -> then trigger Analysis
-    const transcriptPromise = streamWorkflow(
-      transcriptRun.readable,
-      "transcript",
-      writer,
-      async (event) => {
-        if (event.type === "complete" && !analysisStarted) {
-          analysisStarted = true;
-
-          // Create a DB record for the analysis run before starting the workflow
-          const versionResult = await db
-            .select({ version: videoAnalysisRuns.version })
-            .from(videoAnalysisRuns)
-            .where(eq(videoAnalysisRuns.videoId, videoId))
-            .orderBy(desc(videoAnalysisRuns.version))
-            .limit(1);
-
-          const nextVersion = (versionResult[0]?.version ?? 0) + 1;
-
-          const [insertedRun] = await db
-            .insert(videoAnalysisRuns)
-            .values({
-              videoId,
-              version: nextVersion,
-              status: "streaming",
-              additionalInstructions: null,
-              updatedAt: new Date(),
-            })
-            .returning({ id: videoAnalysisRuns.id });
-
-          // Start the workflow with the DB run ID
-          const analysisRun = await start(dynamicAnalysisWorkflow, [
-            videoId,
-            undefined, // no additional instructions
-            insertedRun.id,
-          ]);
-
-          // Update the record with the workflow run ID
-          await db
-            .update(videoAnalysisRuns)
-            .set({ workflowRunId: analysisRun.runId })
-            .where(eq(videoAnalysisRuns.id, insertedRun.id));
-
-          analysisPromise = streamWorkflow(
-            analysisRun.readable,
-            "analysis",
-            writer,
-          );
-          streamPromises.push(analysisPromise);
-        }
-      },
-    );
-
-    streamPromises.push(transcriptPromise);
-
-    // Stream Slides
-    streamPromises.push(streamWorkflow(slidesRun.readable, "slides", writer));
+    // Stream both workflows in parallel
+    const streamPromises = [
+      streamWorkflow(unifiedRun.readable, "unified", writer),
+      streamWorkflow(slidesRun.readable, "slides", writer),
+    ];
 
     (async () => {
       await Promise.all(streamPromises);
-      // Also await the analysis promise if it was created
-      if (analysisPromise) {
-        await analysisPromise;
-      }
-      // Close the stream once all workflows have finished
       writer.close();
     })().catch((error) => {
-      console.error("Stream processing error:", error);
+      console.error("Stream processing error:", { error, videoId });
       writer.abort(error);
     });
   } catch (error) {
-    console.error("Failed to start processing workflow:", error);
+    console.error("Failed to start processing workflow:", { error, videoId });
     writer.abort(error);
     return NextResponse.json(
       { error: "Failed to start processing workflow" },

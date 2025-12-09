@@ -43,15 +43,6 @@ async function emitProgress(progress: number, phase: string, message: string) {
   writer.releaseLock();
 }
 
-async function _emitResult(data: unknown) {
-  "use step";
-
-  const writable = getWritable<UnifiedStreamEvent>();
-  const writer = writable.getWriter();
-  await writer.write({ type: "result", data });
-  writer.releaseLock();
-}
-
 async function emitComplete(
   runId: number,
   video: { title: string; channelName: string },
@@ -175,11 +166,7 @@ export async function fetchAndAnalyzeWorkflow(
         .join("\n"),
     };
 
-    let result: Record<string, unknown>;
-    result = await runGodPrompt(dataForAnalysis, additionalInstructions);
-
-    // Emit the final result
-    // await emitResult(result);
+    const result = await runGodPrompt(dataForAnalysis, additionalInstructions);
 
     // ========================================================================
     // Phase C: Persistence (90% - 100%)
