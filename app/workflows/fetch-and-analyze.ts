@@ -43,7 +43,7 @@ async function emitProgress(progress: number, phase: string, message: string) {
   writer.releaseLock();
 }
 
-async function emitResult(data: unknown) {
+async function _emitResult(data: unknown) {
   "use step";
 
   const writable = getWritable<UnifiedStreamEvent>();
@@ -176,11 +176,7 @@ export async function fetchAndAnalyzeWorkflow(
     };
 
     let result: Record<string, unknown>;
-    try {
-      result = await runGodPrompt(dataForAnalysis, additionalInstructions);
-    } catch (error) {
-      throw error;
-    }
+    result = await runGodPrompt(dataForAnalysis, additionalInstructions);
 
     // Emit the final result
     // await emitResult(result);
