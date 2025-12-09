@@ -238,6 +238,9 @@ export function useTranscriptFetch(
     type VideoStatus = "not_found" | "processing" | "ready";
 
     let status: VideoStatus = "not_found";
+    // Note: hasStreamingAnalysis is initialized to false here.
+    // The orchestrator (use-video-processing.ts) will set it to true
+    // if a streaming run exists, as this hook doesn't have access to runs data.
     const hasStreamingAnalysis = false;
 
     try {
