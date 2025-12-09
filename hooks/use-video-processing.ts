@@ -101,6 +101,11 @@ export function useVideoProcessing(
   );
   const { loadExistingSlides } = useSlidesLoader(youtubeId, setSlidesState);
   const videoStatus = useVideoStatus(youtubeId, initialVersion);
+  const {
+    fetchRuns,
+    handleVersionChange: handleVideoVersionChange,
+    setSelectedRun,
+  } = videoStatus;
 
   // ============================================================================
   // Enhanced checkVideoStatus that coordinates with other hooks
@@ -112,7 +117,7 @@ export function useVideoProcessing(
     // If ready, also load runs and slides
     if (result.status === "ready") {
       const [runsResult] = await Promise.all([
-        videoStatus.fetchRuns(),
+        fetchRuns(),
         loadExistingSlides(),
       ]);
 
@@ -122,7 +127,7 @@ export function useVideoProcessing(
     }
 
     return result;
-  }, [checkTranscriptStatus, videoStatus.fetchRuns, loadExistingSlides]);
+  }, [checkTranscriptStatus, fetchRuns, loadExistingSlides]);
 
   // ============================================================================
   // Effects
@@ -151,11 +156,11 @@ export function useVideoProcessing(
   // When analysis completes, refresh runs
   useEffect(() => {
     if (analysisState.status === "completed" && analysisState.runId) {
-      videoStatus.fetchRuns().then(({ runs: updatedRuns }) => {
+      fetchRuns().then(({ runs: updatedRuns }) => {
         // Select the latest run to match the new `v` param
         const latestRun = updatedRuns[updatedRuns.length - 1] ?? null;
         if (latestRun) {
-          videoStatus.setSelectedRun(latestRun);
+          setSelectedRun(latestRun);
         }
 
         const params = new URLSearchParams(searchParams.toString());
@@ -167,8 +172,8 @@ export function useVideoProcessing(
   }, [
     analysisState.status,
     analysisState.runId,
-    videoStatus.fetchRuns,
-    videoStatus.setSelectedRun,
+    fetchRuns,
+    setSelectedRun,
     router,
     searchParams,
   ]);
@@ -179,12 +184,12 @@ export function useVideoProcessing(
 
   const handleVersionChange = useCallback(
     (version: number) => {
-      videoStatus.handleVersionChange(version);
+      handleVideoVersionChange(version);
       const params = new URLSearchParams(searchParams.toString());
       params.set("v", version.toString());
       router.push(`?${params.toString()}`, { scroll: false });
     },
-    [videoStatus, router, searchParams],
+    [handleVideoVersionChange, router, searchParams],
   );
 
   const handleStartAnalysis = useCallback(() => {
