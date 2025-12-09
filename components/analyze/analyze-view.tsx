@@ -18,6 +18,7 @@ import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { AnalysisState } from "@/hooks/use-dynamic-analysis";
+import { useSSEStream } from "@/hooks/use-sse-stream";
 import type { SlidesState } from "@/lib/slides-types";
 import { consumeSSE } from "@/lib/sse";
 import { isRecord } from "@/lib/type-utils";
@@ -61,6 +62,7 @@ interface AnalyzeViewProps {
 export function AnalyzeView({ youtubeId, initialVersion }: AnalyzeViewProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { start: startSSEStream } = useSSEStream<AnalysisStreamEvent>();
 
   const [pageStatus, setPageStatus] = useState<PageStatus>("loading");
   const [videoInfo, setVideoInfo] = useState<VideoInfo | null>(null);
@@ -121,39 +123,6 @@ export function AnalyzeView({ youtubeId, initialVersion }: AnalyzeViewProps) {
     }
   }, [youtubeId, initialVersion]);
 
-  // Consume analysis stream events (shared between start and resume)
-  const consumeAnalysisStream = useCallback(async (response: Response) => {
-    await consumeSSE<AnalysisStreamEvent>(response, {
-      progress: (event) =>
-        setAnalysisState((prev) => ({
-          ...prev,
-          phase: event.phase,
-          message: event.message,
-        })),
-      partial: (event) =>
-        setAnalysisState((prev) => ({
-          ...prev,
-          result: event.data,
-        })),
-      result: (event) =>
-        setAnalysisState((prev) => ({
-          ...prev,
-          result: event.data,
-        })),
-      complete: (event) =>
-        setAnalysisState((prev) => ({
-          ...prev,
-          status: "completed",
-          runId: event.runId,
-          phase: "complete",
-          message: "Analysis complete!",
-        })),
-      error: (event) => {
-        throw new Error(event.message);
-      },
-    });
-  }, []);
-
   // Resume an existing streaming analysis
   const resumeAnalysisStream = useCallback(async () => {
     setAnalysisState({
@@ -200,7 +169,35 @@ export function AnalyzeView({ youtubeId, initialVersion }: AnalyzeViewProps) {
         throw new Error("Failed to resume analysis");
       }
 
-      await consumeAnalysisStream(response);
+      await startSSEStream(`/api/video/${youtubeId}/analyze/resume`, {
+        progress: (event) =>
+          setAnalysisState((prev) => ({
+            ...prev,
+            phase: event.phase,
+            message: event.message,
+          })),
+        partial: (event) =>
+          setAnalysisState((prev) => ({
+            ...prev,
+            result: event.data,
+          })),
+        result: (event) =>
+          setAnalysisState((prev) => ({
+            ...prev,
+            result: event.data,
+          })),
+        complete: (event) =>
+          setAnalysisState((prev) => ({
+            ...prev,
+            status: "completed",
+            runId: event.runId,
+            phase: "complete",
+            message: "Analysis complete!",
+          })),
+        error: (event) => {
+          throw new Error(event.message);
+        },
+      });
     } catch (err) {
       const errorMessage =
         err instanceof Error ? err.message : "Failed to resume analysis";
@@ -211,7 +208,7 @@ export function AnalyzeView({ youtubeId, initialVersion }: AnalyzeViewProps) {
         error: errorMessage,
       }));
     }
-  }, [youtubeId, fetchRuns, consumeAnalysisStream]);
+  }, [youtubeId, fetchRuns, startSSEStream]);
 
   const startAnalysisRun = useCallback(
     async (additionalInstructions?: string) => {
@@ -225,17 +222,41 @@ export function AnalyzeView({ youtubeId, initialVersion }: AnalyzeViewProps) {
       });
 
       try {
-        const response = await fetch(`/api/video/${youtubeId}/analyze`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ additionalInstructions }),
-        });
-
-        if (!response.ok) {
-          throw new Error("Failed to start analysis");
-        }
-
-        await consumeAnalysisStream(response);
+        await startSSEStream(
+          `/api/video/${youtubeId}/analyze`,
+          {
+            progress: (event) =>
+              setAnalysisState((prev) => ({
+                ...prev,
+                phase: event.phase,
+                message: event.message,
+              })),
+            partial: (event) =>
+              setAnalysisState((prev) => ({
+                ...prev,
+                result: event.data,
+              })),
+            result: (event) =>
+              setAnalysisState((prev) => ({
+                ...prev,
+                result: event.data,
+              })),
+            complete: (event) =>
+              setAnalysisState((prev) => ({
+                ...prev,
+                status: "completed",
+                runId: event.runId,
+                phase: "complete",
+                message: "Analysis complete!",
+              })),
+            error: (event) => {
+              throw new Error(event.message);
+            },
+          },
+          {
+            body: { additionalInstructions },
+          },
+        );
       } catch (err) {
         const errorMessage =
           err instanceof Error ? err.message : "Analysis failed";
@@ -247,7 +268,7 @@ export function AnalyzeView({ youtubeId, initialVersion }: AnalyzeViewProps) {
         }));
       }
     },
-    [youtubeId, consumeAnalysisStream],
+    [youtubeId, startSSEStream],
   );
 
   // Load existing slides from DB

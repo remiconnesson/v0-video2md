@@ -19,13 +19,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
+import { useSSEStream } from "@/hooks/use-sse-stream";
 import type {
   SlideData,
   SlideFeedbackData,
   SlideStreamEvent,
   SlidesState,
 } from "@/lib/slides-types";
-import { consumeSSE } from "@/lib/sse";
 import { formatTime } from "@/lib/time-utils";
 import { cn } from "@/lib/utils";
 
@@ -42,6 +42,7 @@ export function SlidesPanel({
   slidesState,
   onSlidesStateChange,
 }: SlidesPanelProps) {
+  const { start: startSSEStream } = useSSEStream<SlideStreamEvent>();
   const [feedbackMap, setFeedbackMap] = useState<
     Map<number, SlideFeedbackData>
   >(new Map());
@@ -106,19 +107,7 @@ export function SlidesPanel({
     }));
 
     try {
-      const response = await fetch(`/api/video/${videoId}/slides?force=true`, {
-        method: "POST",
-      });
-
-      if (!response.ok) {
-        const errorData = await response
-          .json()
-          .catch(() => ({ error: "!response.ok and response.json() failed" }));
-        throw new Error(errorData.error);
-      }
-
-      // Consume SSE stream
-      await consumeSSE<SlideStreamEvent>(response, {
+      await startSSEStream(`/api/video/${videoId}/slides?force=true`, {
         progress: (e) => {
           onSlidesStateChange((prev) => ({
             ...prev,
@@ -164,7 +153,7 @@ export function SlidesPanel({
         error: errorMessage,
       }));
     }
-  }, [videoId, onSlidesStateChange]);
+  }, [videoId, onSlidesStateChange, startSSEStream]);
 
   // Load feedback on mount
   useEffect(() => {

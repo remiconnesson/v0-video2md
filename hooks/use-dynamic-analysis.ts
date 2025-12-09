@@ -1,6 +1,6 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useState } from "react";
 import type { AnalysisStreamEvent } from "@/app/workflows/dynamic-analysis";
-import { consumeSSE } from "@/lib/sse";
+import { useSSEStream } from "@/hooks/use-sse-stream";
 
 export type AnalysisStatus = "idle" | "running" | "completed" | "error";
 
@@ -20,6 +20,9 @@ interface UseDynamicAnalysisReturn {
 }
 
 export function useDynamicAnalysis(videoId: string): UseDynamicAnalysisReturn {
+  const { start: startSSEStream, abort: abortSSEStream } =
+    useSSEStream<AnalysisStreamEvent>();
+
   const [state, setState] = useState<AnalysisState>({
     status: "idle",
     phase: "",
@@ -29,16 +32,10 @@ export function useDynamicAnalysis(videoId: string): UseDynamicAnalysisReturn {
     error: null,
   });
 
-  const abortControllerRef = useRef<AbortController | null>(null);
-
   const startAnalysis = useCallback(
     async (additionalInstructions?: string) => {
       // Abort any existing analysis
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
-
-      abortControllerRef.current = new AbortController();
+      abortSSEStream();
 
       setState({
         status: "running",
@@ -50,46 +47,41 @@ export function useDynamicAnalysis(videoId: string): UseDynamicAnalysisReturn {
       });
 
       try {
-        const response = await fetch(`/api/video/${videoId}/analyze`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ additionalInstructions }),
-          signal: abortControllerRef.current.signal,
-        });
-
-        if (!response.ok) {
-          throw new Error("Failed to start analysis");
-        }
-
-        await consumeSSE<AnalysisStreamEvent>(response, {
-          progress: (event) =>
-            setState((prev) => ({
-              ...prev,
-              phase: event.phase,
-              message: event.message,
-            })),
-          partial: (event) =>
-            setState((prev) => ({
-              ...prev,
-              result: event.data,
-            })),
-          result: (event) =>
-            setState((prev) => ({
-              ...prev,
-              result: event.data,
-            })),
-          complete: (event) =>
-            setState((prev) => ({
-              ...prev,
-              status: "completed",
-              runId: event.runId,
-              phase: "complete",
-              message: "Analysis complete!",
-            })),
-          error: (event) => {
-            throw new Error(event.message);
+        await startSSEStream(
+          `/api/video/${videoId}/analyze`,
+          {
+            progress: (event) =>
+              setState((prev) => ({
+                ...prev,
+                phase: event.phase,
+                message: event.message,
+              })),
+            partial: (event) =>
+              setState((prev) => ({
+                ...prev,
+                result: event.data,
+              })),
+            result: (event) =>
+              setState((prev) => ({
+                ...prev,
+                result: event.data,
+              })),
+            complete: (event) =>
+              setState((prev) => ({
+                ...prev,
+                status: "completed",
+                runId: event.runId,
+                phase: "complete",
+                message: "Analysis complete!",
+              })),
+            error: (event) => {
+              throw new Error(event.message);
+            },
           },
-        });
+          {
+            body: { additionalInstructions },
+          },
+        );
       } catch (err) {
         // Ignore abort errors
         if (err instanceof Error && err.name === "AbortError") {
@@ -106,15 +98,12 @@ export function useDynamicAnalysis(videoId: string): UseDynamicAnalysisReturn {
         }));
       }
     },
-    [videoId],
+    [videoId, abortSSEStream, startSSEStream],
   );
 
   const abort = useCallback(() => {
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-      abortControllerRef.current = null;
-    }
-  }, []);
+    abortSSEStream();
+  }, [abortSSEStream]);
 
   return {
     state,
