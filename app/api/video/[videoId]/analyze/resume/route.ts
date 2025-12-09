@@ -4,6 +4,7 @@ import { getRun } from "workflow/api";
 import type { AnalysisStreamEvent } from "@/app/workflows/dynamic-analysis";
 import { db } from "@/db";
 import { videoAnalysisRuns } from "@/db/schema";
+import { resumeWorkflowStream, validateYouTubeVideoId } from "@/lib/api-utils";
 
 // ============================================================================
 // GET - Resume streaming for an in-progress analysis
@@ -16,12 +17,8 @@ export async function GET(
   const { videoId } = await params;
 
   // Validate videoId format
-  if (!/^[a-zA-Z0-9_-]{11}$/.test(videoId)) {
-    return NextResponse.json(
-      { error: "Invalid YouTube video ID format" },
-      { status: 400 },
-    );
-  }
+  const validationError = validateYouTubeVideoId(videoId);
+  if (validationError) return validationError;
 
   // Find the streaming run for this video
   const [streamingRun] = await db
@@ -52,26 +49,11 @@ export async function GET(
   const startIndex = startIndexParam ? parseInt(startIndexParam, 10) : 0;
 
   try {
-    const run = getRun(streamingRun.workflowRunId);
-    const readable = run.getReadable({ startIndex });
-
-    // Transform to SSE
-    const transformStream = new TransformStream<AnalysisStreamEvent, string>({
-      transform(chunk, controller) {
-        controller.enqueue(`data: ${JSON.stringify(chunk)}\n\n`);
-      },
-    });
-
-    const sseStream = readable.pipeThrough(transformStream);
-
-    return new NextResponse(sseStream, {
-      headers: {
-        "Content-Type": "text/event-stream",
-        "Cache-Control": "no-cache",
-        Connection: "keep-alive",
-        "X-Workflow-Run-Id": streamingRun.workflowRunId,
-      },
-    });
+    return resumeWorkflowStream<AnalysisStreamEvent>(
+      getRun,
+      streamingRun.workflowRunId,
+      startIndex,
+    );
   } catch (error) {
     console.error("Failed to resume workflow stream:", error);
 

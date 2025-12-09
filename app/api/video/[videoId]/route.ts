@@ -6,6 +6,7 @@ import {
   type VideoStatusResponse,
   videoStatusResponseSchema,
 } from "@/lib/api-types";
+import { validateYouTubeVideoId } from "@/lib/api-utils";
 
 // ============================================================================
 // GET - Check video status and get basic info
@@ -18,12 +19,8 @@ export async function GET(
   const { videoId } = await params;
 
   // Validate videoId format
-  if (!/^[a-zA-Z0-9_-]{11}$/.test(videoId)) {
-    return NextResponse.json(
-      { error: "Invalid YouTube video ID format" },
-      { status: 400 },
-    );
-  }
+  const validationError = validateYouTubeVideoId(videoId);
+  if (validationError) return validationError;
 
   // Query for video info and transcript
   const result = await db
