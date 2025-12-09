@@ -8,6 +8,7 @@ import {
   videoAnalysisRuns,
   videos,
 } from "@/db/schema";
+import { formatTranscriptForLLM } from "@/lib/transcript-format";
 
 // ============================================================================
 // Transcript Schema (for validation)
@@ -18,29 +19,6 @@ const TranscriptSegmentSchema = z.object({
   end: z.number(),
   text: z.string(),
 });
-
-// ============================================================================
-// Helper: Format transcript for LLM
-// ============================================================================
-
-function formatTimestamp(seconds: number): string {
-  const hours = Math.floor(seconds / 3600);
-  const mins = Math.floor((seconds % 3600) / 60);
-  const secs = Math.floor(seconds % 60);
-
-  if (hours > 0) {
-    return `${hours}:${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
-  }
-  return `${mins}:${secs.toString().padStart(2, "0")}`;
-}
-
-function formatTranscriptForLLM(
-  segments: Array<{ start: number; text: string }>,
-): string {
-  return segments
-    .map((segment) => `[${formatTimestamp(segment.start)}] ${segment.text}`)
-    .join("\n");
-}
 
 // ============================================================================
 // Transcript Data Interface
