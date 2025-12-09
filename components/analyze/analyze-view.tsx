@@ -23,7 +23,6 @@ import { consumeSSE } from "@/lib/sse";
 import { isRecord } from "@/lib/type-utils";
 import { AnalysisPanel } from "./analysis-panel";
 import { RerollDialog } from "./reroll-dialog";
-// Add import
 import { SlidesPanel } from "./slides-panel";
 import { VersionSelector } from "./version-selector";
 
@@ -338,21 +337,24 @@ export function AnalyzeView({ youtubeId, initialVersion }: AnalyzeViewProps) {
         },
         progress: (event) => {
           Match.value(event).pipe(
-            Match.when({ source: "transcript" }, (event) => {
-              setTranscriptState((prev) => ({
-                ...prev,
-                status: "fetching",
-                progress: event.progress ?? prev.progress,
-                message: event.message ?? prev.message,
-              }));
-            }),
-            Match.when({ source: "analysis" }, (event) => {
-              setAnalysisState((prev) => ({
-                ...prev,
-                status: "running",
-                phase: event.phase,
-                message: event.message,
-              }));
+            Match.when({ source: "unified" }, (event) => {
+              // Map unified progress events to appropriate UI state based on phase
+              if (event.phase === "fetching") {
+                setTranscriptState((prev) => ({
+                  ...prev,
+                  status: "fetching",
+                  progress: event.progress ?? prev.progress,
+                  message: event.message ?? prev.message,
+                }));
+              } else {
+                // "analyzing" or "saving" phase
+                setAnalysisState((prev) => ({
+                  ...prev,
+                  status: "running",
+                  phase: event.phase,
+                  message: event.message,
+                }));
+              }
             }),
             Match.when({ source: "slides" }, (event) => {
               setSlidesState((prev) => ({
@@ -367,31 +369,32 @@ export function AnalyzeView({ youtubeId, initialVersion }: AnalyzeViewProps) {
         },
         partial: (event) => {
           Match.value(event).pipe(
-            Match.when({ source: "analysis" }, (event) => {
+            Match.when({ source: "unified" }, (event) => {
               setAnalysisState((prev) => ({
                 ...prev,
                 status: "running",
                 result: event.data,
               }));
             }),
-            Match.exhaustive,
+            Match.orElse(() => {}),
           );
         },
         result: (event) => {
           Match.value(event).pipe(
-            Match.when({ source: "analysis" }, (event) => {
+            Match.when({ source: "unified" }, (event) => {
               setAnalysisState((prev) => ({
                 ...prev,
                 status: "running",
                 result: event.data,
               }));
             }),
-            Match.exhaustive,
+            Match.orElse(() => {}),
           );
         },
         complete: (event) => {
           Match.value(event).pipe(
-            Match.when({ source: "transcript" }, (event) => {
+            Match.when({ source: "unified" }, (event) => {
+              // Unified complete means both transcript and analysis are done
               setTranscriptState({
                 status: "completed",
                 progress: 100,
@@ -407,8 +410,7 @@ export function AnalyzeView({ youtubeId, initialVersion }: AnalyzeViewProps) {
               }
 
               setPageStatus("ready");
-            }),
-            Match.when({ source: "analysis" }, (event) => {
+
               setAnalysisState((prev) => ({
                 ...prev,
                 status: "completed",
@@ -431,21 +433,20 @@ export function AnalyzeView({ youtubeId, initialVersion }: AnalyzeViewProps) {
         },
         error: (event) => {
           Match.value(event).pipe(
-            Match.when({ source: "transcript" }, (event) => {
+            Match.when({ source: "unified" }, (event) => {
+              // Unified error could be from transcript or analysis phase
               setTranscriptState({
                 status: "error",
                 progress: 0,
                 message: "",
                 error: event.error,
               });
-              setPageStatus("no_transcript");
-            }),
-            Match.when({ source: "analysis" }, (event) => {
               setAnalysisState((prev) => ({
                 ...prev,
                 status: "error",
-                error: event.message,
+                error: event.error,
               }));
+              setPageStatus("no_transcript");
             }),
             Match.when({ source: "slides" }, (event) => {
               setSlidesState((prev) => ({
