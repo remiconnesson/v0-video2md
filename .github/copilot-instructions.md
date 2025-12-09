@@ -106,6 +106,15 @@ Use `lib/api-utils.ts` for shared API utilities:
 - Keep dependencies up to date
 - Check `package.json` for existing libraries before adding new ones
 
+## Environment Setup
+
+To set up the development environment:
+
+1. Install pnpm: `npm install -g pnpm`
+2. Install dependencies: `pnpm install`
+3. Set up environment variables (if needed, see `.env.example` if present)
+4. Run the development server: `pnpm dev`
+
 ## Development Workflow
 
 1. Run `pnpm dev` to start the development server
