@@ -124,7 +124,7 @@ export function filterStaticSegments(
 ): StaticSegment[] {
   return segments.filter(
     (s): s is StaticSegment => s.kind === "static",
-  ) as StaticSegment[];
+  );
 }
 
 /**
