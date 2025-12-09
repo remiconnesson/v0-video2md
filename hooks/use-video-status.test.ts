@@ -1,16 +1,27 @@
 import { act, renderHook } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
-import { type AnalysisRun, useVideoStatus } from "./use-video-status";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import {
+  type AnalysisRun,
+  type StreamingRunInfo,
+  useVideoStatus,
+} from "./use-video-status";
 
-interface StreamingRunInfo {
-  id: number;
-  version: number;
-  workflowRunId: string | null;
-}
+type FetchResult = {
+  runs: AnalysisRun[];
+  streamingRun: StreamingRunInfo | null;
+};
 
 // Mock global fetch
+const originalFetch = global.fetch;
 const mockFetch = vi.fn();
-global.fetch = mockFetch;
+
+beforeAll(() => {
+  global.fetch = mockFetch as typeof global.fetch;
+});
+
+afterAll(() => {
+  global.fetch = originalFetch;
+});
 
 describe("useVideoStatus", () => {
   beforeEach(() => {
@@ -57,10 +68,7 @@ describe("useVideoStatus", () => {
 
       const { result } = renderHook(() => useVideoStatus("test-video-id", 2));
 
-      let fetchResult: {
-        runs: AnalysisRun[];
-        streamingRun: StreamingRunInfo | null;
-      } = {
+      let fetchResult: FetchResult = {
         runs: [],
         streamingRun: null,
       };
@@ -119,10 +127,7 @@ describe("useVideoStatus", () => {
 
       const { result } = renderHook(() => useVideoStatus("test-video-id"));
 
-      let fetchResult: {
-        runs: AnalysisRun[];
-        streamingRun: StreamingRunInfo | null;
-      } = {
+      let fetchResult: FetchResult = {
         runs: [],
         streamingRun: null,
       };
@@ -144,10 +149,7 @@ describe("useVideoStatus", () => {
 
       const { result } = renderHook(() => useVideoStatus("test-video-id"));
 
-      let fetchResult: {
-        runs: AnalysisRun[];
-        streamingRun: StreamingRunInfo | null;
-      } = {
+      let fetchResult: FetchResult = {
         runs: [],
         streamingRun: null,
       };
@@ -173,10 +175,7 @@ describe("useVideoStatus", () => {
 
       const { result } = renderHook(() => useVideoStatus("test-video-id"));
 
-      let fetchResult: {
-        runs: AnalysisRun[];
-        streamingRun: StreamingRunInfo | null;
-      } = {
+      let fetchResult: FetchResult = {
         runs: [],
         streamingRun: null,
       };
