@@ -4,7 +4,7 @@ import { start } from "workflow/api";
 import { extractSlidesWorkflow } from "@/app/workflows/extract-slides";
 import { db } from "@/db";
 import { videoSlideExtractions, videoSlides } from "@/db/schema";
-import type { SlideStreamEvent } from "@/lib/slides-types";
+import { createSSEResponse } from "@/lib/api-utils";
 
 // ============================================================================
 // GET - Get extraction status and existing slides
@@ -217,23 +217,7 @@ export async function POST(
       .set({ runId: run.runId })
       .where(eq(videoSlideExtractions.videoId, videoId));
 
-    // Transform to SSE
-    const transformStream = new TransformStream<SlideStreamEvent, string>({
-      transform(chunk, controller) {
-        controller.enqueue(`data: ${JSON.stringify(chunk)}\n\n`);
-      },
-    });
-
-    const sseStream = run.readable.pipeThrough(transformStream);
-
-    return new NextResponse(sseStream, {
-      headers: {
-        "Content-Type": "text/event-stream",
-        "Cache-Control": "no-cache",
-        Connection: "keep-alive",
-        "X-Workflow-Run-Id": run.runId,
-      },
-    });
+    return createSSEResponse(run.readable, run.runId);
   } catch (error) {
     console.error("Failed to start workflow:", error);
 

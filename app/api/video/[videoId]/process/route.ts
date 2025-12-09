@@ -10,6 +10,7 @@ import {
 } from "@/app/workflows/fetch-transcript";
 import { db } from "@/db";
 import { videoAnalysisRuns } from "@/db/schema";
+import { validateYouTubeVideoId } from "@/lib/api-utils";
 import type { SlideStreamEvent } from "@/lib/slides-types";
 
 export type ProcessingStreamEvent =
@@ -48,12 +49,8 @@ export async function POST(
 ) {
   const { videoId } = await params;
 
-  if (!/^[a-zA-Z0-9_-]{11}$/.test(videoId)) {
-    return NextResponse.json(
-      { error: "Invalid YouTube video ID format" },
-      { status: 400 },
-    );
-  }
+  const validationError = validateYouTubeVideoId(videoId);
+  if (validationError) return validationError;
 
   const stream = new TransformStream<string, string>();
   const writer = stream.writable.getWriter();

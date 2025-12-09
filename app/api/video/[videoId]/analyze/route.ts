@@ -8,6 +8,11 @@ import {
 } from "@/app/workflows/dynamic-analysis";
 import { db } from "@/db";
 import { videoAnalysisRuns } from "@/db/schema";
+import {
+  createSSEResponse,
+  resumeWorkflowStream,
+  validateYouTubeVideoId,
+} from "@/lib/api-utils";
 
 // ============================================================================
 // GET - List all analysis runs for a video
@@ -84,12 +89,8 @@ export async function POST(
   const { videoId } = await params;
 
   // Validate videoId format
-  if (!/^[a-zA-Z0-9_-]{11}$/.test(videoId)) {
-    return NextResponse.json(
-      { error: "Invalid YouTube video ID format" },
-      { status: 400 },
-    );
-  }
+  const validationError = validateYouTubeVideoId(videoId);
+  if (validationError) return validationError;
 
   // Check if there's already a streaming run - don't start another
   const existingStreamingRun = await db
@@ -108,7 +109,10 @@ export async function POST(
 
   if (existingStreamingRun[0]?.workflowRunId) {
     // Resume the existing stream instead of starting a new one
-    return resumeStream(existingStreamingRun[0].workflowRunId);
+    return resumeWorkflowStream<AnalysisStreamEvent>(
+      getRun,
+      existingStreamingRun[0].workflowRunId,
+    );
   }
 
   // Parse request body
@@ -159,62 +163,11 @@ export async function POST(
       .set({ workflowRunId: run.runId })
       .where(eq(videoAnalysisRuns.id, insertedRun.id));
 
-    // Transform to SSE
-    const transformStream = new TransformStream<AnalysisStreamEvent, string>({
-      transform(chunk, controller) {
-        controller.enqueue(`data: ${JSON.stringify(chunk)}\n\n`);
-      },
-    });
-
-    const sseStream = run.readable.pipeThrough(transformStream);
-
-    return new NextResponse(sseStream, {
-      headers: {
-        "Content-Type": "text/event-stream",
-        "Cache-Control": "no-cache",
-        Connection: "keep-alive",
-        "X-Workflow-Run-Id": run.runId,
-      },
-    });
+    return createSSEResponse(run.readable, run.runId);
   } catch (error) {
     console.error("Failed to start dynamic analysis workflow:", error);
     return NextResponse.json(
       { error: "Failed to start analysis" },
-      { status: 500 },
-    );
-  }
-}
-
-// ============================================================================
-// Helper: Resume an existing workflow stream
-// ============================================================================
-
-function resumeStream(workflowRunId: string, startIndex = 0) {
-  try {
-    const run = getRun(workflowRunId);
-    const readable = run.getReadable({ startIndex });
-
-    // Transform to SSE
-    const transformStream = new TransformStream<AnalysisStreamEvent, string>({
-      transform(chunk, controller) {
-        controller.enqueue(`data: ${JSON.stringify(chunk)}\n\n`);
-      },
-    });
-
-    const sseStream = readable.pipeThrough(transformStream);
-
-    return new NextResponse(sseStream, {
-      headers: {
-        "Content-Type": "text/event-stream",
-        "Cache-Control": "no-cache",
-        Connection: "keep-alive",
-        "X-Workflow-Run-Id": workflowRunId,
-      },
-    });
-  } catch (error) {
-    console.error("Failed to resume workflow stream:", error);
-    return NextResponse.json(
-      { error: "Failed to resume stream" },
       { status: 500 },
     );
   }
