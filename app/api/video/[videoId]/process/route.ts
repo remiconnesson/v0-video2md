@@ -23,11 +23,7 @@ async function streamWorkflow<T extends UnifiedStreamEvent | SlideStreamEvent>(
     const { done, value } = await reader.read();
     if (done || !value) break;
 
-    // Safety: ensure we are spreading an object
-    const eventData =
-      typeof value === "object" && value !== null ? value : { data: value };
-
-    const payload = { source, ...eventData } as ProcessingStreamEvent;
+    const payload = { source, ...value } as ProcessingStreamEvent;
     await writer.write(`data: ${JSON.stringify(payload)}\n\n`);
   }
 }
