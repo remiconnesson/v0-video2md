@@ -132,9 +132,15 @@ export async function processSlidesFromManifest(
     );
   }
 
-  const staticSegments = videoData.segments.filter(
-    (s): s is StaticSegment => s.kind === "static",
-  );
+  const staticSegments: StaticSegment[] = [];
+  const segmentIdToSlideIndex = new Map<number, number>();
+
+  videoData.segments.forEach((segment, index) => {
+    if (segment.kind === "static") {
+      segmentIdToSlideIndex.set(index, staticSegments.length);
+      staticSegments.push(segment);
+    }
+  });
 
   console.log(
     `💾 processSlidesFromManifest: Found ${staticSegments.length} static segments for video ${videoId}`,
@@ -145,9 +151,39 @@ export async function processSlidesFromManifest(
   let failedSlides = 0;
   const client = makeAwsClient();
 
+  const normalizeDuplicateReference = (
+    duplicateOf?: FrameMetadata["duplicate_of"] | null,
+  ) => {
+    if (!duplicateOf) {
+      return { segmentId: null, framePosition: null as string | null };
+    }
+
+    const directMatch = segmentIdToSlideIndex.get(duplicateOf.segment_id);
+    const zeroBasedSegmentId =
+      directMatch !== undefined
+        ? duplicateOf.segment_id
+        : segmentIdToSlideIndex.get(duplicateOf.segment_id - 1) !== undefined
+          ? duplicateOf.segment_id - 1
+          : duplicateOf.segment_id;
+
+    const mappedSlideIndex = segmentIdToSlideIndex.get(zeroBasedSegmentId);
+
+    return {
+      segmentId: mappedSlideIndex ?? null,
+      framePosition: duplicateOf.frame_position ?? null,
+    };
+  };
+
   for (const segment of staticSegments) {
     const firstFrame = segment.first_frame;
     const lastFrame = segment.last_frame;
+
+    const firstFrameDuplicate = normalizeDuplicateReference(
+      firstFrame?.duplicate_of,
+    );
+    const lastFrameDuplicate = normalizeDuplicateReference(
+      lastFrame?.duplicate_of,
+    );
 
     // Skip if no frames available
     if (
@@ -283,22 +319,18 @@ export async function processSlidesFromManifest(
       firstFrameTextConfidence: firstFrame
         ? Math.round(firstFrame.text_confidence * 100)
         : 0,
-      firstFrameIsDuplicate: firstFrame?.duplicate_of !== null,
-      firstFrameDuplicateOfSegmentId:
-        firstFrame?.duplicate_of?.segment_id ?? null,
-      firstFrameDuplicateOfFramePosition:
-        firstFrame?.duplicate_of?.frame_position ?? null,
+      firstFrameIsDuplicate: !!firstFrame?.duplicate_of,
+      firstFrameDuplicateOfSegmentId: firstFrameDuplicate.segmentId,
+      firstFrameDuplicateOfFramePosition: firstFrameDuplicate.framePosition,
       firstFrameSkipReason: firstFrame?.skip_reason ?? null,
       lastFrameImageUrl: lastFrameImageUrl || null,
       lastFrameHasText: lastFrame?.has_text || false,
       lastFrameTextConfidence: lastFrame
         ? Math.round(lastFrame.text_confidence * 100)
         : 0,
-      lastFrameIsDuplicate: lastFrame?.duplicate_of !== null,
-      lastFrameDuplicateOfSegmentId:
-        lastFrame?.duplicate_of?.segment_id ?? null,
-      lastFrameDuplicateOfFramePosition:
-        lastFrame?.duplicate_of?.frame_position ?? null,
+      lastFrameIsDuplicate: !!lastFrame?.duplicate_of,
+      lastFrameDuplicateOfSegmentId: lastFrameDuplicate.segmentId,
+      lastFrameDuplicateOfFramePosition: lastFrameDuplicate.framePosition,
       lastFrameSkipReason: lastFrame?.skip_reason ?? null,
       imageProcessingError,
     };
@@ -328,11 +360,9 @@ export async function processSlidesFromManifest(
             ? Math.round(firstFrame.text_confidence * 100)
             : null,
           firstFrameTextBoxCount: firstFrame?.text_box_count || null,
-          firstFrameIsDuplicate: firstFrame?.duplicate_of !== null,
-          firstFrameDuplicateOfSegmentId:
-            firstFrame?.duplicate_of?.segment_id ?? null,
-          firstFrameDuplicateOfFramePosition:
-            firstFrame?.duplicate_of?.frame_position ?? null,
+          firstFrameIsDuplicate: !!firstFrame?.duplicate_of,
+          firstFrameDuplicateOfSegmentId: firstFrameDuplicate.segmentId,
+          firstFrameDuplicateOfFramePosition: firstFrameDuplicate.framePosition,
           firstFrameSkipReason: firstFrame?.skip_reason ?? null,
 
           // Last frame data
@@ -345,11 +375,9 @@ export async function processSlidesFromManifest(
             ? Math.round(lastFrame.text_confidence * 100)
             : null,
           lastFrameTextBoxCount: lastFrame?.text_box_count || null,
-          lastFrameIsDuplicate: lastFrame?.duplicate_of !== null,
-          lastFrameDuplicateOfSegmentId:
-            lastFrame?.duplicate_of?.segment_id ?? null,
-          lastFrameDuplicateOfFramePosition:
-            lastFrame?.duplicate_of?.frame_position ?? null,
+          lastFrameIsDuplicate: !!lastFrame?.duplicate_of,
+          lastFrameDuplicateOfSegmentId: lastFrameDuplicate.segmentId,
+          lastFrameDuplicateOfFramePosition: lastFrameDuplicate.framePosition,
           lastFrameSkipReason: lastFrame?.skip_reason ?? null,
         })
         .onConflictDoNothing();
