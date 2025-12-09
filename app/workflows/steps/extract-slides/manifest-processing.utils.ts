@@ -122,9 +122,7 @@ export function generateBlobPath(
 export function filterStaticSegments(
   segments: Array<{ kind: string }>,
 ): StaticSegment[] {
-  return segments.filter(
-    (s): s is StaticSegment => s.kind === "static",
-  );
+  return segments.filter((s): s is StaticSegment => s.kind === "static");
 }
 
 /**
