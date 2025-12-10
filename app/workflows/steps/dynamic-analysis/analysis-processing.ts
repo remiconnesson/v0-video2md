@@ -41,7 +41,7 @@ export async function fetchTranscriptData(
 ): Promise<TranscriptData | null> {
   "use step";
 
-  const result = await db
+  const dbQueryResult = await db
     .select({
       videoId: videos.videoId,
       title: videos.title,
@@ -55,15 +55,15 @@ export async function fetchTranscriptData(
     .where(eq(videos.videoId, videoId))
     .limit(1);
 
-  const row = result[0];
-  if (!row || !row.transcript) {
+  const transcriptRow = dbQueryResult[0];
+  if (!transcriptRow || !transcriptRow.transcript) {
     return null;
   }
 
   // Validate transcript structure
   const transcriptParseResult = z
     .array(TranscriptSegmentSchema)
-    .safeParse(row.transcript);
+    .safeParse(transcriptRow.transcript);
 
   if (!transcriptParseResult.success) {
     console.error("[DynamicAnalysis] Transcript validation failed:", videoId);
@@ -71,10 +71,10 @@ export async function fetchTranscriptData(
   }
 
   return {
-    videoId: row.videoId,
-    title: row.title,
-    channelName: row.channelName,
-    description: row.description,
+    videoId: transcriptRow.videoId,
+    title: transcriptRow.title,
+    channelName: transcriptRow.channelName,
+    description: transcriptRow.description,
     transcript: formatTranscriptForLLM(transcriptParseResult.data),
   };
 }
@@ -86,14 +86,14 @@ export async function fetchTranscriptData(
 export async function getNextVersion(videoId: string): Promise<number> {
   "use step";
 
-  const result = await db
+  const versionQueryResult = await db
     .select({ version: videoAnalysisRuns.version })
     .from(videoAnalysisRuns)
     .where(eq(videoAnalysisRuns.videoId, videoId))
     .orderBy(desc(videoAnalysisRuns.version))
     .limit(1);
 
-  const maxVersion = result[0]?.version ?? 0;
+  const maxVersion = versionQueryResult[0]?.version ?? 0;
   return maxVersion + 1;
 }
 
@@ -108,14 +108,14 @@ export async function createAnalysisRun(
   "use step";
 
   // Get next version
-  const versionResult = await db
+  const versionQueryResult = await db
     .select({ version: videoAnalysisRuns.version })
     .from(videoAnalysisRuns)
     .where(eq(videoAnalysisRuns.videoId, videoId))
     .orderBy(desc(videoAnalysisRuns.version))
     .limit(1);
 
-  const nextVersion = (versionResult[0]?.version ?? 0) + 1;
+  const nextVersion = (versionQueryResult[0]?.version ?? 0) + 1;
 
   // Insert the run with conflict resolution for idempotency during workflow replay
   const [createdRun] = await db
@@ -145,31 +145,31 @@ export async function createAnalysisRun(
 // ============================================================================
 
 export async function runGodPrompt(
-  data: TranscriptData,
+  transcriptData: TranscriptData,
   additionalInstructions?: string,
 ): Promise<Record<string, unknown>> {
   "use step";
 
-  const stream = streamDynamicAnalysis({
-    title: data.title,
-    channelName: data.channelName,
-    description: data.description ?? undefined,
-    transcript: data.transcript,
+  const analysisStream = streamDynamicAnalysis({
+    title: transcriptData.title,
+    channelName: transcriptData.channelName,
+    description: transcriptData.description ?? undefined,
+    transcript: transcriptData.transcript,
     additionalInstructions,
   });
 
-  for await (const partial of stream.partialObjectStream) {
+  for await (const partialResult of analysisStream.partialObjectStream) {
     // Import emitPartialResult dynamically to avoid circular dependency
     const { emitPartialResult } = await import("./stream-emitters");
-    await emitPartialResult(partial);
+    await emitPartialResult(partialResult);
   }
 
-  const result = await stream.object;
+  const finalAnalysisResult = await analysisStream.object;
 
   // Import emitResult dynamically to avoid circular dependency
   const { emitResult } = await import("./stream-emitters");
-  await emitResult(result);
-  return result as Record<string, unknown>;
+  await emitResult(finalAnalysisResult);
+  return finalAnalysisResult as Record<string, unknown>;
 }
 
 // ============================================================================

@@ -97,16 +97,16 @@ export function useTranscriptFetch(
     }));
 
     try {
-      const res = await fetch(`/api/video/${youtubeId}/process`, {
+      const response = await fetch(`/api/video/${youtubeId}/process`, {
         method: "POST",
         signal: abortController.signal,
       });
 
-      if (!res.ok) {
+      if (!response.ok) {
         throw new Error("Failed to start processing");
       }
 
-      await consumeSSE<ProcessingStreamEvent>(res, {
+      await consumeSSE<ProcessingStreamEvent>(response, {
         slide: (event) => {
           onSlidesStateChange((prev) => ({
             ...prev,
@@ -235,17 +235,23 @@ export function useTranscriptFetch(
           );
         },
       });
-    } catch (err) {
-      if (err instanceof Error && err.name === "AbortError") {
+    } catch (processingError) {
+      if (
+        processingError instanceof Error &&
+        processingError.name === "AbortError"
+      ) {
         return;
       }
 
-      console.error("Failed to start processing:", err);
+      console.error("Failed to start processing:", processingError);
       setPageStatus("no_transcript");
       setTranscriptState((prev) => ({
         ...prev,
         status: "error",
-        error: err instanceof Error ? err.message : "Unknown error",
+        error:
+          processingError instanceof Error
+            ? processingError.message
+            : "Unknown error",
       }));
     } finally {
       isProcessingRef.current = false;
@@ -267,25 +273,25 @@ export function useTranscriptFetch(
     const hasStreamingAnalysis = false;
 
     try {
-      const res = await fetch(`/api/video/${youtubeId}`);
-      if (!res.ok) {
+      const response = await fetch(`/api/video/${youtubeId}`);
+      if (!response.ok) {
         setPageStatus("no_transcript");
         return { status, hasStreamingAnalysis };
       }
 
-      const data = await res.json();
-      status = data.status as VideoStatus;
+      const videoData = await response.json();
+      status = videoData.status as VideoStatus;
 
       if (status === "not_found") {
         setPageStatus("no_transcript");
         return { status, hasStreamingAnalysis };
       }
 
-      if (data.video) {
+      if (videoData.video) {
         setVideoInfo({
-          title: data.video.title,
-          channelName: data.video.channelName,
-          thumbnail: data.video.thumbnail,
+          title: videoData.video.title,
+          channelName: videoData.video.channelName,
+          thumbnail: videoData.video.thumbnail,
         });
       }
 
@@ -311,8 +317,8 @@ export function useTranscriptFetch(
       }
 
       return { status, hasStreamingAnalysis };
-    } catch (err) {
-      console.error("Failed to check video status:", err);
+    } catch (checkError) {
+      console.error("Failed to check video status:", checkError);
       setPageStatus("no_transcript");
       return { status, hasStreamingAnalysis };
     }

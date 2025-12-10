@@ -43,16 +43,16 @@ export async function consumeSSE<TEvent extends SSEBaseEvent>(
         // Process any remaining data in buffer to prevent data loss
         // This handles cases where the stream ends without a trailing newline
         if (buffer.trim().startsWith(dataPrefix)) {
-          const raw = buffer.slice(dataPrefix.length).trim();
-          if (raw) {
+          const rawEventData = buffer.slice(dataPrefix.length).trim();
+          if (rawEventData) {
             try {
-              const parsed = JSON.parse(raw) as TEvent;
-              const eventType = parsed.type as
+              const parsedEvent = JSON.parse(rawEventData) as TEvent;
+              const eventType = parsedEvent.type as
                 | NonNullable<TEvent["type"]>
                 | undefined;
               if (eventType && handlers[eventType]) {
                 await handlers[eventType](
-                  parsed as Extract<
+                  parsedEvent as Extract<
                     TEvent,
                     { type: NonNullable<TEvent["type"]> }
                   >,
@@ -73,40 +73,44 @@ export async function consumeSSE<TEvent extends SSEBaseEvent>(
       for (const line of lines) {
         if (!line.startsWith(dataPrefix)) continue;
 
-        const raw = line.slice(dataPrefix.length).trim();
-        if (!raw) continue;
+        const rawEventData = line.slice(dataPrefix.length).trim();
+        if (!rawEventData) continue;
 
-        let parsed: TEvent;
+        let parsedEvent: TEvent;
         try {
-          parsed = JSON.parse(raw) as TEvent;
-        } catch (err) {
-          if (err instanceof SyntaxError) continue;
-          throw err;
+          parsedEvent = JSON.parse(rawEventData) as TEvent;
+        } catch (parseError) {
+          if (parseError instanceof SyntaxError) continue;
+          throw parseError;
         }
 
-        const eventType = parsed.type as
+        const eventType = parsedEvent.type as
           | NonNullable<TEvent["type"]>
           | undefined;
 
         if (!eventType) {
           throw new Error(
-            `Unknown event type: ${raw}, ${JSON.stringify(parsed)}`,
+            `Unknown event type: ${rawEventData}, ${JSON.stringify(parsedEvent)}`,
           );
         }
 
         await handlers[eventType](
-          parsed as Extract<TEvent, { type: NonNullable<TEvent["type"]> }>,
+          parsedEvent as Extract<TEvent, { type: NonNullable<TEvent["type"]> }>,
         );
       }
     }
-  } catch (err) {
-    if (err instanceof DOMException && err.name === "AbortError") return;
+  } catch (streamError) {
+    if (
+      streamError instanceof DOMException &&
+      streamError.name === "AbortError"
+    )
+      return;
 
     if (options.onError) {
-      await options.onError(err);
+      await options.onError(streamError);
       return;
     }
 
-    throw err;
+    throw streamError;
   }
 }
