@@ -12,10 +12,13 @@ export function TranscriptFetcher() {
   const [state, action, isPending] = useActionState(validateVideoId, null);
   const router = useRouter();
 
-  // TODO: is this the good way to do the navigation?
-  // navigate to the video page after successful transcript fetch
+  /* TODO: is this the good way to do the navigation?
+     Seems dirty to use useEffect here.
+     investigation time <5 min
+  */
   useEffect(() => {
     if (state?.success && state?.videoId) {
+      // navigate to the video page after validating video id
       router.push(`/video/youtube/${state.videoId}/analyze`);
     }
   }, [state?.success, state?.videoId, router]);
