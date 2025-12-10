@@ -58,7 +58,6 @@ export function ExternalTranscriptAnalyzeView({
     <div className="space-y-6">
       <TranscriptHeader
         transcriptInfo={transcriptInfo}
-        transcriptId={transcriptId}
         hasRuns={hasRuns}
         runs={runs}
         selectedRun={selectedRun}
@@ -78,7 +77,6 @@ export function ExternalTranscriptAnalyzeView({
       {displayResult !== null && (
         <AnalysisResultCard
           displayResult={displayResult}
-          isAnalysisRunning={isAnalysisRunning}
           selectedRun={selectedRun}
           transcriptId={transcriptId}
         />
@@ -111,7 +109,6 @@ function LoadingIndication() {
 
 function TranscriptHeader({
   transcriptInfo,
-  transcriptId,
   hasRuns,
   runs,
   selectedRun,
@@ -120,7 +117,6 @@ function TranscriptHeader({
   onRerollClick,
 }: {
   transcriptInfo: TranscriptInfo | null;
-  transcriptId: string;
   hasRuns: boolean;
   runs: AnalysisRun[];
   selectedRun: AnalysisRun | null;
@@ -160,8 +156,8 @@ function TranscriptHeader({
           {hasRuns && (
             <>
               <VersionSelector
-                runs={runs}
-                selectedRun={selectedRun}
+                versions={runs.map((r) => r.version)}
+                currentVersion={selectedRun?.version ?? 1}
                 onVersionChange={onVersionChange}
               />
               <Button
@@ -221,22 +217,19 @@ function ProgressIndicator({ message }: { message: string }) {
 
 function AnalysisResultCard({
   displayResult,
-  isAnalysisRunning,
   selectedRun,
   transcriptId,
 }: {
   displayResult: unknown;
-  isAnalysisRunning: boolean;
   selectedRun: AnalysisRun | null;
   transcriptId: string;
 }) {
   return (
     <Card className="p-6">
       <AnalysisPanel
-        result={displayResult}
-        isStreaming={isAnalysisRunning}
-        runId={selectedRun?.id}
-        contentId={transcriptId}
+        analysis={displayResult as Record<string, unknown>}
+        runId={selectedRun?.id ?? null}
+        videoId={transcriptId}
       />
     </Card>
   );

@@ -2,6 +2,7 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
+import type { AnalysisStreamEvent } from "@/app/workflows/external-transcript-analysis";
 import { consumeSSE } from "@/lib/sse";
 
 // ============================================================================
@@ -165,7 +166,7 @@ export function useExternalTranscriptProcessing(
           throw new Error("Failed to start analysis");
         }
 
-        await consumeSSE(response, {
+        await consumeSSE<AnalysisStreamEvent>(response, {
           progress: (event) => {
             setAnalysisState((prev) => ({
               ...prev,
@@ -243,7 +244,7 @@ export function useExternalTranscriptProcessing(
         error: null,
       });
 
-      await consumeSSE(response, {
+      await consumeSSE<AnalysisStreamEvent>(response, {
         progress: (event) => {
           setAnalysisState((prev) => ({
             ...prev,
