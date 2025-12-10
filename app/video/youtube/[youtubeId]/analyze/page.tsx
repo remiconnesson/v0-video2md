@@ -3,12 +3,21 @@ import Link from "next/link";
 import { AnalyzeView } from "@/components/analyze/analyze-view";
 import { Button } from "@/components/ui/button";
 
-// TODO test this
-// and also test that the component is calling this function
+/**
+ * Parse and validate version from URL search parameter.
+ * We parse version here (in the Server Component) to ensure validation happens
+ * before the component tree is rendered, providing better error boundaries
+ * and avoiding client-side hydration issues with invalid version values.
+ * @param v - Version string from URL search params (e.g., "?v=2")
+ * @returns Parsed version number or undefined if not provided
+ * @throws Error if version is less than 1
+ */
 export function parseVersion(v?: string): number | undefined {
-  // TODO: add why we do care about parsing version this here
-  const version = v ? parseInt(v, 10) : undefined;
-  if (version && version < 1) {
+  if (!v) {
+    return undefined;
+  }
+  const version = parseInt(v, 10);
+  if (version < 1) {
     throw new Error("Version must be greater than or equal to 1");
   }
   return version;
@@ -23,8 +32,7 @@ export default async function AnalyzePage({
 }) {
   const { youtubeId } = await params;
   const { v } = await searchParams;
-  // TODO: version shouldn't be less than 1
-  const version = v ? parseInt(v, 10) : undefined;
+  const version = parseVersion(v);
 
   return (
     <Layout>
