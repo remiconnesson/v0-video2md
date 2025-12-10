@@ -3,6 +3,17 @@ import Link from "next/link";
 import { AnalyzeView } from "@/components/analyze/analyze-view";
 import { Button } from "@/components/ui/button";
 
+// TODO test this
+// and also test that the component is calling this function
+export function parseVersion(v?: string): number | undefined {
+  // TODO: add why we do care about parsing version this here
+  const version = v ? parseInt(v, 10) : undefined;
+  if (version && version < 1) {
+    throw new Error("Version must be greater than or equal to 1");
+  }
+  return version;
+}
+
 export default async function AnalyzePage({
   params,
   searchParams,
