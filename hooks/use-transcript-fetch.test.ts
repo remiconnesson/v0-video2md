@@ -150,7 +150,7 @@ describe("useTranscriptFetch", () => {
   });
 
   describe("handleFetchTranscript", () => {
-    it("should set page status to fetching_transcript and start processing", async () => {
+    it("should process transcript and reach ready status", async () => {
       const { consumeSSE } = await import("@/lib/sse");
       const mockConsumeSSE = vi.mocked(consumeSSE);
 
