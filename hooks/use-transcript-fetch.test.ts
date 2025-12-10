@@ -239,6 +239,52 @@ describe("useTranscriptFetch", () => {
       expect(mockConsumeSSE).toHaveBeenCalled();
     });
 
+    it("should mark transcript as ready when unified progress moves to analysis", async () => {
+      const { consumeSSE } = await import("@/lib/sse");
+      const mockConsumeSSE = vi.mocked(consumeSSE);
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+      });
+
+      mockConsumeSSE.mockImplementationOnce(async (_response, handlers) => {
+        await handlers.progress?.({
+          type: "progress",
+          source: "unified",
+          progress: 50,
+          phase: "analyzing",
+          message: "Analyzing transcript...",
+        } as never);
+      });
+
+      const { result } = renderHook(() =>
+        useTranscriptFetch(
+          "test-video-id",
+          mockSetSlidesState,
+          mockSetAnalysisState,
+        ),
+      );
+
+      await act(async () => {
+        await result.current.startProcessing();
+      });
+
+      expect(result.current.pageStatus).toBe("ready");
+      expect(result.current.transcriptState).toEqual({
+        status: "completed",
+        progress: 100,
+        message: "Transcript fetched successfully",
+        error: null,
+      });
+      expect(mockSetAnalysisState).toHaveBeenCalledWith(
+        expect.objectContaining({
+          status: "running",
+          phase: "analyzing",
+          message: "Analyzing transcript...",
+        }),
+      );
+    });
+
     it("should handle processing API errors", async () => {
       const consoleSpy = vi
         .spyOn(console, "error")

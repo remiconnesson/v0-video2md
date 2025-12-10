@@ -124,6 +124,18 @@ export function useTranscriptFetch(
                   message: event.message ?? prev.message,
                 }));
               } else {
+                setPageStatus("ready");
+                setTranscriptState((prev) => {
+                  if (prev.status === "completed") return prev;
+
+                  return {
+                    status: "completed",
+                    progress: 100,
+                    message: "Transcript fetched successfully",
+                    error: null,
+                  };
+                });
+
                 onAnalysisStateChange((prev) => ({
                   ...prev,
                   status: "running",
