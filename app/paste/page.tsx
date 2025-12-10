@@ -65,9 +65,7 @@ function HowItWorksCard() {
         </li>
         <li className="flex gap-2">
           <span className="text-primary">•</span>
-          <span>
-            Timestamps are optional - paste raw text from any source
-          </span>
+          <span>Timestamps are optional - paste raw text from any source</span>
         </li>
         <li className="flex gap-2">
           <span className="text-primary">•</span>

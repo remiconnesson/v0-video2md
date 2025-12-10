@@ -110,9 +110,7 @@ export function useExternalTranscriptProcessing(
 
   const fetchRuns = useCallback(async () => {
     try {
-      const response = await fetch(
-        `/api/transcript/${transcriptId}/analyze`,
-      );
+      const response = await fetch(`/api/transcript/${transcriptId}/analyze`);
       if (!response.ok) {
         throw new Error("Failed to fetch runs");
       }
@@ -378,7 +376,7 @@ export function useExternalTranscriptProcessing(
   const displayResult =
     analysisState.status === "streaming" || analysisState.status === "completed"
       ? analysisState.result
-      : selectedRun?.result ?? null;
+      : (selectedRun?.result ?? null);
 
   return {
     pageStatus,

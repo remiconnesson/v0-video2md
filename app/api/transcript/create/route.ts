@@ -38,8 +38,14 @@ export async function POST(request: Request) {
       );
     }
 
-    const { title, author, source, description, transcript, additional_comments } =
-      parsed.data;
+    const {
+      title,
+      author,
+      source,
+      description,
+      transcript,
+      additional_comments,
+    } = parsed.data;
 
     // Insert into database
     const [created] = await db

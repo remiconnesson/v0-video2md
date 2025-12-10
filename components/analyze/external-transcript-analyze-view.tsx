@@ -1,15 +1,14 @@
 "use client";
 
-import { ExternalLink, Loader2, Play, RefreshCw, Sparkles } from "lucide-react";
+import { Loader2, Play, RefreshCw, Sparkles } from "lucide-react";
 import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import type {
   AnalysisRun,
   TranscriptInfo,
 } from "@/hooks/use-external-transcript-processing";
 import { useExternalTranscriptProcessing } from "@/hooks/use-external-transcript-processing";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
 import { AnalysisPanel } from "./analysis-panel";
 import { RerollDialog } from "./reroll-dialog";
 import { VersionSelector } from "./version-selector";

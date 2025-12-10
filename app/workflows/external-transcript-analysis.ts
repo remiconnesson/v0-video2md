@@ -25,9 +25,7 @@ export async function externalTranscriptAnalysisWorkflow(
 
   try {
     if (!dbRunId) {
-      throw new Error(
-        "Missing dbRunId for external transcript analysis run",
-      );
+      throw new Error("Missing dbRunId for external transcript analysis run");
     }
 
     // Step 1: Fetch transcript from external_transcripts table
