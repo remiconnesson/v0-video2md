@@ -2,10 +2,13 @@
 
 # Script to create GitHub issues from TODOs found in the codebase
 # This script requires GitHub CLI (gh) to be installed and authenticated
+# Usage: ./create-todo-issues.sh [repository]
+# Example: ./create-todo-issues.sh remiconnesson/v0-video2md
 
 set -e
+set -o pipefail
 
-REPO="remiconnesson/v0-video2md"
+REPO="${1:-remiconnesson/v0-video2md}"
 
 echo "Creating GitHub issues for TODOs in $REPO..."
 echo ""
