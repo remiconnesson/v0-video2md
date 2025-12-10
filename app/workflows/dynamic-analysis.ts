@@ -1,5 +1,3 @@
-import { db } from "@/db";
-import { videoAnalysisRuns } from "@/db/schema";
 import {
   type AnalysisStreamEvent,
   completeRun,
@@ -8,7 +6,6 @@ import {
   emitProgress,
   failRun,
   fetchTranscriptData,
-  getNextVersion,
   runGodPrompt,
 } from "./steps/dynamic-analysis";
 
@@ -27,6 +24,10 @@ export async function dynamicAnalysisWorkflow(
   "use workflow";
 
   try {
+    if (!dbRunId) {
+      throw new Error("Missing dbRunId for dynamic analysis run");
+    }
+
     // Step 1: Fetch transcript
     await emitProgress("fetching", "Fetching transcript from database...");
     const transcriptData = await fetchTranscriptData(videoId);
@@ -46,25 +47,8 @@ export async function dynamicAnalysisWorkflow(
     // Step 3: Update the run to completed
     await emitProgress("saving", "Saving analysis to database...");
 
-    if (dbRunId) {
-      await completeRun(dbRunId, result);
-      await emitComplete(dbRunId);
-    } else {
-      // Fallback for old-style calls without dbRunId (shouldn't happen in normal flow)
-      const version = await getNextVersion(videoId);
-      const [inserted] = await db
-        .insert(videoAnalysisRuns)
-        .values({
-          videoId,
-          version,
-          result,
-          additionalInstructions: additionalInstructions ?? null,
-          status: "completed",
-          updatedAt: new Date(),
-        })
-        .returning({ id: videoAnalysisRuns.id });
-      await emitComplete(inserted.id);
-    }
+    await completeRun(dbRunId, result);
+    await emitComplete(dbRunId);
 
     return {
       success: true,
