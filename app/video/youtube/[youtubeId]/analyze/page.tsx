@@ -12,8 +12,18 @@ export default async function AnalyzePage({
 }) {
   const { youtubeId } = await params;
   const { v } = await searchParams;
+  // TODO: version shouldn't be less than 1
   const version = v ? parseInt(v, 10) : undefined;
 
+  return (
+    <Layout>
+      <AnalyzeView youtubeId={youtubeId} initialVersion={version} />
+    </Layout>
+  );
+}
+
+// dumb component with just a link
+function Layout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
       <div className="container mx-auto px-4 py-6 max-w-5xl">
@@ -26,7 +36,7 @@ export default async function AnalyzePage({
           </Link>
         </div>
 
-        <AnalyzeView youtubeId={youtubeId} initialVersion={version} />
+        {children}
       </div>
     </div>
   );
