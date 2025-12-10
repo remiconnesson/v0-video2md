@@ -12,6 +12,7 @@ export default function YouTubePage() {
         <YouTubeModeHeader />
 
         <div className="grid gap-8">
+          {/* This is what does the logic */}
           <TranscriptFetcher />
 
           <UserInstructions />
