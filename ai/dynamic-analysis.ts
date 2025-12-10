@@ -14,7 +14,7 @@ export interface DynamicAnalysisInput {
 }
 
 // Flexible schema that allows any JSON object structure since the analysis output is dynamic
-const dynamicAnalysisSchema = z.any();
+const dynamicAnalysisSchema = z.object({}).passthrough();
 
 export function streamDynamicAnalysis(input: DynamicAnalysisInput) {
   const userPrompt = buildGodPromptUserMessage(input);
