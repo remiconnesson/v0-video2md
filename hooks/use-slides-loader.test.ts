@@ -153,6 +153,8 @@ describe("useSlidesLoader", () => {
     it("should handle API errors", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: false,
+        status: 500,
+        text: () => Promise.resolve("Internal Server Error"),
       });
 
       const { result } = renderHook(() =>
@@ -163,8 +165,8 @@ describe("useSlidesLoader", () => {
         await result.current.loadExistingSlides();
       });
 
-      // Should not set any state when fetch fails with ok: false
-      expect(mockSetSlidesState).not.toHaveBeenCalled();
+      // Should set error state when fetch fails with ok: false
+      expect(mockSetSlidesState).toHaveBeenCalledWith(expect.any(Function));
     });
   });
 });
