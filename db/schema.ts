@@ -10,6 +10,7 @@ import {
   text,
   timestamp,
   unique,
+  uuid,
   varchar,
 } from "drizzle-orm/pg-core";
 
@@ -288,3 +289,70 @@ export const slideFeedback = pgTable(
 
 export type SlideFeedback = typeof slideFeedback.$inferSelect;
 export type NewSlideFeedback = typeof slideFeedback.$inferInsert;
+
+// ============================================================================
+// External Transcript Tables
+// ============================================================================
+
+/**
+ * External transcripts - pasted by users directly (not from YouTube)
+ */
+export const externalTranscripts = pgTable(
+  "external_transcripts",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    title: text("title").notNull(),
+    description: text("description"),
+    source: text("source"), // Freeform text (e.g., "Podcast episode 123")
+    author: text("author"), // Similar to channelName for YouTube
+    additional_comments: text("additional_comments"), // For future AI processing
+    transcript_text: text("transcript_text").notNull(), // Plain text transcript
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => [index("external_transcripts_created_at_idx").on(table.createdAt)],
+);
+
+export type ExternalTranscript = typeof externalTranscripts.$inferSelect;
+export type NewExternalTranscript = typeof externalTranscripts.$inferInsert;
+
+/**
+ * Analysis runs for external transcripts - stores AI output with versioning
+ */
+export const externalTranscriptAnalysisRuns = pgTable(
+  "external_transcript_analysis_runs",
+  {
+    id: serial("id").primaryKey(),
+    transcriptId: uuid("transcript_id")
+      .notNull()
+      .references(() => externalTranscripts.id, { onDelete: "cascade" }),
+    version: integer("version").notNull().default(1),
+
+    // Workflow run ID for stream resumption
+    workflowRunId: varchar("workflow_run_id", { length: 100 }),
+
+    // AI analysis output - unified JSONB column
+    result: jsonb("result").$type<Record<string, unknown>>(),
+
+    // Context for rerolls - what instructions led to this version
+    additionalInstructions: text("additional_instructions"),
+
+    status: analysisStatusEnum("status").notNull().default("pending"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("external_transcript_analysis_runs_transcript_idx").on(
+      table.transcriptId,
+    ),
+    unique("external_transcript_analysis_runs_version").on(
+      table.transcriptId,
+      table.version,
+    ),
+  ],
+);
+
+export type ExternalTranscriptAnalysisRun =
+  typeof externalTranscriptAnalysisRuns.$inferSelect;
+export type NewExternalTranscriptAnalysisRun =
+  typeof externalTranscriptAnalysisRuns.$inferInsert;

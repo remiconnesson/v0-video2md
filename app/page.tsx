@@ -1,4 +1,4 @@
-import { Youtube } from "lucide-react";
+import { FileText, Youtube } from "lucide-react";
 import Link from "next/link";
 import { ProcessedVideosList } from "@/components/processed-videos-list";
 import { Button } from "@/components/ui/button";
@@ -19,13 +19,13 @@ export default function Home() {
             Knowledge Base Ingestion
           </h1>
           <p className="text-muted-foreground text-lg">
-            Import content directly from YouTube videos in just a few clicks
+            Import content from YouTube videos or paste transcripts directly
           </p>
         </div>
 
-        <div className="max-w-md mx-auto mb-12">
+        <div className="grid md:grid-cols-2 gap-6 mb-12">
           <Link href="/youtube" className="block group">
-            <Card className="border-2 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105">
+            <Card className="border-2 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 h-full">
               <CardHeader className="pb-4">
                 <div className="mb-4 p-4 rounded-full bg-gradient-to-br from-red-500/10 to-red-600/10 w-fit">
                   <Youtube className="h-8 w-8 text-red-600" />
@@ -33,6 +33,29 @@ export default function Home() {
                 <CardTitle className="text-2xl">YouTube Mode</CardTitle>
                 <CardDescription className="text-base">
                   Extract and process content directly from YouTube videos
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button
+                  variant="outline"
+                  className="w-full h-11 text-base group-hover:bg-accent bg-transparent"
+                >
+                  Get Started
+                </Button>
+              </CardContent>
+            </Card>
+          </Link>
+
+          <Link href="/paste" className="block group">
+            <Card className="border-2 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 h-full">
+              <CardHeader className="pb-4">
+                <div className="mb-4 p-4 rounded-full bg-gradient-to-br from-blue-500/10 to-blue-600/10 w-fit">
+                  <FileText className="h-8 w-8 text-blue-600" />
+                </div>
+                <CardTitle className="text-2xl">Paste Transcript</CardTitle>
+                <CardDescription className="text-base">
+                  Analyze any transcript - podcasts, meetings, conferences, and
+                  more
                 </CardDescription>
               </CardHeader>
               <CardContent>
