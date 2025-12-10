@@ -211,8 +211,8 @@ export function useVideoProcessing(
   const isAnalysisRunning = analysisState.status === "running";
   const hasRuns = runs.length > 0;
   const displayResult: unknown = isAnalysisRunning
-    ? analysisState.result
-    : (selectedRun?.result ?? null);
+    ? (analysisState.result ?? selectedRun?.result ?? null)
+    : (selectedRun?.result ?? analysisState.result ?? null);
 
   // ============================================================================
   // Return
