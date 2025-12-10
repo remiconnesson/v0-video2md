@@ -12,6 +12,7 @@ export function TranscriptFetcher() {
   const [state, action, isPending] = useActionState(validateVideoId, null);
   const router = useRouter();
 
+  // TODO: is this the good way to do the navigation?
   // navigate to the video page after successful transcript fetch
   useEffect(() => {
     if (state?.success && state?.videoId) {
