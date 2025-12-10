@@ -12,6 +12,7 @@ export function TranscriptFetcher() {
   const [state, action, isPending] = useActionState(triggerTranscript, null);
   const router = useRouter();
 
+  // navigate to the video page after successful transcript fetch
   useEffect(() => {
     if (state?.success && state?.videoId) {
       router.push(`/video/youtube/${state.videoId}/analyze`);
