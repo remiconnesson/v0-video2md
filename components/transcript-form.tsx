@@ -15,6 +15,7 @@ export function TranscriptFetcher() {
   /* TODO: is this the good way to do the navigation?
      Seems dirty to use useEffect here.
      investigation time <5 min
+     Tracked in TODOS.md - Issue #3
   */
   useEffect(() => {
     if (state?.success && state?.videoId) {

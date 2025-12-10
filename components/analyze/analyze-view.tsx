@@ -32,6 +32,7 @@ export function AnalyzeView({ youtubeId, initialVersion }: AnalyzeViewProps) {
    * TODO: There's something I don't like about this component sub tree,
    * it's like there's an implicit state machine there...
    * but it's clunky, hard to read and reason about
+   * Tracked in TODOS.md - Issue #1
    **/
   const [rerollOpen, setRerollOpen] = useState(false);
 
@@ -105,6 +106,7 @@ export function AnalyzeView({ youtubeId, initialVersion }: AnalyzeViewProps) {
 
       {/* TODO this blinks somehow, seems that we start at !hasRuns even if we have runs
         This should probably be pushed on the server / use suspense
+        Tracked in TODOS.md - Issue #2
         */}
       {!hasRuns && !isAnalysisRunning && (
         <EmptyState handleStartAnalysis={handleStartAnalysis} />
