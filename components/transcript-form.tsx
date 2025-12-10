@@ -2,14 +2,14 @@
 
 import { useRouter } from "next/navigation";
 import { useActionState, useEffect } from "react";
-import { triggerTranscript } from "@/app/actions";
+import { validateVideoId } from "@/app/actions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 export function TranscriptFetcher() {
-  const [state, action, isPending] = useActionState(triggerTranscript, null);
+  const [state, action, isPending] = useActionState(validateVideoId, null);
   const router = useRouter();
 
   // navigate to the video page after successful transcript fetch

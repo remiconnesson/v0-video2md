@@ -10,8 +10,6 @@ const schema = z.object({
     .regex(/^[a-zA-Z0-9_-]{11}$/, "Invalid YouTube Video ID"),
 });
 
-// TODO: rename
-// this is incorrectly named, this only validates the video ID on the client side
 export async function validateVideoId(_prevState: unknown, formData: FormData) {
   const input = (formData.get("videoId") as string | null) || "";
 
