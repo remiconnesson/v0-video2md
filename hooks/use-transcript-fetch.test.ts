@@ -150,7 +150,27 @@ describe("useTranscriptFetch", () => {
   });
 
   describe("handleFetchTranscript", () => {
-    it("should set page status to fetching_transcript and start processing", () => {
+    it("should process transcript and reach ready status", async () => {
+      const { consumeSSE } = await import("@/lib/sse");
+      const mockConsumeSSE = vi.mocked(consumeSSE);
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+      });
+
+      // Mock successful SSE consumption that completes
+      mockConsumeSSE.mockImplementationOnce(async (_response, handlers) => {
+        // Simulate successful completion
+        if (handlers.complete) {
+          await handlers.complete({
+            type: "complete",
+            source: "unified",
+            runId: 123,
+            video: { title: "Test Video", channelName: "Test Channel" },
+          });
+        }
+      });
+
       const { result } = renderHook(() =>
         useTranscriptFetch(
           "test-video-id",
@@ -159,11 +179,19 @@ describe("useTranscriptFetch", () => {
         ),
       );
 
-      act(() => {
+      await act(async () => {
         result.current.handleFetchTranscript();
       });
 
-      expect(result.current.pageStatus).toBe("fetching_transcript");
+      expect(result.current.pageStatus).toBe("ready");
+      expect(mockFetch).toHaveBeenCalledWith(
+        "/api/video/test-video-id/process",
+        expect.objectContaining({
+          method: "POST",
+          signal: expect.any(AbortSignal),
+        }),
+      );
+      expect(mockConsumeSSE).toHaveBeenCalled();
     });
   });
 
