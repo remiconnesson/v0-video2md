@@ -50,34 +50,14 @@ export function AnalyzeView({ youtubeId, initialVersion }: AnalyzeViewProps) {
 
   // Loading state
   if (pageStatus === "loading") {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-      </div>
-    );
+    return <LoadingIndication />;
   }
 
-  // No transcript - need to fetch first
   if (pageStatus === "no_transcript") {
     return (
-      <Card className="p-12">
-        <div className="text-center space-y-4">
-          <div className="mx-auto w-16 h-16 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
-            <Youtube className="h-8 w-8 text-red-600" />
-          </div>
-          <div>
-            <h2 className="text-xl font-semibold">Fetch Video First</h2>
-            <p className="text-muted-foreground mt-1 max-w-md mx-auto">
-              We need to fetch the transcript from YouTube before we can analyze
-              it.
-            </p>
-          </div>
-          <Button onClick={handleFetchTranscript} size="lg" className="gap-2">
-            <Play className="h-4 w-4" />
-            Fetch Transcript
-          </Button>
-        </div>
-      </Card>
+      <NoTranscriptLayout>
+        <FetchTranscriptButton onClick={handleFetchTranscript} />
+      </NoTranscriptLayout>
     );
   }
 
@@ -118,6 +98,9 @@ export function AnalyzeView({ youtubeId, initialVersion }: AnalyzeViewProps) {
         onRerollClick={() => setRerollOpen(true)}
       />
 
+      {/* TODO this blinks somehow, seems that we start at !hasRuns even if we have runs
+        This should probably be pushed on the server / use suspense
+        */}
       {!hasRuns && !isAnalysisRunning && (
         <EmptyState handleStartAnalysis={handleStartAnalysis} />
       )}
@@ -349,5 +332,43 @@ function EmptyState({
         </Button>
       </div>
     </Card>
+  );
+}
+
+/** **/
+function LoadingIndication() {
+  return (
+    <div className="flex items-center justify-center min-h-[400px]">
+      <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+    </div>
+  );
+}
+
+function NoTranscriptLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <Card className="p-12">
+      <div className="text-center space-y-4">
+        <div className="mx-auto w-16 h-16 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
+          <Youtube className="h-8 w-8 text-red-600" />
+        </div>
+        <div>
+          <h2 className="text-xl font-semibold">Fetch Video First</h2>
+          <p className="text-muted-foreground mt-1 max-w-md mx-auto">
+            We need to fetch the transcript from YouTube before we can analyze
+            it.
+          </p>
+        </div>
+        {children}
+      </div>
+    </Card>
+  );
+}
+
+function FetchTranscriptButton({ onClick }: { onClick: () => void }) {
+  return (
+    <Button onClick={onClick} size="lg" className="gap-2">
+      <Play className="h-4 w-4" />
+      Fetch Transcript
+    </Button>
   );
 }
