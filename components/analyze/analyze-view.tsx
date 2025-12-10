@@ -28,6 +28,11 @@ interface AnalyzeViewProps {
 }
 
 export function AnalyzeView({ youtubeId, initialVersion }: AnalyzeViewProps) {
+  /**
+   * TODO: There's something I don't like about this component sub tree,
+   * it's like there's an implicit state machine there...
+   * but it's clunky, hard to read and reason about
+   **/
   const [rerollOpen, setRerollOpen] = useState(false);
 
   const {
