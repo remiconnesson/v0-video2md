@@ -12,10 +12,13 @@ export function TranscriptFetcher() {
   const [state, action, isPending] = useActionState(validateVideoId, null);
   const router = useRouter();
 
-  /* TODO: is this the good way to do the navigation?
-     Seems dirty to use useEffect here.
-     investigation time <5 min
-  */
+  /**
+   * This useEffect handles navigation after successful video ID validation.
+   * This is the recommended pattern for Next.js Server Actions with useActionState:
+   * - Server actions should only handle data validation/mutation
+   * - Client-side effects like navigation should be handled in useEffect
+   * - This ensures server actions remain server-only and side-effect free
+   */
   useEffect(() => {
     if (state?.success && state?.videoId) {
       // navigate to the video page after validating video id
