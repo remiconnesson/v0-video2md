@@ -46,25 +46,25 @@ export function useVideoStatus(
     streamingRun: StreamingRunInfo | null;
   }> => {
     try {
-      const res = await fetch(`/api/video/${youtubeId}/analyze`);
-      if (!res.ok) return { runs: [], streamingRun: null };
-      const data = await res.json();
-      setRuns(data.runs);
+      const response = await fetch(`/api/video/${youtubeId}/analyze`);
+      if (!response.ok) return { runs: [], streamingRun: null };
+      const analysisData = await response.json();
+      setRuns(analysisData.runs);
 
-      if (data.runs.length > 0) {
-        const targetVersion = initialVersion ?? data.runs[0].version;
-        const run = data.runs.find(
-          (r: AnalysisRun) => r.version === targetVersion,
+      if (analysisData.runs.length > 0) {
+        const targetVersion = initialVersion ?? analysisData.runs[0].version;
+        const matchingRun = analysisData.runs.find(
+          (analysisRun: AnalysisRun) => analysisRun.version === targetVersion,
         );
-        setSelectedRun(run ?? data.runs[0]);
+        setSelectedRun(matchingRun ?? analysisData.runs[0]);
       }
 
       return {
-        runs: data.runs,
-        streamingRun: data.streamingRun as StreamingRunInfo | null,
+        runs: analysisData.runs,
+        streamingRun: analysisData.streamingRun as StreamingRunInfo | null,
       };
-    } catch (err) {
-      console.error("Failed to fetch runs:", err);
+    } catch (fetchError) {
+      console.error("Failed to fetch runs:", fetchError);
       return { runs: [], streamingRun: null };
     }
   }, [youtubeId, initialVersion]);
@@ -75,9 +75,11 @@ export function useVideoStatus(
 
   const handleVersionChange = useCallback(
     (version: number) => {
-      const run = runs.find((r) => r.version === version);
-      if (run) {
-        setSelectedRun(run);
+      const matchingRun = runs.find(
+        (analysisRun) => analysisRun.version === version,
+      );
+      if (matchingRun) {
+        setSelectedRun(matchingRun);
       }
     },
     [runs],

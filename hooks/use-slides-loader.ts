@@ -17,11 +17,11 @@ export function useSlidesLoader(
 
   const loadExistingSlides = useCallback(async () => {
     try {
-      const res = await fetch(`/api/video/${youtubeId}/slides`);
-      if (!res.ok) {
-        let errorMessage = `Failed to load slides (${res.status})`;
+      const response = await fetch(`/api/video/${youtubeId}/slides`);
+      if (!response.ok) {
+        let errorMessage = `Failed to load slides (${response.status})`;
         try {
-          const errorData = await res.text();
+          const errorData = await response.text();
           if (errorData) {
             errorMessage += `: ${errorData}`;
           }
@@ -37,8 +37,8 @@ export function useSlidesLoader(
         return;
       }
 
-      const data = await res.json();
-      const slides = Array.isArray(data.slides) ? data.slides : [];
+      const slidesData = await response.json();
+      const slides = Array.isArray(slidesData.slides) ? slidesData.slides : [];
 
       if (slides.length > 0) {
         onSlidesStateChange({
@@ -48,7 +48,7 @@ export function useSlidesLoader(
           error: null,
           slides,
         });
-      } else if (data.status === "in_progress") {
+      } else if (slidesData.status === "in_progress") {
         onSlidesStateChange((prev) => ({
           ...prev,
           status: "extracting",
@@ -57,11 +57,11 @@ export function useSlidesLoader(
           error: null,
           slides: [],
         }));
-      } else if (data.status === "failed") {
+      } else if (slidesData.status === "failed") {
         onSlidesStateChange((prev) => ({
           ...prev,
           status: "error",
-          error: data.errorMessage || "Extraction failed",
+          error: slidesData.errorMessage || "Extraction failed",
           slides: [],
         }));
       } else {
@@ -74,8 +74,8 @@ export function useSlidesLoader(
           slides: [],
         }));
       }
-    } catch (err) {
-      console.error("Failed to load existing slides:", err);
+    } catch (loadError) {
+      console.error("Failed to load existing slides:", loadError);
       onSlidesStateChange((prev) => ({
         ...prev,
         status: "error",

@@ -10,14 +10,14 @@ import { CONFIG } from "./config";
 export async function triggerExtraction(videoId: string): Promise<void> {
   "use step";
 
-  const url = `${CONFIG.SLIDES_EXTRACTOR_URL}/process/youtube/${videoId}`;
+  const extractionUrl = `${CONFIG.SLIDES_EXTRACTOR_URL}/process/youtube/${videoId}`;
 
   try {
     console.log(
-      `📤 triggerExtraction: Triggering extraction for video ${videoId} at ${url}`,
+      `📤 triggerExtraction: Triggering extraction for video ${videoId} at ${extractionUrl}`,
     );
 
-    const response = await fetch(url, {
+    const response = await fetch(extractionUrl, {
       method: "POST",
       headers: { Authorization: `Bearer ${CONFIG.SLIDES_API_PASSWORD}` },
     });
@@ -25,7 +25,7 @@ export async function triggerExtraction(videoId: string): Promise<void> {
     if (!response.ok) {
       const responseText = await response.text();
       const errorDetails = {
-        url,
+        url: extractionUrl,
         videoId,
         status: response.status,
         statusText: response.statusText,
@@ -57,7 +57,7 @@ export async function triggerExtraction(videoId: string): Promise<void> {
       error,
     );
     throw new Error(
-      `Network error triggering extraction for video ${videoId} at ${url}: ` +
+      `Network error triggering extraction for video ${videoId} at ${extractionUrl}: ` +
         `${error instanceof Error ? error.message : "Unknown network error"}`,
     );
   }
@@ -74,21 +74,21 @@ export async function checkJobStatus(videoId: string): Promise<{
 }> {
   "use step";
 
-  const url = `${CONFIG.SLIDES_EXTRACTOR_URL}/jobs/${videoId}/stream`;
+  const jobStatusUrl = `${CONFIG.SLIDES_EXTRACTOR_URL}/jobs/${videoId}/stream`;
   let manifestUri: string | null = null;
   let jobFailed = false;
   let failureReason = "";
 
   console.log(`🔍 checkJobStatus: Checking job status for video ${videoId}`);
 
-  const response = await fetch(url, {
+  const response = await fetch(jobStatusUrl, {
     headers: { Authorization: `Bearer ${CONFIG.SLIDES_API_PASSWORD}` },
   });
 
   if (response.status === 404) {
     console.error(`🔍 checkJobStatus: Job not found for video ${videoId}`, {
       videoId,
-      url,
+      url: jobStatusUrl,
       status: response.status,
       statusText: response.statusText,
       errorType: "JOB_NOT_FOUND",
@@ -96,7 +96,7 @@ export async function checkJobStatus(videoId: string): Promise<{
     });
     throw new FatalError(
       `Job not found for video ${videoId} - job may not have been created successfully. ` +
-        `URL: ${url} | Status: ${response.status}`,
+        `URL: ${jobStatusUrl} | Status: ${response.status}`,
     );
   }
 
@@ -109,7 +109,7 @@ export async function checkJobStatus(videoId: string): Promise<{
       `🔍 checkJobStatus: Job status check failed for video ${videoId}`,
       {
         videoId,
-        url,
+        url: jobStatusUrl,
         status: response.status,
         statusText: response.statusText,
         responseBody: responseText.substring(0, 200), // Truncate long responses
@@ -129,7 +129,7 @@ export async function checkJobStatus(videoId: string): Promise<{
       `Failed to check job status for video ${videoId}: ` +
         `HTTP ${response.status} ${response.statusText} | ` +
         `Response: ${responseText.substring(0, 100)}... | ` +
-        `URL: ${url}`,
+        `URL: ${jobStatusUrl}`,
     );
   }
 
@@ -141,36 +141,39 @@ export async function checkJobStatus(videoId: string): Promise<{
         if (event.data) {
           eventCount++;
           try {
-            const update: JobUpdate = JSON.parse(event.data);
+            const jobUpdate: JobUpdate = JSON.parse(event.data);
 
-            console.dir(update, { depth: null });
+            console.dir(jobUpdate, { depth: null });
 
             console.log(
               `🔍️ checkJobStatus: Job event ${eventCount} for video ${videoId}:`,
               {
-                status: update.status,
-                progress: update.progress,
-                message: update.message,
-                hasMetadataUri: !!update.metadata_uri,
-                metadataUri: update.metadata_uri,
+                status: jobUpdate.status,
+                progress: jobUpdate.progress,
+                message: jobUpdate.message,
+                hasMetadataUri: !!jobUpdate.metadata_uri,
+                metadataUri: jobUpdate.metadata_uri,
               },
             );
 
             // Capture state
-            if (update.status === JobStatus.COMPLETED && update.metadata_uri) {
-              manifestUri = update.metadata_uri;
+            if (
+              jobUpdate.status === JobStatus.COMPLETED &&
+              jobUpdate.metadata_uri
+            ) {
+              manifestUri = jobUpdate.metadata_uri;
               console.log(
                 `🔍 checkJobStatus: Job completed for video ${videoId}, manifest URI: ${manifestUri}`,
               );
             }
-            if (update.status === JobStatus.FAILED) {
+            if (jobUpdate.status === JobStatus.FAILED) {
               jobFailed = true;
-              failureReason = update.error ?? "Extraction failed";
+              failureReason = jobUpdate.error ?? "Extraction failed";
               console.error(
                 `🔍 checkJobStatus: Job failed for video ${videoId}:`,
                 {
-                  error: update.error,
-                  fullUpdate: update,
+                  error: jobUpdate.error,
+                  fullUpdate: jobUpdate,
                 },
               );
             }
@@ -180,9 +183,9 @@ export async function checkJobStatus(videoId: string): Promise<{
               // Import emitProgress dynamically to avoid circular dependency
               import("./stream-emitters").then(({ emitProgress }) =>
                 emitProgress(
-                  update.status,
-                  update.progress,
-                  update.message,
+                  jobUpdate.status,
+                  jobUpdate.progress,
+                  jobUpdate.message,
                 ).catch(() => {}),
               );
             }
@@ -222,12 +225,12 @@ checkJobStatus.maxRetries = 1;
 
 export async function monitorJobProgress(videoId: string): Promise<string> {
   "use step";
-  const result = await checkJobStatus(videoId);
-  if (result.manifestUri) {
-    return result.manifestUri;
+  const jobStatusResult = await checkJobStatus(videoId);
+  if (jobStatusResult.manifestUri) {
+    return jobStatusResult.manifestUri;
   } else {
     throw new FatalError(
-      `no manifest uri found: ${JSON.stringify(result, null, 2)}`,
+      `no manifest uri found: ${JSON.stringify(jobStatusResult, null, 2)}`,
     );
   }
 }

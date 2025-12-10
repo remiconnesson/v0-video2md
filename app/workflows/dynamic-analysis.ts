@@ -42,12 +42,15 @@ export async function dynamicAnalysisWorkflow(
       "Analyzing transcript and generating extraction schema...",
     );
 
-    const result = await runGodPrompt(transcriptData, additionalInstructions);
+    const analysisResult = await runGodPrompt(
+      transcriptData,
+      additionalInstructions,
+    );
 
     // Step 3: Update the run to completed
     await emitProgress("saving", "Saving analysis to database...");
 
-    await completeRun(dbRunId, result);
+    await completeRun(dbRunId, analysisResult);
     await emitComplete(dbRunId);
 
     return {
@@ -59,9 +62,9 @@ export async function dynamicAnalysisWorkflow(
       await failRun(dbRunId);
     }
 
-    const message =
+    const errorMessage =
       error instanceof Error ? error.message : "Analysis failed unexpectedly";
-    await emitError(message);
+    await emitError(errorMessage);
     throw error;
   }
 }

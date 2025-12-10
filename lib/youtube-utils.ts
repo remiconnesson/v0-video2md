@@ -21,28 +21,31 @@ function isPrivateOrReservedIP(hostname: string): boolean {
     const octets = ipv4Match.slice(1).map(Number);
 
     // Invalid octet -> treat as unsafe
-    if (octets.some((o) => Number.isNaN(o) || o < 0 || o > 255)) {
+    if (
+      octets.some((octet) => Number.isNaN(octet) || octet < 0 || octet > 255)
+    ) {
       return true;
     }
 
-    const [a, b] = octets;
+    const [firstOctet, secondOctet] = octets;
 
     // Private ranges
-    if (a === 10) return true; // 10.0.0.0/8
-    if (a === 172 && b >= 16 && b <= 31) return true; // 172.16.0.0/12
-    if (a === 192 && b === 168) return true; // 192.168.0.0/16
+    if (firstOctet === 10) return true; // 10.0.0.0/8
+    if (firstOctet === 172 && secondOctet >= 16 && secondOctet <= 31)
+      return true; // 172.16.0.0/12
+    if (firstOctet === 192 && secondOctet === 168) return true; // 192.168.0.0/16
 
     // Loopback
-    if (a === 127) return true; // 127.0.0.0/8
+    if (firstOctet === 127) return true; // 127.0.0.0/8
 
     // Link-local
-    if (a === 169 && b === 254) return true; // 169.254.0.0/16
+    if (firstOctet === 169 && secondOctet === 254) return true; // 169.254.0.0/16
 
     // Multicast and reserved
-    if (a >= 224) return true; // 224.0.0.0/4 and above
+    if (firstOctet >= 224) return true; // 224.0.0.0/4 and above
 
     // 0.0.0.0/8
-    if (a === 0) return true;
+    if (firstOctet === 0) return true;
   }
 
   // IPv6-ish
@@ -312,8 +315,8 @@ export async function fetchYoutubeVideoTitle(
       return null;
     }
 
-    const data = await response.json();
-    return data.title || null;
+    const oembedData = await response.json();
+    return oembedData.title || null;
   } catch (error) {
     console.error("Error fetching YouTube video title:", error);
     return null;

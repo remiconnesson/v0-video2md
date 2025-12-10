@@ -55,12 +55,12 @@ async function emitComplete(
   await writable.close();
 }
 
-async function emitError(error: string) {
+async function emitError(errorMessage: string) {
   "use step";
 
   const writable = getWritable<UnifiedStreamEvent>();
   const writer = writable.getWriter();
-  await writer.write({ type: "error", error });
+  await writer.write({ type: "error", error: errorMessage });
   writer.releaseLock();
   await writable.close();
 }
@@ -145,7 +145,10 @@ export async function fetchAndAnalyzeWorkflow(
       transcript: formatTranscriptForLLMPadded(transcriptData.transcript),
     };
 
-    const result = await runGodPrompt(dataForAnalysis, additionalInstructions);
+    const analysisResult = await runGodPrompt(
+      dataForAnalysis,
+      additionalInstructions,
+    );
 
     // ========================================================================
     // Phase C: Persistence (90% - 100%)
@@ -154,7 +157,7 @@ export async function fetchAndAnalyzeWorkflow(
     // Step 6: Save analysis to database
     await emitProgress(90, "saving", "Saving analysis to database...");
 
-    await completeRun(dbRunId, result);
+    await completeRun(dbRunId, analysisResult);
 
     // Step 7: Complete
     await emitProgress(100, "saving", "Analysis complete");

@@ -112,21 +112,21 @@ export function useVideoProcessing(
   // ============================================================================
 
   const checkVideoStatus = useCallback(async () => {
-    const result = await checkTranscriptStatus();
+    const transcriptStatusResult = await checkTranscriptStatus();
 
     // If ready, also load runs and slides
-    if (result.status === "ready") {
+    if (transcriptStatusResult.status === "ready") {
       const [runsResult] = await Promise.all([
         fetchRuns(),
         loadExistingSlides(),
       ]);
 
       if (runsResult.streamingRun?.workflowRunId) {
-        result.hasStreamingAnalysis = true;
+        transcriptStatusResult.hasStreamingAnalysis = true;
       }
     }
 
-    return result;
+    return transcriptStatusResult;
   }, [checkTranscriptStatus, fetchRuns, loadExistingSlides]);
 
   // ============================================================================

@@ -70,15 +70,15 @@ export function parseS3Uri(
     return null;
   }
 
-  const urlParts = s3Uri.replace("s3://", "").split("/");
-  const bucket = urlParts.shift();
-  const key = urlParts.join("/");
+  const urlPathParts = s3Uri.replace("s3://", "").split("/");
+  const bucket = urlPathParts.shift();
+  const objectKey = urlPathParts.join("/");
 
-  if (!bucket || !key) {
+  if (!bucket || !objectKey) {
     return null;
   }
 
-  return { bucket, key };
+  return { bucket, key: objectKey };
 }
 
 /**
