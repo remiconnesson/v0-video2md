@@ -167,6 +167,7 @@ export function videoProcessingReducer(state: State, action: Action): State {
           progress: 0,
           message: "Starting slides extraction...",
         },
+        slides: [],
         error: null,
       };
 
@@ -355,7 +356,7 @@ export function useVideoProcessing(
   // Use a ref for refreshRuns to avoid circular dependency issues
   const refreshRunsRef = useRef<(selectRunId?: number) => Promise<void>>(
     null,
-  ) as React.RefObject<(selectRunId?: number) => Promise<void>>;
+  ) as React.RefObject<((selectRunId?: number) => Promise<void>) | null>;
 
   const refreshRuns = useCallback(
     async (selectRunId?: number) => {

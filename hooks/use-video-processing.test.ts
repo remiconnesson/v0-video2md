@@ -167,6 +167,15 @@ describe("videoProcessingReducer - Processing", () => {
     expect(state.error).toBeNull();
   });
 
+  it("should reset slides array on PROCESS_START", () => {
+    const state = videoProcessingReducer(
+      { ...initialState, status: "ready", slides: [mockSlide] },
+      { type: "PROCESS_START" },
+    );
+
+    expect(state.slides).toEqual([]);
+  });
+
   it("should handle PROCESS_TRANSCRIPT_PROGRESS", () => {
     const state = videoProcessingReducer(
       {
