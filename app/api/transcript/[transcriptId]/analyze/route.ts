@@ -122,6 +122,8 @@ export async function POST(
     // Empty body is fine
   }
 
+  let insertedRunId: number | null = null;
+
   try {
     // Get the next version number
     const versionResult = await db
@@ -145,6 +147,8 @@ export async function POST(
       })
       .returning({ id: externalTranscriptAnalysisRuns.id });
 
+    insertedRunId = insertedRun.id;
+
     // Start the workflow
     const run = await start(externalTranscriptAnalysisWorkflow, [
       transcriptId,
@@ -164,6 +168,21 @@ export async function POST(
       "Failed to start external transcript analysis workflow:",
       error,
     );
+
+    if (insertedRunId) {
+      try {
+        await db
+          .update(externalTranscriptAnalysisRuns)
+          .set({ status: "failed", updatedAt: new Date() })
+          .where(eq(externalTranscriptAnalysisRuns.id, insertedRunId));
+      } catch (cleanupError) {
+        console.error(
+          "Failed to clean up external transcript analysis run:",
+          cleanupError,
+        );
+      }
+    }
+
     return NextResponse.json(
       { error: "Failed to start analysis" },
       { status: 500 },
