@@ -198,10 +198,9 @@ export function videoProcessingReducer(state: State, action: Action): State {
     case "PROCESS_ANALYSIS_PARTIAL":
       return {
         ...state,
-        analysisProgress: {
-          ...state.analysisProgress!,
-          partial: action.data,
-        },
+        analysisProgress: state.analysisProgress
+          ? { ...state.analysisProgress, partial: action.data }
+          : { phase: "analyzing", message: "", partial: action.data },
       };
 
     case "PROCESS_COMPLETE":
@@ -353,6 +352,48 @@ export function useVideoProcessing(
   // API Functions
   // ============================================================================
 
+  // Use a ref for refreshRuns to avoid circular dependency issues
+  const refreshRunsRef = useRef<(selectRunId?: number) => Promise<void>>(
+    null,
+  ) as React.RefObject<(selectRunId?: number) => Promise<void>>;
+
+  const refreshRuns = useCallback(
+    async (selectRunId?: number) => {
+      try {
+        const response = await fetch(`/api/video/${youtubeId}/analyze`);
+        if (!response.ok) return;
+
+        const data = await response.json();
+        const runs = data.runs as AnalysisRun[];
+
+        // If selectRunId provided, use it; otherwise select latest
+        const runIdToSelect = selectRunId ?? runs[runs.length - 1]?.id ?? null;
+
+        dispatch({
+          type: "RUNS_REFRESHED",
+          runs,
+          selectRunId: runIdToSelect,
+        });
+
+        // Update URL
+        if (runIdToSelect) {
+          const run = runs.find((r) => r.id === runIdToSelect);
+          if (run) {
+            const params = new URLSearchParams(searchParams.toString());
+            params.set("v", run.version.toString());
+            router.push(`?${params.toString()}`, { scroll: false });
+          }
+        }
+      } catch (err) {
+        console.error("Failed to refresh runs:", err);
+      }
+    },
+    [youtubeId, router, searchParams],
+  );
+
+  // Keep ref in sync
+  refreshRunsRef.current = refreshRuns;
+
   const startProcessing = useCallback(
     async (signal: AbortSignal) => {
       dispatch({ type: "PROCESS_START" });
@@ -417,7 +458,7 @@ export function useVideoProcessing(
                 runId: e.runId,
               });
               // Refresh runs to get the new run
-              refreshRuns(e.runId);
+              refreshRunsRef.current?.(e.runId);
             } else if (e.source === "slides") {
               dispatch({ type: "SLIDES_COMPLETE", totalSlides: e.totalSlides });
             }
@@ -482,7 +523,7 @@ export function useVideoProcessing(
           },
           complete: (e) => {
             dispatch({ type: "ANALYSIS_COMPLETE", runId: e.runId });
-            refreshRuns(e.runId);
+            refreshRunsRef.current?.(e.runId);
           },
           error: (e) => {
             dispatch({
@@ -519,7 +560,7 @@ export function useVideoProcessing(
             const data = await response.json();
             if (data.completed) {
               dispatch({ type: "ANALYSIS_COMPLETE", runId: 0 });
-              refreshRuns();
+              refreshRunsRef.current?.();
               return;
             }
           } catch {
@@ -544,7 +585,7 @@ export function useVideoProcessing(
           },
           complete: (e) => {
             dispatch({ type: "ANALYSIS_COMPLETE", runId: e.runId });
-            refreshRuns(e.runId);
+            refreshRunsRef.current?.(e.runId);
           },
           error: (e) => {
             dispatch({
@@ -561,40 +602,6 @@ export function useVideoProcessing(
       }
     },
     [youtubeId],
-  );
-
-  const refreshRuns = useCallback(
-    async (selectRunId?: number) => {
-      try {
-        const response = await fetch(`/api/video/${youtubeId}/analyze`);
-        if (!response.ok) return;
-
-        const data = await response.json();
-        const runs = data.runs as AnalysisRun[];
-
-        // If selectRunId provided, use it; otherwise select latest
-        const runIdToSelect = selectRunId ?? runs[runs.length - 1]?.id ?? null;
-
-        dispatch({
-          type: "RUNS_REFRESHED",
-          runs,
-          selectRunId: runIdToSelect,
-        });
-
-        // Update URL
-        if (runIdToSelect) {
-          const run = runs.find((r) => r.id === runIdToSelect);
-          if (run) {
-            const params = new URLSearchParams(searchParams.toString());
-            params.set("v", run.version.toString());
-            router.push(`?${params.toString()}`, { scroll: false });
-          }
-        }
-      } catch (err) {
-        console.error("Failed to refresh runs:", err);
-      }
-    },
-    [youtubeId, router, searchParams],
   );
 
   // ============================================================================

@@ -1,13 +1,44 @@
 import { describe, expect, it } from "vitest";
 import type { SlideData } from "@/lib/slides-types";
-import { videoProcessingReducer } from "./use-video-processing";
+import {
+  type AnalysisRun,
+  videoProcessingReducer,
+} from "./use-video-processing";
 
 // ============================================================================
 // Test Fixtures
 // ============================================================================
 
-const initialState = {
-  status: "loading" as const,
+// Use explicit State type to avoid TypeScript narrowing issues
+interface State {
+  status: "loading" | "no_video" | "processing" | "ready" | "error";
+  video: {
+    title: string;
+    channelName?: string;
+    thumbnail?: string;
+  } | null;
+  runs: AnalysisRun[];
+  selectedRunId: number | null;
+  processingProgress: {
+    phase: "fetching" | "analyzing" | "saving";
+    message: string;
+    progress: number;
+  } | null;
+  analysisProgress: {
+    phase: string;
+    message: string;
+    partial: unknown | null;
+  } | null;
+  slides: SlideData[];
+  slidesProgress: {
+    progress: number;
+    message: string;
+  } | null;
+  error: string | null;
+}
+
+const initialState: State = {
+  status: "loading",
   video: null,
   runs: [],
   selectedRunId: null,
@@ -459,7 +490,7 @@ describe("videoProcessingReducer - SET_SLIDES_STATE", () => {
 
 describe("videoProcessingReducer - Full Flows", () => {
   it("should handle complete processing flow", () => {
-    let state = initialState;
+    let state: State = initialState;
 
     // Start
     state = videoProcessingReducer(state, { type: "INIT_START" });
@@ -507,7 +538,7 @@ describe("videoProcessingReducer - Full Flows", () => {
   });
 
   it("should handle re-run analysis flow", () => {
-    let state: typeof initialState = {
+    let state: State = {
       ...initialState,
       status: "ready",
       video: mockVideo,
