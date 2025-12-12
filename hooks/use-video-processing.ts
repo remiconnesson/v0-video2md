@@ -665,7 +665,7 @@ export function useVideoProcessing(
             // Select latest (run with highest ID, regardless of array order)
             selectedRunId =
               runsData.runs.reduce(
-                (maxId, run) => (run.id > maxId ? run.id : maxId),
+                (maxId: number, run: AnalysisRun) => (run.id > maxId ? run.id : maxId),
                 runsData.runs[0]?.id ?? 0,
               ) ?? null;
           }
@@ -739,8 +739,7 @@ export function useVideoProcessing(
       phase: state.analysisProgress?.phase ?? "",
       message: state.analysisProgress?.message ?? "",
       result: state.analysisProgress?.partial ?? null,
-      runId: state.analysisProgress?.runId
-        ?? (state.runs.length > 0 ? state.runs[0].id : null),
+      runId: state.selectedRunId,
       error: state.error,
     }),
     [
