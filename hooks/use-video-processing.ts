@@ -708,6 +708,13 @@ export function useVideoProcessing(
       case "no_video":
         return "no_transcript";
       case "processing":
+        // Once we're analyzing, transcript is done - show ready UI with streaming
+        if (
+          state.processingProgress?.phase === "analyzing" ||
+          state.processingProgress?.phase === "saving"
+        ) {
+          return "ready";
+        }
         return "fetching_transcript";
       case "ready":
       case "error":
@@ -715,7 +722,7 @@ export function useVideoProcessing(
       default:
         return "loading";
     }
-  }, [state.status]);
+  }, [state.status, state.processingProgress?.phase]);
 
   const transcriptState: TranscriptState = useMemo(
     () => ({
