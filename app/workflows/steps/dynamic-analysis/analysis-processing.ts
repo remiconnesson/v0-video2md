@@ -42,38 +42,37 @@ export interface TranscriptData {
 // ============================================================================
 
 async function getTranscriptRow(videoId: string) {
-  const transcriptRow = (
-    await db
-      .select({
-        videoId: videos.videoId,
-        title: videos.title,
-        channelName: channels.channelName,
-        description: scrapTranscriptV1.description,
-        transcript: scrapTranscriptV1.transcript,
-      })
-      .from(videos)
-      .innerJoin(channels, eq(videos.channelId, channels.channelId))
-      .innerJoin(
-        scrapTranscriptV1,
-        eq(videos.videoId, scrapTranscriptV1.videoId),
-      )
-      .where(eq(videos.videoId, videoId))
-      .limit(1)
-  )[0];
+  const results = await db
+    .select({
+      videoId: videos.videoId,
+      title: videos.title,
+      channelName: channels.channelName,
+      description: scrapTranscriptV1.description,
+      transcript: scrapTranscriptV1.transcript,
+    })
+    .from(videos)
+    .innerJoin(channels, eq(videos.channelId, channels.channelId))
+    .innerJoin(scrapTranscriptV1, eq(videos.videoId, scrapTranscriptV1.videoId))
+    .where(eq(videos.videoId, videoId))
+    .limit(1);
 
-  if (!transcriptRow) {
-    throw new Error(`Transcript not found for video ID: ${videoId}`);
+  if (results.length === 0) {
+    return null;
   }
 
-  return transcriptRow;
+  return results[0];
 }
 
-export async function fetchTranscriptData(
+export async function getTranscriptDataFromDb(
   videoId: string,
-): Promise<TranscriptData> {
+): Promise<TranscriptData | null> {
   "use step";
 
   const transcriptRow = await getTranscriptRow(videoId);
+
+  if (!transcriptRow) {
+    return null;
+  }
 
   const transcriptSegments = validateTranscriptStructure(
     transcriptRow.transcript,

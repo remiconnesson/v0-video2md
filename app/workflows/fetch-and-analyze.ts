@@ -1,56 +1,46 @@
-import type { TranscriptResult } from "@/db/save-transcript";
 import {
-  createAnalysisRun,
-  failRun,
-  runGodPrompt,
+  doTranscriptAIAnalysis,
+  getTranscriptDataFromDb,
+  saveTranscriptAIAnalysisToDb,
   type TranscriptData,
 } from "./steps/dynamic-analysis";
 import {
-  stepCheckDbForTranscript,
-  stepFetchFromApify,
+  fetchYoutubeTranscriptFromApify,
+  saveYoutubeTranscriptToDb,
 } from "./steps/fetch-transcript";
 
 export async function fetchAndAnalyzeWorkflow(
   videoId: string,
+  version: number,
   additionalInstructions?: string,
 ) {
   "use workflow";
 
   let dbRunId: number | undefined;
-  let transcriptData: TranscriptResult | TranscriptData | undefined;
+  let transcriptData: TranscriptData | null;
 
-  try {
-    const cachedResult = await stepCheckDbForTranscript(videoId);
+  const cachedTranscriptData = await getTranscriptDataFromDb(videoId);
 
-    if (cachedResult) {
-      transcriptData = cachedResult;
-    } else {
-      const fetchedResult = await stepFetchFromApify(videoId);
-      transcriptData = fetchedResult;
-    }
-
-    const analysisResult = await runGodPrompt(
-      transcriptData,
-      additionalInstructions,
-    );
-
-    await completeRun(dbRunId, analysisResult);
-
-    return {
-      success: true,
-      videoId,
-      runId: dbRunId,
-      title: transcriptData.title,
-    };
-  } catch (error) {
-    const errorMessage =
-      error instanceof Error ? error.message : "Unknown error occurred";
-
-    // Mark run as failed if it was created
-    if (dbRunId) {
-      await failRun(dbRunId);
-    }
-
-    throw error;
+  if (cachedTranscriptData) {
+    transcriptData = cachedTranscriptData;
+  } else {
+    const fetchedResult = await fetchYoutubeTranscriptFromApify(videoId);
+    await saveYoutubeTranscriptToDb(fetchedResult);
+    // biome-ignore lint/style/noNonNullAssertion: we just inserted it into the db
+    transcriptData = (await getTranscriptDataFromDb(videoId))!;
   }
+
+  const analysisResult = await doTranscriptAIAnalysis(
+    transcriptData,
+    additionalInstructions,
+  );
+
+  await saveTranscriptAIAnalysisToDb(videoId, analysisResult, version);
+
+  return {
+    success: true,
+    videoId,
+    runId: dbRunId,
+    title: transcriptData.title,
+  };
 }

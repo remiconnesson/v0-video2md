@@ -5,6 +5,7 @@ import {
   jsonb,
   pgEnum,
   pgTable,
+  primaryKey,
   real,
   serial,
   text,
@@ -84,6 +85,9 @@ export const scrapTranscriptV1 = pgTable(
   (table) => [unique("unique_video_transcript").on(table.videoId)],
 );
 
+export type ScrapedTranscript = typeof scrapTranscriptV1.$inferSelect;
+export type NewScrapedTranscript = typeof scrapTranscriptV1.$inferInsert;
+
 /**
  * A god prompt run - stores the complete AI output as JSONB
  * Each run is a version for a specific video
@@ -91,7 +95,6 @@ export const scrapTranscriptV1 = pgTable(
 export const videoAnalysisRuns = pgTable(
   "video_analysis_runs",
   {
-    id: serial("id").primaryKey(),
     videoId: varchar("video_id", { length: 32 })
       .notNull()
       .references(() => videos.videoId, { onDelete: "cascade" }),
@@ -106,57 +109,13 @@ export const videoAnalysisRuns = pgTable(
     // Context for rerolls - what instructions led to this version
     additionalInstructions: text("additional_instructions"),
 
-    status: analysisStatusEnum("status").notNull().default("pending"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
-    updatedAt: timestamp("updated_at").defaultNow().notNull(),
   },
-  (table) => [
-    index("video_analysis_runs_video_idx").on(table.videoId),
-    unique("video_analysis_runs_version").on(table.videoId, table.version),
-  ],
+  (table) => [primaryKey({ columns: [table.videoId, table.version] })],
 );
 
 export type VideoAnalysisRun = typeof videoAnalysisRuns.$inferSelect;
 export type NewVideoAnalysisRun = typeof videoAnalysisRuns.$inferInsert;
-
-/**
- * Feedback on individual sections
- */
-export const sectionFeedback = pgTable(
-  "section_feedback",
-  {
-    id: serial("id").primaryKey(),
-    runId: integer("run_id")
-      .notNull()
-      .references(() => videoAnalysisRuns.id, { onDelete: "cascade" }),
-    sectionKey: varchar("section_key", { length: 128 }).notNull(),
-
-    // Feedback
-    rating: varchar("rating", { length: 16 }), // "useful" | "not_useful"
-    comment: text("comment"),
-
-    createdAt: timestamp("created_at").defaultNow().notNull(),
-  },
-  (table) => [index("section_feedback_run_idx").on(table.runId)],
-);
-
-export type SectionFeedback = typeof sectionFeedback.$inferSelect;
-export type NewSectionFeedback = typeof sectionFeedback.$inferInsert;
-
-/**
- * Overall run feedback / preference
- */
-export const runFeedback = pgTable("run_feedback", {
-  id: serial("id").primaryKey(),
-  runId: integer("run_id")
-    .notNull()
-    .references(() => videoAnalysisRuns.id, { onDelete: "cascade" }),
-  overallRating: integer("overall_rating"), // 1-5 scale
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-});
-
-export type RunFeedback = typeof runFeedback.$inferSelect;
-export type NewRunFeedback = typeof runFeedback.$inferInsert;
 
 // ============================================================================
 // Slides Tables
