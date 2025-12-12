@@ -665,7 +665,8 @@ export function useVideoProcessing(
             // Select latest (run with highest ID, regardless of array order)
             selectedRunId =
               runsData.runs.reduce(
-                (maxId: number, run: AnalysisRun) => (run.id > maxId ? run.id : maxId),
+                (maxId: number, run: AnalysisRun) =>
+                  run.id > maxId ? run.id : maxId,
                 runsData.runs[0]?.id ?? 0,
               ) ?? null;
           }
@@ -742,11 +743,7 @@ export function useVideoProcessing(
       runId: state.selectedRunId,
       error: state.error,
     }),
-    [
-      state.analysisProgress,
-      state.runs,
-      state.error,
-    ],
+    [state.analysisProgress, state.runs, state.error],
   );
 
   const slidesState: SlidesState = useMemo(
