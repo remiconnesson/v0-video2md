@@ -300,7 +300,7 @@ export function videoProcessingReducer(state: State, action: Action): State {
       }
       return {
         ...state,
-        status: state.status === "processing" ? "no_video" : state.status,
+        status: state.status === "processing" ? "error" : state.status,
         processingProgress: null,
         analysisProgress: null,
         error: action.error,
