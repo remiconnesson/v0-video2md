@@ -9,6 +9,7 @@ import {
   videos,
 } from "@/db/schema";
 import { formatTranscriptForLLM } from "@/lib/transcript-format";
+import { emitPartialResult } from "./stream-emitters";
 
 // ============================================================================
 // Transcript Schema (for validation)
@@ -159,8 +160,6 @@ export async function runGodPrompt(
   });
 
   for await (const partialResult of analysisStream.partialObjectStream) {
-    // Import emitPartialResult dynamically to avoid circular dependency
-    const { emitPartialResult } = await import("./stream-emitters");
     await emitPartialResult(partialResult);
   }
 
