@@ -2,10 +2,8 @@ import { and, desc, eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { getRun, start } from "workflow/api";
 import { z } from "zod";
-import {
-  type AnalysisStreamEvent,
-  dynamicAnalysisWorkflow,
-} from "@/app/workflows/dynamic-analysis";
+import { fetchAndAnalyzeWorkflow } from "@/app/workflows/fetch-and-analyze";
+import type { AnalysisStreamEvent } from "@/app/workflows/steps/dynamic-analysis";
 import { db } from "@/db";
 import { videoAnalysisRuns } from "@/db/schema";
 import {
