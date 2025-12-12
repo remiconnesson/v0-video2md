@@ -1,5 +1,6 @@
 # video2md
 
+
 A Next.js 16 application that ingests YouTube videos into a searchable knowledge base by streaming transcripts, slide decks, and AI-driven analysis into a Postgres database. The project prioritizes fast feedback with Server-Sent Events (SSE), resilient workflows, and a modern React 19 UI built with Tailwind CSS and Radix primitives.
 
 [![Deployed on Vercel](https://img.shields.io/badge/Deployed%20on-Vercel-black?style=for-the-badge&logo=vercel)](https://vercel.com/remiconnessons-projects/v0-video2md)
