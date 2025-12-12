@@ -440,7 +440,7 @@ describe("videoProcessingReducer - Errors", () => {
       { type: "ERROR", error: "Network error", source: "process" },
     );
 
-    expect(state.status).toBe("no_video");
+    expect(state.status).toBe("error");
     expect(state.processingProgress).toBeNull();
     expect(state.error).toBe("Network error");
   });
