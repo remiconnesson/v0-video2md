@@ -9,7 +9,7 @@ import {
   type TranscriptData,
 } from "./steps/transcript-analysis";
 
-export async function fetchAndAnalyzeWorkflow(
+export async function analyzeTranscriptWorkflow(
   videoId: string,
   version: number,
   additionalInstructions?: string,

@@ -2,8 +2,8 @@ import { and, desc, eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { getRun, start } from "workflow/api";
 import { z } from "zod";
-import { fetchAndAnalyzeWorkflow } from "@/app/workflows/fetch-and-analyze";
-import type { AnalysisStreamEvent } from "@/app/workflows/steps/dynamic-analysis";
+import { analyzeTranscriptWorkflow } from "@/app/workflows/analyze-transcript";
+import type { AnalysisStreamEvent } from "@/app/workflows/steps/transcript-analysis";
 import { db } from "@/db";
 import { videoAnalysisRuns } from "@/db/schema";
 import {
@@ -24,11 +24,8 @@ export async function GET(
 
   const runs = await db
     .select({
-      id: videoAnalysisRuns.id,
       version: videoAnalysisRuns.version,
-      status: videoAnalysisRuns.status,
       result: videoAnalysisRuns.result,
-      workflowRunId: videoAnalysisRuns.workflowRunId,
       additionalInstructions: videoAnalysisRuns.additionalInstructions,
       createdAt: videoAnalysisRuns.createdAt,
     })
@@ -36,39 +33,10 @@ export async function GET(
     .where(eq(videoAnalysisRuns.videoId, videoId))
     .orderBy(desc(videoAnalysisRuns.version));
 
-  // Check if there's a streaming run in progress
-  let streamingRun = runs.find((r) => r.status === "streaming");
-
-  // If a "streaming" run has a result, it actually completed - fix the status
-  if (streamingRun?.result) {
-    console.log(
-      "⚙️⚙️⚙️ Found streaming run with result, marking as completed:",
-      streamingRun.id,
-    );
-    await db
-      .update(videoAnalysisRuns)
-      .set({ status: "completed", updatedAt: new Date() })
-      .where(eq(videoAnalysisRuns.id, streamingRun.id));
-
-    // Update local copy and clear streaming run since it's now completed
-    const idx = runs.findIndex((r) => r.id === streamingRun?.id);
-    if (idx >= 0) {
-      runs[idx] = { ...runs[idx], status: "completed" };
-    }
-    streamingRun = undefined;
-  }
-
   return NextResponse.json({
     videoId,
     runs,
     latestVersion: runs[0]?.version ?? 0,
-    streamingRun: streamingRun?.workflowRunId
-      ? {
-          id: streamingRun.id,
-          version: streamingRun.version,
-          workflowRunId: streamingRun.workflowRunId,
-        }
-      : null,
   });
 }
 

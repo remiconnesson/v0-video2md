@@ -88,10 +88,6 @@ export const scrapTranscriptV1 = pgTable(
 export type ScrapedTranscript = typeof scrapTranscriptV1.$inferSelect;
 export type NewScrapedTranscript = typeof scrapTranscriptV1.$inferInsert;
 
-/**
- * A god prompt run - stores the complete AI output as JSONB
- * Each run is a version for a specific video
- */
 export const videoAnalysisRuns = pgTable(
   "video_analysis_runs",
   {
@@ -99,16 +95,8 @@ export const videoAnalysisRuns = pgTable(
       .notNull()
       .references(() => videos.videoId, { onDelete: "cascade" }),
     version: integer("version").notNull().default(1),
-
-    // Workflow run ID for stream resumption
-    workflowRunId: varchar("workflow_run_id", { length: 100 }),
-
-    // God prompt output - unified JSONB column
     result: jsonb("result").$type<Record<string, unknown>>(),
-
-    // Context for rerolls - what instructions led to this version
     additionalInstructions: text("additional_instructions"),
-
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
   (table) => [primaryKey({ columns: [table.videoId, table.version] })],
@@ -116,6 +104,24 @@ export const videoAnalysisRuns = pgTable(
 
 export type VideoAnalysisRun = typeof videoAnalysisRuns.$inferSelect;
 export type NewVideoAnalysisRun = typeof videoAnalysisRuns.$inferInsert;
+
+export const videoAnalysisWorkflowIds = pgTable(
+  "video_analysis_workflow_ids",
+  {
+    videoId: varchar("video_id", { length: 32 })
+      .notNull()
+      .references(() => videos.videoId, { onDelete: "cascade" }),
+    version: integer("version").notNull().default(1),
+    workflowId: varchar("workflow_id", { length: 100 }).notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.videoId, table.version] })],
+);
+
+export type VideoAnalysisWorkflowId =
+  typeof videoAnalysisWorkflowIds.$inferSelect;
+export type NewVideoAnalysisWorkflowId =
+  typeof videoAnalysisWorkflowIds.$inferInsert;
 
 // ============================================================================
 // Slides Tables
