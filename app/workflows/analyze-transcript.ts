@@ -1,13 +1,13 @@
 import {
+  fetchYoutubeTranscriptFromApify,
+  saveYoutubeTranscriptToDb,
+} from "./steps/fetch-transcript";
+import {
   doTranscriptAIAnalysis,
   getTranscriptDataFromDb,
   saveTranscriptAIAnalysisToDb,
   type TranscriptData,
-} from "./steps/dynamic-analysis";
-import {
-  fetchYoutubeTranscriptFromApify,
-  saveYoutubeTranscriptToDb,
-} from "./steps/fetch-transcript";
+} from "./steps/transcript-analysis";
 
 export async function fetchAndAnalyzeWorkflow(
   videoId: string,
