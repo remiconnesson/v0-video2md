@@ -105,11 +105,12 @@ export async function saveTranscriptAIAnalysisToDb(
   result: Record<string, unknown>,
   version: number,
   additionalInstructions?: string,
-): Promise<number> {
+) {
   "use step";
+
   await emitResult(result);
 
-  const [createdRun] = await db
+  await db
     .insert(videoAnalysisRuns)
     .values({
       videoId,
@@ -123,9 +124,7 @@ export async function saveTranscriptAIAnalysisToDb(
         additionalInstructions: additionalInstructions ?? null,
         result,
       },
-    })
-    .returning({ id: videoAnalysisRuns.id });
-  return createdRun.id;
+    });
 }
 
 export async function doTranscriptAIAnalysis(

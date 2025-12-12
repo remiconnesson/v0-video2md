@@ -16,7 +16,6 @@ export async function fetchAndAnalyzeWorkflow(
 ) {
   "use workflow";
 
-  let dbRunId: number | undefined;
   let transcriptData: TranscriptData | null;
 
   const cachedTranscriptData = await getTranscriptDataFromDb(videoId);
@@ -39,8 +38,6 @@ export async function fetchAndAnalyzeWorkflow(
 
   return {
     success: true,
-    videoId,
-    runId: dbRunId,
     title: transcriptData.title,
   };
 }
