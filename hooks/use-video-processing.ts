@@ -662,8 +662,12 @@ export function useVideoProcessing(
             );
             selectedRunId = matchingRun?.id ?? runsData.runs[0].id;
           } else {
-            // Select latest (last in array since sorted desc)
-            selectedRunId = runsData.runs[runsData.runs.length - 1]?.id ?? null;
+            // Select latest (run with highest ID, regardless of array order)
+            selectedRunId =
+              runsData.runs.reduce(
+                (maxId, run) => (run.id > maxId ? run.id : maxId),
+                runsData.runs[0]?.id ?? 0,
+              ) ?? null;
           }
         }
 
