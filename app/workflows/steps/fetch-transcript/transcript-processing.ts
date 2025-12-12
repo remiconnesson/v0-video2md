@@ -137,7 +137,7 @@ export async function stepCheckDbForTranscript(
       : "0:00";
 
   return {
-    id: transcriptData.videoId,
+    videoId: transcriptData.videoId,
     url: transcriptData.url,
     title: transcriptData.title,
     date: transcriptData.publishedAt
@@ -162,7 +162,7 @@ export async function stepCheckDbForTranscript(
 
 export async function stepFetchFromApify(
   videoId: string,
-): Promise<TranscriptResult | null> {
+): Promise<TranscriptResult> {
   "use step";
 
   const { ApifyClient } = await import("apify-client");
@@ -180,7 +180,7 @@ export async function stepFetchFromApify(
   const rawApiResponse = items[0];
 
   if (!rawApiResponse) {
-    return null;
+    throw new Error(`No results found for video ID: ${videoId}`);
   }
 
   // Validate the API response with Zod
