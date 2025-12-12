@@ -244,11 +244,7 @@ export function videoProcessingReducer(state: State, action: Action): State {
       };
 
     case "ANALYSIS_COMPLETE":
-      return {
-        ...state,
-        analysisProgress: null,
-        // selectedRunId will be set via RUNS_REFRESHED
-      };
+      return state;
 
     case "SLIDE_RECEIVED":
       return {
@@ -282,6 +278,7 @@ export function videoProcessingReducer(state: State, action: Action): State {
         ...state,
         runs: action.runs,
         selectedRunId: action.selectRunId ?? state.selectedRunId,
+        analysisProgress: null,
       };
 
     case "SET_SLIDES_STATE":
@@ -772,12 +769,8 @@ export function useVideoProcessing(
   const isAnalysisRunning = state.analysisProgress !== null;
   const hasRuns = state.runs.length > 0;
 
-  const displayResult: unknown = useMemo(() => {
-    if (isAnalysisRunning) {
-      return state.analysisProgress?.partial ?? selectedRun?.result ?? null;
-    }
-    return selectedRun?.result ?? state.analysisProgress?.partial ?? null;
-  }, [isAnalysisRunning, state.analysisProgress?.partial, selectedRun?.result]);
+  const displayResult =
+    state.analysisProgress?.partial ?? selectedRun?.result ?? null;
 
   // ============================================================================
   // Action Handlers
