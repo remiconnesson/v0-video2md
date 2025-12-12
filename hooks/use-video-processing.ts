@@ -743,7 +743,7 @@ export function useVideoProcessing(
       runId: state.selectedRunId,
       error: state.error,
     }),
-    [state.analysisProgress, state.runs, state.error],
+    [state.analysisProgress, state.runs, state.error, state.selectedRunId],
   );
 
   const slidesState: SlidesState = useMemo(
