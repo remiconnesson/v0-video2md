@@ -739,13 +739,13 @@ export function useVideoProcessing(
       phase: state.analysisProgress?.phase ?? "",
       message: state.analysisProgress?.message ?? "",
       result: state.analysisProgress?.partial ?? null,
-      runId: state.selectedRunId,
+      runId: state.analysisProgress?.runId
+        ?? (state.runs.length > 0 ? state.runs[0].id : null),
       error: state.error,
     }),
     [
       state.analysisProgress,
-      state.runs.length,
-      state.selectedRunId,
+      state.runs,
       state.error,
     ],
   );
