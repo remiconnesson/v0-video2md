@@ -1,7 +1,9 @@
-import { describe, expect, it } from "vitest";
+import { renderHook, waitFor } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { SlideData } from "@/lib/slides-types";
 import {
   type AnalysisRun,
+  useVideoProcessing,
   videoProcessingReducer,
 } from "./use-video-processing";
 
@@ -591,5 +593,624 @@ describe("videoProcessingReducer - Full Flows", () => {
     });
     expect(state.runs).toHaveLength(2);
     expect(state.selectedRunId).toBe(2);
+  });
+});
+
+// ============================================================================
+// Hook Integration Tests
+// ============================================================================
+
+// Mock Next.js router
+const mockPush = vi.fn();
+const mockSearchParams = new URLSearchParams();
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: mockPush }),
+  useSearchParams: () => mockSearchParams,
+}));
+
+// Helper to create SSE response
+function createSSEResponse(events: Array<Record<string, unknown>>): Response {
+  const encoder = new TextEncoder();
+  const stream = new ReadableStream({
+    start(controller) {
+      for (const event of events) {
+        const message = `data: ${JSON.stringify(event)}\n\n`;
+        controller.enqueue(encoder.encode(message));
+      }
+      controller.close();
+    },
+  });
+
+  return new Response(stream, {
+    headers: { "Content-Type": "text/event-stream" },
+  });
+}
+
+// Helper to create standard fetch mock for video initialization
+function createBasicFetchMock(options: {
+  video?: typeof mockVideo | null;
+  runs?: (typeof mockRun)[];
+  slides?: (typeof mockSlide)[];
+  status?: "ready" | "not_found" | "processing";
+}) {
+  const {
+    video = mockVideo,
+    runs = [],
+    slides = [],
+    status = "ready",
+  } = options;
+
+  return vi.fn((url) => {
+    const urlStr = String(url);
+    if (urlStr.includes("/api/video/test-video-id/analyze")) {
+      return Promise.resolve({
+        ok: true,
+        json: async () => ({ runs, streamingRun: null }),
+      } as Response);
+    }
+    if (urlStr.includes("/api/video/test-video-id/slides")) {
+      return Promise.resolve({
+        ok: true,
+        json: async () => ({ slides }),
+      } as Response);
+    }
+    if (urlStr.includes("/api/video/test-video-id")) {
+      return Promise.resolve({
+        ok: true,
+        json: async () => ({ status, video }),
+      } as Response);
+    }
+    return Promise.reject(new Error(`Unknown URL: ${urlStr}`));
+  }) as unknown as typeof fetch;
+}
+
+describe("useVideoProcessing - Hook Integration", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    global.fetch = vi.fn();
+  });
+
+  describe("Initialization and useEffect", () => {
+    it("should initialize with loading state", () => {
+      const { result } = renderHook(() => useVideoProcessing("test-video-id"));
+
+      expect(result.current.pageStatus).toBe("loading");
+      expect(result.current.videoInfo).toBeNull();
+    });
+
+    it("should fetch video data on mount and transition to ready", async () => {
+      global.fetch = vi.fn((url) => {
+        const urlStr = String(url);
+        if (urlStr.includes("/api/video/test-video-id/analyze")) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({ runs: [mockRun], streamingRun: null }),
+          } as Response);
+        }
+        if (urlStr.includes("/api/video/test-video-id/slides")) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({ slides: [mockSlide] }),
+          } as Response);
+        }
+        if (urlStr.includes("/api/video/test-video-id")) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({
+              status: "ready",
+              video: mockVideo,
+            }),
+          } as Response);
+        }
+        return Promise.reject(new Error(`Unknown URL: ${urlStr}`));
+      }) as unknown as typeof fetch;
+
+      const { result } = renderHook(() => useVideoProcessing("test-video-id"));
+
+      await waitFor(() => {
+        expect(result.current.pageStatus).toBe("ready");
+      });
+
+      expect(result.current.videoInfo).toEqual(mockVideo);
+      expect(result.current.runs).toHaveLength(1);
+      expect(result.current.slidesState.slides).toHaveLength(1);
+    });
+
+    it("should handle video not found", async () => {
+      global.fetch = vi.fn((url) => {
+        const urlStr = String(url);
+        if (urlStr.includes("/api/video/test-video-id")) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({ status: "not_found" }),
+          } as Response);
+        }
+        return Promise.reject(new Error(`Unknown URL: ${urlStr}`));
+      }) as unknown as typeof fetch;
+
+      const { result } = renderHook(() => useVideoProcessing("test-video-id"));
+
+      await waitFor(() => {
+        expect(result.current.pageStatus).toBe("no_transcript");
+      });
+    });
+
+    it("should cleanup abort controller on unmount", async () => {
+      const abortSpy = vi.fn();
+      const originalAbortController = global.AbortController;
+
+      global.AbortController = class MockAbortController {
+        signal = {} as AbortSignal;
+        abort = abortSpy;
+      } as unknown as typeof AbortController;
+
+      global.fetch = vi.fn(() =>
+        Promise.resolve({
+          ok: true,
+          json: async () => ({ status: "not_found" }),
+        } as Response),
+      ) as unknown as typeof fetch;
+
+      const { unmount } = renderHook(() => useVideoProcessing("test-video-id"));
+
+      unmount();
+
+      expect(abortSpy).toHaveBeenCalled();
+
+      global.AbortController = originalAbortController;
+    });
+  });
+
+  describe("Abort Controller Management", () => {
+    it("should cancel previous analysis when starting new one", async () => {
+      const abortSpies: Array<() => void> = [];
+      const originalAbortController = global.AbortController;
+
+      global.AbortController = class MockAbortController {
+        signal = {} as AbortSignal;
+        abort = vi.fn(() => {
+          abortSpies.push(this.abort as () => void);
+        });
+      } as unknown as typeof AbortController;
+
+      global.fetch = vi.fn((url) => {
+        if (String(url).includes("/api/video/test-video-id")) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({ status: "ready", video: mockVideo }),
+          } as Response);
+        }
+        if (String(url).includes("/analyze") && url.includes("?") === false) {
+          return Promise.resolve(
+            createSSEResponse([
+              {
+                type: "progress",
+                phase: "analyzing",
+                message: "Analyzing...",
+              },
+            ]),
+          );
+        }
+        if (String(url).includes("/analyze")) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({ runs: [], streamingRun: null }),
+          } as Response);
+        }
+        if (String(url).includes("/slides")) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({ slides: [] }),
+          } as Response);
+        }
+        return Promise.reject(new Error("Unknown URL"));
+      }) as unknown as typeof fetch;
+
+      const { result } = renderHook(() => useVideoProcessing("test-video-id"));
+
+      await waitFor(() => {
+        expect(result.current.pageStatus).toBe("ready");
+      });
+
+      // Start first analysis
+      result.current.handleStartAnalysis();
+
+      // Start second analysis - should abort the first
+      result.current.handleStartAnalysis();
+
+      // Verify abort was called (the controller is replaced)
+      expect(abortSpies.length).toBeGreaterThan(0);
+
+      global.AbortController = originalAbortController;
+    });
+  });
+
+  describe("Derived State Calculations", () => {
+    it("should calculate pageStatus from internal status", async () => {
+      global.fetch = vi.fn((url) => {
+        if (String(url).includes("/api/video/test-video-id")) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({ status: "ready", video: mockVideo }),
+          } as Response);
+        }
+        if (String(url).includes("/analyze")) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({ runs: [], streamingRun: null }),
+          } as Response);
+        }
+        if (String(url).includes("/slides")) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({ slides: [] }),
+          } as Response);
+        }
+        return Promise.reject(new Error("Unknown URL"));
+      }) as unknown as typeof fetch;
+
+      const { result } = renderHook(() => useVideoProcessing("test-video-id"));
+
+      // Should start as loading
+      expect(result.current.pageStatus).toBe("loading");
+
+      await waitFor(() => {
+        expect(result.current.pageStatus).toBe("ready");
+      });
+    });
+
+    it("should calculate transcriptState correctly", async () => {
+      global.fetch = vi.fn((url) => {
+        if (String(url).includes("/api/video/test-video-id")) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({ status: "ready", video: mockVideo }),
+          } as Response);
+        }
+        if (String(url).includes("/analyze")) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({ runs: [], streamingRun: null }),
+          } as Response);
+        }
+        if (String(url).includes("/slides")) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({ slides: [] }),
+          } as Response);
+        }
+        return Promise.reject(new Error("Unknown URL"));
+      }) as unknown as typeof fetch;
+
+      const { result } = renderHook(() => useVideoProcessing("test-video-id"));
+
+      await waitFor(() => {
+        expect(result.current.pageStatus).toBe("ready");
+      });
+
+      expect(result.current.transcriptState.status).toBe("completed");
+      expect(result.current.transcriptState.progress).toBe(100);
+    });
+
+    it("should calculate analysisState correctly", async () => {
+      global.fetch = createBasicFetchMock({ runs: [mockRun] });
+
+      const { result } = renderHook(() => useVideoProcessing("test-video-id"));
+
+      await waitFor(() => {
+        expect(result.current.analysisState.status).toBe("completed");
+      });
+
+      expect(result.current.hasRuns).toBe(true);
+    });
+
+    it("should calculate slidesState correctly", async () => {
+      global.fetch = createBasicFetchMock({ slides: [mockSlide] });
+
+      const { result } = renderHook(() => useVideoProcessing("test-video-id"));
+
+      await waitFor(() => {
+        expect(result.current.slidesState.status).toBe("completed");
+      });
+
+      expect(result.current.slidesState.slides).toHaveLength(1);
+      expect(result.current.slidesState.progress).toBe(100);
+    });
+
+    it("should calculate selectedRun from runs and selectedRunId", async () => {
+      global.fetch = createBasicFetchMock({ runs: [mockRun] });
+
+      const { result } = renderHook(() => useVideoProcessing("test-video-id"));
+
+      await waitFor(() => {
+        expect(result.current.selectedRun).toBeDefined();
+      });
+
+      expect(result.current.selectedRun?.id).toBe(mockRun.id);
+    });
+
+    it("should calculate displayResult from analysis state", async () => {
+      global.fetch = createBasicFetchMock({ runs: [mockRun] });
+
+      const { result } = renderHook(() => useVideoProcessing("test-video-id"));
+
+      await waitFor(() => {
+        expect(result.current.selectedRun).toBeDefined();
+        expect(result.current.selectedRun?.result).toBeDefined();
+      });
+
+      expect(result.current.displayResult).toEqual(mockRun.result);
+    });
+  });
+
+  describe("Action Handlers", () => {
+    it("should handle handleVersionChange", async () => {
+      const run1 = { ...mockRun, id: 1, version: 1 };
+      const run2 = { ...mockRun, id: 2, version: 2 };
+
+      global.fetch = createBasicFetchMock({ runs: [run1, run2] });
+
+      const { result } = renderHook(() => useVideoProcessing("test-video-id"));
+
+      await waitFor(() => {
+        expect(result.current.runs).toHaveLength(2);
+      });
+
+      // Change to version 1
+      result.current.handleVersionChange(1);
+
+      await waitFor(() => {
+        expect(result.current.selectedRun?.version).toBe(1);
+      });
+
+      expect(mockPush).toHaveBeenCalled();
+    });
+
+    it("should handle handleFetchTranscript", async () => {
+      global.fetch = vi.fn((url, options) => {
+        if (
+          url.includes("/api/video/test-video-id") &&
+          options?.method !== "POST"
+        ) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({ status: "ready", video: mockVideo }),
+          } as Response);
+        }
+        if (String(url).includes("/process") && options?.method === "POST") {
+          return Promise.resolve(
+            createSSEResponse([
+              {
+                type: "progress",
+                source: "unified",
+                phase: "fetching",
+                progress: 50,
+                message: "Fetching...",
+              },
+            ]),
+          );
+        }
+        if (String(url).includes("/analyze")) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({ runs: [], streamingRun: null }),
+          } as Response);
+        }
+        if (String(url).includes("/slides")) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({ slides: [] }),
+          } as Response);
+        }
+        return Promise.reject(new Error("Unknown URL"));
+      }) as unknown as typeof fetch;
+
+      const { result } = renderHook(() => useVideoProcessing("test-video-id"));
+
+      await waitFor(() => {
+        expect(result.current.pageStatus).toBe("ready");
+      });
+
+      result.current.handleFetchTranscript();
+
+      await waitFor(() => {
+        expect(result.current.pageStatus).toBe("fetching_transcript");
+      });
+    });
+
+    it("should handle handleStartAnalysis", async () => {
+      global.fetch = vi.fn((url, options) => {
+        if (
+          url.includes("/api/video/test-video-id") &&
+          options?.method !== "POST"
+        ) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({ status: "ready", video: mockVideo }),
+          } as Response);
+        }
+        if (String(url).includes("/analyze") && options?.method === "POST") {
+          return Promise.resolve(
+            createSSEResponse([
+              {
+                type: "progress",
+                phase: "analyzing",
+                message: "Analyzing...",
+              },
+            ]),
+          );
+        }
+        if (String(url).includes("/analyze")) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({ runs: [], streamingRun: null }),
+          } as Response);
+        }
+        if (String(url).includes("/slides")) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({ slides: [] }),
+          } as Response);
+        }
+        return Promise.reject(new Error("Unknown URL"));
+      }) as unknown as typeof fetch;
+
+      const { result } = renderHook(() => useVideoProcessing("test-video-id"));
+
+      await waitFor(() => {
+        expect(result.current.pageStatus).toBe("ready");
+      });
+
+      result.current.handleStartAnalysis();
+
+      await waitFor(() => {
+        expect(result.current.isAnalysisRunning).toBe(true);
+      });
+    });
+
+    it("should handle handleReroll with instructions", async () => {
+      global.fetch = vi.fn((url, options) => {
+        if (
+          url.includes("/api/video/test-video-id") &&
+          options?.method !== "POST"
+        ) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({ status: "ready", video: mockVideo }),
+          } as Response);
+        }
+        if (String(url).includes("/analyze") && options?.method === "POST") {
+          const body = JSON.parse(options?.body as string);
+          expect(body.additionalInstructions).toBe("Focus on key points");
+
+          return Promise.resolve(
+            createSSEResponse([
+              {
+                type: "progress",
+                phase: "analyzing",
+                message: "Reanalyzing...",
+              },
+            ]),
+          );
+        }
+        if (String(url).includes("/analyze")) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({ runs: [], streamingRun: null }),
+          } as Response);
+        }
+        if (String(url).includes("/slides")) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({ slides: [] }),
+          } as Response);
+        }
+        return Promise.reject(new Error("Unknown URL"));
+      }) as unknown as typeof fetch;
+
+      const { result } = renderHook(() => useVideoProcessing("test-video-id"));
+
+      await waitFor(() => {
+        expect(result.current.pageStatus).toBe("ready");
+      });
+
+      result.current.handleReroll("Focus on key points");
+
+      await waitFor(() => {
+        expect(result.current.isAnalysisRunning).toBe(true);
+      });
+    });
+
+    it("should handle setSlidesState", async () => {
+      global.fetch = createBasicFetchMock({ slides: [mockSlide] });
+
+      const { result } = renderHook(() => useVideoProcessing("test-video-id"));
+
+      await waitFor(() => {
+        expect(result.current.slidesState.slides).toHaveLength(1);
+      });
+
+      const newSlides = [mockSlide, { ...mockSlide, slideIndex: 1 }];
+      result.current.setSlidesState({
+        status: "completed",
+        progress: 100,
+        message: "Done",
+        error: null,
+        slides: newSlides,
+      });
+
+      await waitFor(() => {
+        expect(result.current.slidesState.slides).toHaveLength(2);
+      });
+    });
+  });
+
+  describe("Concurrent Operations", () => {
+    it("should handle concurrent transcript fetch and analysis", async () => {
+      global.fetch = vi.fn((url, options) => {
+        if (
+          url.includes("/api/video/test-video-id") &&
+          options?.method !== "POST"
+        ) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({ status: "ready", video: mockVideo }),
+          } as Response);
+        }
+        if (String(url).includes("/process") && options?.method === "POST") {
+          return Promise.resolve(
+            createSSEResponse([
+              {
+                type: "progress",
+                source: "unified",
+                phase: "fetching",
+                progress: 50,
+                message: "Fetching...",
+              },
+            ]),
+          );
+        }
+        if (String(url).includes("/analyze") && options?.method === "POST") {
+          return Promise.resolve(
+            createSSEResponse([
+              {
+                type: "progress",
+                phase: "analyzing",
+                message: "Analyzing...",
+              },
+            ]),
+          );
+        }
+        if (String(url).includes("/analyze")) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({ runs: [], streamingRun: null }),
+          } as Response);
+        }
+        if (String(url).includes("/slides")) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({ slides: [] }),
+          } as Response);
+        }
+        return Promise.reject(new Error("Unknown URL"));
+      }) as unknown as typeof fetch;
+
+      const { result } = renderHook(() => useVideoProcessing("test-video-id"));
+
+      await waitFor(() => {
+        expect(result.current.pageStatus).toBe("ready");
+      });
+
+      // Start both operations
+      result.current.handleFetchTranscript();
+      result.current.handleStartAnalysis();
+
+      // The second operation should cancel the first via abort controller
+      await waitFor(() => {
+        expect(result.current.isAnalysisRunning).toBe(true);
+      });
+    });
   });
 });
