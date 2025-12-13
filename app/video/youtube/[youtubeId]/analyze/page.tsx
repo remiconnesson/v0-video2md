@@ -60,7 +60,7 @@ async function Analysis({ youtubeId }: { youtubeId: string }) {
 
   return (
     <>
-      <VersionSelector videoId={youtubeId} versions={versions} />
+      <VersionSelector versions={versions} />
       <AnalysisPanel videoId={youtubeId} versions={versions} />
     </>
   );

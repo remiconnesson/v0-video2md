@@ -22,13 +22,7 @@ import {
 } from "@/lib/versions-utils";
 import { Button } from "../ui/button";
 
-export function VersionSelector({
-  videoId,
-  versions,
-}: {
-  videoId: string;
-  versions: Versions;
-}) {
+export function VersionSelector({ versions }: { versions: Versions }) {
   const [version, setVersion] = useQueryState(
     VERSION_SEARCH_PARAM_KEY,
     versionSearchParamParsers.version,
