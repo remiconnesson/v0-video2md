@@ -6,17 +6,16 @@ import { AnalysisPanel } from "@/components/analyze/analysis-panel";
 import { SlidesPanel } from "@/components/analyze/slides-panel";
 import { VersionSelector } from "@/components/analyze/version-selector";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { getVersion, parseVersions } from "@/lib/versions-utils";
+import { parseVersions } from "@/lib/versions-utils";
 import { isValidYouTubeVideoId } from "@/lib/youtube-utils";
-import { versionSearchParamsCache } from "./searchParams";
 
 export default async function AnalyzePage(
   props: PageProps<"/video/youtube/[youtubeId]/analyze">,
 ) {
   const { youtubeId } = await props.params;
 
-  if (!result.success) {
-    return <ErrorScreen errorMessage={result.error} />;
+  if (!isValidYouTubeVideoId(youtubeId)) {
+    return <ErrorScreen errorMessage="Invalid YouTube Video ID" />;
   }
 
   const run = await start(fetchAndSaveTranscriptWorkflow, [youtubeId]);
