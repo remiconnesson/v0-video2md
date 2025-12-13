@@ -8,6 +8,7 @@ import { twMerge } from "tailwind-merge";
  * @returns Merged class string
  */
 export function combineClassNames(...inputs: ClassValue[]) {
+  // NOTE: don't test this function, it's given by shadcn
   return twMerge(clsx(inputs));
 }
 
