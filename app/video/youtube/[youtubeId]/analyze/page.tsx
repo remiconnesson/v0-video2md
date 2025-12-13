@@ -39,8 +39,7 @@ export default async function AnalyzePage(
         </TabsList>
 
         <TabsContent value="analysis">
-          <VersionSelector videoId={youtubeId} />;
-          <AnalysisPanel videoId={youtubeId} />
+          <Analysis youtubeId={youtubeId} />
         </TabsContent>
 
         <TabsContent value="slides">
@@ -59,17 +58,6 @@ async function Analysis({ youtubeId }: { youtubeId: string }) {
   }
 
   const versions = parseVersions(result.versions);
-
-  const [version, setVersion] = useQueryState(
-    VERSION_SEARCH_PARAM_KEY,
-    versionSearchParamParsers.version,
-  );
-
-  const displayedVersion = getVersion(
-    version,
-    versions,
-    VERSION_NOT_PROVIDED_SENTINEL,
-  );
 
   return (
     <>
