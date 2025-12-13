@@ -4,8 +4,8 @@ import { getRun, start } from "workflow/api";
 import { z } from "zod";
 import {
   type AnalysisStreamEvent,
-  dynamicAnalysisWorkflow,
-} from "@/app/workflows/dynamic-analysis";
+  transcriptAnalysisWorkflow,
+} from "@/app/workflows/transcript-analysis";
 import { db } from "@/db";
 import { videoAnalysisRuns } from "@/db/schema";
 import {
@@ -31,6 +31,8 @@ export async function GET(
   { params }: { params: Promise<{ videoId: string; version: number }> },
 ) {
   const { videoId, version } = await params;
+
+  // if not validateYouTubeVideoId(videoId): return error, the ui will redirect to the input form
 
   const v = z.number().int().positive().parse(version);
 
