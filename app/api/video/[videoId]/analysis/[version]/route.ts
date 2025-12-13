@@ -1,7 +1,6 @@
 import { and, eq } from "drizzle-orm";
 import { Match } from "effect";
 import { type NextRequest, NextResponse } from "next/server";
-import { parseVersion } from "@/lib/versions-utils";
 import { getRun, start } from "workflow/api";
 import { analyzeTranscriptWorkflow } from "@/app/workflows/analyze-transcript";
 import { db } from "@/db";
@@ -11,6 +10,7 @@ import {
   videoAnalysisWorkflowIds,
 } from "@/db/schema";
 import { createSSEResponse } from "@/lib/api-utils";
+import { parseVersion } from "@/lib/versions-utils";
 import type { YouTubeVideoId } from "@/lib/youtube-utils";
 import { isValidYouTubeVideoId } from "@/lib/youtube-utils";
 

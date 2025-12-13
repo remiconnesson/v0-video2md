@@ -1,7 +1,7 @@
 import { StackProvider, StackTheme } from "@stackframe/stack";
-import { NuqsAdapter } from "nuqs/adapters/next/app";
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { NuqsAdapter } from "nuqs/adapters/next/app";
 import type React from "react";
 import { stackClientApp } from "../stack/client";
 import "./globals.css";

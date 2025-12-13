@@ -17,17 +17,9 @@ import { SlideCard } from "./slide-card";
 
 interface SlidesPanelProps {
   videoId: string;
-  slidesState: SlidesState;
-  onSlidesStateChange: (
-    state: SlidesState | ((prev: SlidesState) => SlidesState),
-  ) => void;
 }
 
-export function SlidesPanel({
-  videoId,
-  slidesState,
-  onSlidesStateChange,
-}: SlidesPanelProps) {
+export function SlidesPanel({ videoId }: SlidesPanelProps) {
   const [feedbackMap, setFeedbackMap] = useState<
     Map<number, SlideFeedbackData>
   >(new Map());
