@@ -74,17 +74,4 @@ export async function GET(
   return run.readable
   ```
   */
-
-  return NextResponse.json({
-    videoId,
-    runs,
-    latestVersion: runs[0]?.version ?? 0,
-    streamingRun: streamingRun?.workflowRunId
-      ? {
-          id: streamingRun.id,
-          version: streamingRun.version,
-          workflowRunId: streamingRun.workflowRunId,
-        }
-      : null,
-  });
 }
