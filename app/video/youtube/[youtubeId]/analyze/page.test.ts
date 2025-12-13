@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseVersion } from "./page";
+import { parseVersion } from "@/lib/versions-utils";
 
 describe("parseVersion", () => {
   it("should return undefined for undefined input", () => {

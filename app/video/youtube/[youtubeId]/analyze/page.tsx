@@ -3,15 +3,16 @@ import { start } from "workflow/api";
 import { getAnalysisVersions } from "@/app/actions";
 import { fetchAndSaveTranscriptWorkflow } from "@/app/workflows/fetch-and-save-transcript";
 import { AnalysisPanel } from "@/components/analyze/analysis-panel";
-import { SlidesPanel } from "@/components/analyze/slides-panel";
 import { VersionSelector } from "@/components/analyze/version-selector";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { parseVersions } from "@/lib/versions-utils";
 import { isValidYouTubeVideoId } from "@/lib/youtube-utils";
 
-export default async function AnalyzePage(
-  props: PageProps<"/video/youtube/[youtubeId]/analyze">,
-) {
+type AnalyzePageProps = {
+  params: Promise<{ youtubeId: string }>;
+};
+
+export default async function AnalyzePage(props: AnalyzePageProps) {
   const { youtubeId } = await props.params;
 
   if (!isValidYouTubeVideoId(youtubeId)) {
