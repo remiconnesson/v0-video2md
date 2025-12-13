@@ -2,43 +2,38 @@ import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { AnalyzeView } from "@/components/analyze/analyze-view";
 import { Button } from "@/components/ui/button";
+import {
+  getSortedVersionsDescending,
+  parseVersion,
+  parseVersions,
+} from "@/lib/versions-utils";
+import { Effect } from "effect";
+import { getAnalysisVersions } from "@/app/actions";
+import { parseAsInteger, createLoader } from "nuqs/server";
 
-/**
- * Parse and validate version from URL search parameter.
- * We parse version here (in the Server Component) to ensure validation happens
- * before the component tree is rendered, providing better error boundaries
- * and avoiding client-side hydration issues with invalid version values.
- * @param v - Version string from URL search params (e.g., "?v=2")
- * @returns Parsed version number or undefined if not provided
- * @throws Error if version is less than 1
- */
-export function parseVersion(v?: string): number | undefined {
-  if (!v) {
-    return undefined;
+export const versionSearchParam = createLoader({
+  v: parseAsInteger.withDefault(-1),
+});
+
+export default async function AnalyzePage(
+  props: PageProps<"/video/youtube/[youtubeId]/analyze">,
+) {
+  const { youtubeId } = await props.params;
+  const result = await getAnalysisVersions(youtubeId);
+  const { v: versionParam } = await versionSearchParam(props.searchParams);
+
+  if (!result.success) {
+    return <ErrorScreen errorMessage={result.error} />;
   }
-  const version = parseInt(v, 10);
-  if (version < 1) {
-    throw new Error("Version must be greater than or equal to 1");
+
+  const versions = getSortedVersionsDescending(parseVersions(result.versions));
+  const displayedVersion = versionParam === -1 ? versions[0] : versionParam;
+
+  if (!versions.includes(displayedVersion)) {
+    return <ErrorScreen errorMessage="Invalid version" />;
   }
-  return version;
-}
 
-export default async function AnalyzePage({
-  params,
-  searchParams,
-}: {
-  params: Promise<{ youtubeId: string }>;
-  searchParams: Promise<{ v?: string }>;
-}) {
-  const { youtubeId } = await params;
-  const { v } = await searchParams;
-  const version = parseVersion(v);
-
-  return (
-    <Layout>
-      <AnalyzeView youtubeId={youtubeId} initialVersion={version} />
-    </Layout>
-  );
+  return <Layout></Layout>;
 }
 
 // dumb component with just a link
@@ -59,4 +54,8 @@ function Layout({ children }: { children: React.ReactNode }) {
       </div>
     </div>
   );
+}
+
+function ErrorScreen({ errorMessage }: { errorMessage: string }) {
+  return <div>Error: {errorMessage}</div>;
 }

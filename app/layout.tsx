@@ -1,4 +1,5 @@
 import { StackProvider, StackTheme } from "@stackframe/stack";
+import { NuqsAdapter } from "nuqs/adapters/next/app";
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import type React from "react";
@@ -32,9 +33,11 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <StackProvider app={stackClientApp}>
-          <StackTheme>{children}</StackTheme>
-        </StackProvider>
+        <NuqsAdapter>
+          <StackProvider app={stackClientApp}>
+            <StackTheme>{children}</StackTheme>
+          </StackProvider>
+        </NuqsAdapter>
       </body>
     </html>
   );

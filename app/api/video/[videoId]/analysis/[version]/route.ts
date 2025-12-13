@@ -1,9 +1,8 @@
 import { and, eq } from "drizzle-orm";
 import { Match } from "effect";
 import { type NextRequest, NextResponse } from "next/server";
-
+import { parseVersion } from "@/lib/versions-utils";
 import { getRun, start } from "workflow/api";
-import { z } from "zod";
 import { analyzeTranscriptWorkflow } from "@/app/workflows/analyze-transcript";
 import { db } from "@/db";
 import {
@@ -177,10 +176,6 @@ async function startNewAnalysisWorkflow({
       { status: 500 },
     );
   }
-}
-
-function parseVersion(version: unknown): number {
-  return z.number().int().positive().parse(version);
 }
 
 async function getCompletedAnalysis(
