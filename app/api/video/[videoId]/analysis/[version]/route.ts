@@ -12,43 +12,6 @@ import {
 } from "@/db/schema";
 import { createSSEResponse, validateYouTubeVideoId } from "@/lib/api-utils";
 
-// ============================================================================
-// GET - List all analysis runs for a video
-// ============================================================================
-
-/*
- scratch pad
-
- 1. version selector should be just a link to an analysis
- 2. we trigger analysis on visit 
- 3. a reroll will post to analysie/<nextVersion>
-*/
-function parseVersion(version: unknown): number {
-  return z.number().int().positive().parse(version);
-}
-
-async function getCompletedAnalysis(
-  videoId: string,
-  version: number,
-): Promise<VideoAnalysisRun | null> {
-  const [analysis] = await db
-    .select({
-      videoId: videoAnalysisRuns.videoId,
-      version: videoAnalysisRuns.version,
-      result: videoAnalysisRuns.result,
-      createdAt: videoAnalysisRuns.createdAt,
-    })
-    .from(videoAnalysisRuns)
-    .where(
-      and(
-        eq(videoAnalysisRuns.videoId, videoId),
-        eq(videoAnalysisRuns.version, version),
-      ),
-    );
-
-  return analysis;
-}
-
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ videoId: string; version: number }> },
@@ -145,34 +108,6 @@ function dispatchOngoingWorkflowHandler({
 
   return response;
 }
-// Store the workflow ID in the database for future reference
-async function storeWorkflowId({
-  videoId,
-  version,
-  workflowId,
-}: {
-  videoId: string;
-  version: number;
-  workflowId: string;
-}) {
-  await db
-    .insert(videoAnalysisWorkflowIds)
-    .values({
-      videoId,
-      version,
-      workflowId,
-    })
-    .onConflictDoUpdate({
-      target: [
-        videoAnalysisWorkflowIds.videoId,
-        videoAnalysisWorkflowIds.version,
-      ],
-      set: {
-        workflowId,
-        createdAt: new Date(),
-      },
-    });
-}
 
 function handleWorkflowAnomaly({
   workflowId,
@@ -220,6 +155,7 @@ async function startNewAnalysisWorkflow({
     // Start the transcript analysis workflow
     const run = await start(analyzeTranscriptWorkflow, [videoId, version]);
 
+    // Store the workflow ID in the database for future reference
     await storeWorkflowId({ videoId, version, workflowId: run.runId });
 
     return createSSEResponse(run.readable, run.runId);
@@ -230,4 +166,58 @@ async function startNewAnalysisWorkflow({
       { status: 500 },
     );
   }
+}
+
+function parseVersion(version: unknown): number {
+  return z.number().int().positive().parse(version);
+}
+
+async function getCompletedAnalysis(
+  videoId: string,
+  version: number,
+): Promise<VideoAnalysisRun | null> {
+  const [analysis] = await db
+    .select({
+      videoId: videoAnalysisRuns.videoId,
+      version: videoAnalysisRuns.version,
+      result: videoAnalysisRuns.result,
+      createdAt: videoAnalysisRuns.createdAt,
+    })
+    .from(videoAnalysisRuns)
+    .where(
+      and(
+        eq(videoAnalysisRuns.videoId, videoId),
+        eq(videoAnalysisRuns.version, version),
+      ),
+    );
+
+  return analysis;
+}
+
+async function storeWorkflowId({
+  videoId,
+  version,
+  workflowId,
+}: {
+  videoId: string;
+  version: number;
+  workflowId: string;
+}) {
+  await db
+    .insert(videoAnalysisWorkflowIds)
+    .values({
+      videoId,
+      version,
+      workflowId,
+    })
+    .onConflictDoUpdate({
+      target: [
+        videoAnalysisWorkflowIds.videoId,
+        videoAnalysisWorkflowIds.version,
+      ],
+      set: {
+        workflowId,
+        createdAt: new Date(),
+      },
+    });
 }
