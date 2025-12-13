@@ -20,9 +20,93 @@ interface SlidesPanelProps {
 }
 
 export function SlidesPanel({ videoId }: SlidesPanelProps) {
+  const [slidesState, setSlidesState] = useState<SlidesState>({
+    status: "loading",
+    progress: 0,
+    message: "Loading slides...",
+    error: null,
+    slides: [],
+  });
+
   const [feedbackMap, setFeedbackMap] = useState<
     Map<number, SlideFeedbackData>
   >(new Map());
+
+  const loadSlidesState = useCallback(async () => {
+    setSlidesState((prev) => ({
+      ...prev,
+      status: "loading",
+      message: "Loading slides...",
+      error: null,
+    }));
+
+    try {
+      const response = await fetch(`/api/video/${videoId}/slides`);
+
+      if (!response.ok) {
+        throw new Error("Failed to load slides state");
+      }
+
+      const data = await response.json();
+      const slides: SlideData[] = data.slides ?? [];
+      const slidesMessage = `Extracted ${data.totalSlides ?? slides.length} slides`;
+
+      switch (data.status) {
+        case "completed": {
+          setSlidesState({
+            status: "completed",
+            progress: 100,
+            message: slidesMessage,
+            error: null,
+            slides,
+          });
+          return;
+        }
+        case "in_progress":
+        case "pending": {
+          setSlidesState({
+            status: "extracting",
+            progress: 0,
+            message: "Slide extraction in progress...",
+            error: null,
+            slides,
+          });
+          return;
+        }
+        case "failed": {
+          setSlidesState({
+            status: "error",
+            progress: 0,
+            message: "",
+            error:
+              data.errorMessage ?? "Slide extraction failed. Please try again.",
+            slides,
+          });
+          return;
+        }
+        default: {
+          setSlidesState({
+            status: slides.length > 0 ? "completed" : "idle",
+            progress: slides.length > 0 ? 100 : 0,
+            message: slides.length > 0 ? slidesMessage : "",
+            error: null,
+            slides,
+          });
+        }
+      }
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Failed to load slides.";
+
+      setSlidesState({
+        status: "error",
+        progress: 0,
+        message: "",
+        error: errorMessage,
+        slides: [],
+      });
+    }
+  }, [videoId]);
 
   const loadFeedback = useCallback(async () => {
     try {
@@ -74,7 +158,7 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
 
   const startExtraction = useCallback(async () => {
     // Set state to extracting
-    onSlidesStateChange((prev) => ({
+    setSlidesState((prev) => ({
       ...prev,
       status: "extracting",
       progress: 0,
@@ -98,7 +182,7 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
       // Consume SSE stream
       await consumeSSE<SlideStreamEvent>(response, {
         progress: (e) => {
-          onSlidesStateChange((prev) => ({
+          setSlidesState((prev) => ({
             ...prev,
             status: "extracting",
             progress: e.progress ?? prev.progress,
@@ -106,13 +190,13 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
           }));
         },
         slide: (e) => {
-          onSlidesStateChange((prev) => ({
+          setSlidesState((prev) => ({
             ...prev,
             slides: [...prev.slides, e.slide],
           }));
         },
         complete: (e) => {
-          onSlidesStateChange((prev) => ({
+          setSlidesState((prev) => ({
             ...prev,
             status: "completed",
             progress: 100,
@@ -121,7 +205,7 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
           }));
         },
         error: (e) => {
-          onSlidesStateChange((prev) => ({
+          setSlidesState((prev) => ({
             ...prev,
             status: "error",
             progress: 0,
@@ -134,7 +218,7 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
       const errorMessage =
         error instanceof Error ? error.message : "Failed to extract slides.";
 
-      onSlidesStateChange((prev) => ({
+      setSlidesState((prev) => ({
         ...prev,
         status: "error",
         progress: 0,
@@ -142,12 +226,13 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
         error: errorMessage,
       }));
     }
-  }, [videoId, onSlidesStateChange]);
+  }, [videoId]);
 
   // Load feedback on mount
   useEffect(() => {
+    loadSlidesState();
     loadFeedback();
-  }, [loadFeedback]);
+  }, [loadFeedback, loadSlidesState]);
 
   // Idle state - show extract button
   if (slidesState.status === "idle") {
@@ -185,7 +270,7 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
       feedbackMap={feedbackMap}
       onSubmitFeedback={submitFeedback}
       onReExtract={() => {
-        onSlidesStateChange((prev) => ({
+        setSlidesState((prev) => ({
           ...prev,
           slides: [],
           progress: 0,
