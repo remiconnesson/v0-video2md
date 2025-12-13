@@ -7,6 +7,7 @@ import { VersionSelector } from "@/components/analyze/version-selector";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { parseVersions } from "@/lib/versions-utils";
 import { isValidYouTubeVideoId } from "@/lib/youtube-utils";
+import { SlidesPanel } from "@/components/analyze/slides-panel"
 
 type AnalyzePageProps = {
   params: Promise<{ youtubeId: string }>;
