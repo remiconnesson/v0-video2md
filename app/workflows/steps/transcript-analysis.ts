@@ -108,7 +108,10 @@ export async function saveTranscriptAIAnalysisToDb(
 ) {
   "use step";
 
-  await emitResult(result);
+  await emit<AnalysisStreamEvent>(
+    { type: "result", data: result },
+    { finished: true },
+  );
 
   await db
     .insert(videoAnalysisRuns)
@@ -142,17 +145,13 @@ export async function doTranscriptAIAnalysis(
   });
 
   for await (const partialResult of analysisStream.partialObjectStream) {
-    await emitPartialResult(partialResult);
+    await emit<AnalysisStreamEvent>({ type: "partial", data: partialResult });
   }
 
   const finalAnalysisResult = await analysisStream.object;
 
   return finalAnalysisResult as Record<string, unknown>;
 }
-
-// ============================================================================
-// Stream Event Types
-// ============================================================================
 
 export type AnalysisStreamEvent =
   | { type: "progress"; phase: string; message: string }
@@ -161,69 +160,32 @@ export type AnalysisStreamEvent =
   | { type: "complete"; runId: number }
   | { type: "error"; message: string };
 
-// ============================================================================
-// Step: Emit progress
-// ============================================================================
-
-export async function emitProgress(phase: string, message: string) {
+/**
+ * example usage:
+ * ```
+  await emit<AnalysisStreamEvent>({ type: "progress", phase, message });
+  await emit<AnalysisStreamEvent>({ type: "result", data });
+  await emit<AnalysisStreamEvent>({ type: "partial", data });
+  await emit<AnalysisStreamEvent>({ type: "complete", runId }, { finished: true });
+  await emit<AnalysisStreamEvent>({ type: "error", message }, { finished: true });
+ * ```
+ */
+export async function emit<T>(
+  event: T,
+  options: { finished?: boolean } = { finished: false },
+) {
   "use step";
 
-  const writable = getWritable<AnalysisStreamEvent>();
+  const defaultOptions = { finished: false } as const;
+  const mergedOptions = { ...defaultOptions, ...options };
+  const { finished } = mergedOptions;
+
+  const writable = getWritable<T>();
   const writer = writable.getWriter();
-  await writer.write({ type: "progress", phase, message });
+  await writer.write(event);
   writer.releaseLock();
-}
 
-// ============================================================================
-// Step: Emit result
-// ============================================================================
-
-export async function emitResult(data: unknown) {
-  "use step";
-
-  const writable = getWritable<AnalysisStreamEvent>();
-  const writer = writable.getWriter();
-  await writer.write({ type: "result", data });
-  writer.releaseLock();
-}
-
-// ============================================================================
-// Step: Emit partial result
-// ============================================================================
-
-export async function emitPartialResult(data: unknown) {
-  "use step";
-
-  const writable = getWritable<AnalysisStreamEvent>();
-  const writer = writable.getWriter();
-  await writer.write({ type: "partial", data });
-  writer.releaseLock();
-}
-
-// ============================================================================
-// Step: Emit completion
-// ============================================================================
-
-export async function emitComplete(runId: number) {
-  "use step";
-
-  const writable = getWritable<AnalysisStreamEvent>();
-  const writer = writable.getWriter();
-  await writer.write({ type: "complete", runId });
-  writer.releaseLock();
-  await writable.close();
-}
-
-// ============================================================================
-// Step: Emit error
-// ============================================================================
-
-export async function emitError(message: string) {
-  "use step";
-
-  const writable = getWritable<AnalysisStreamEvent>();
-  const writer = writable.getWriter();
-  await writer.write({ type: "error", message });
-  writer.releaseLock();
-  await writable.close();
+  if (finished) {
+    await writable.close();
+  }
 }
