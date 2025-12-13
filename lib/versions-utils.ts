@@ -4,7 +4,7 @@ import { z } from "zod";
 export type Versions = number[] & Brand.Brand<"Versions">;
 const Versions = Brand.nominal<Versions>();
 
-const versionSchema = z.number().int().positive();
+const versionSchema = z.coerce.number().int().positive();
 
 export function parseVersion(version: unknown): number {
   return versionSchema.parse(version);

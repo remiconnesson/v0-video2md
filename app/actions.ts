@@ -3,7 +3,7 @@
 import { desc, eq } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
-import { videoAnalysisRuns, videoAnalysisWorkflowIds } from "@/db/schema";
+import { videoAnalysisWorkflowIds } from "@/db/schema";
 import {
   extractYoutubeVideoId,
   isValidYouTubeVideoId,
@@ -43,7 +43,7 @@ export async function validateVideoId(_prevState: unknown, formData: FormData) {
 type GetAnalysisVersionsResult =
   | {
       success: true;
-      versions: { version: string }[];
+      versions: { version: number }[];
     }
   | {
       success: false;
@@ -74,7 +74,7 @@ export async function getAnalysisVersionsForVideo(videoId: YouTubeVideoId) {
   // Get all versions for the video
   const versions = await db
     .select({
-      version: videoAnalysisRuns.version,
+      version: videoAnalysisWorkflowIds.version,
     })
     .from(videoAnalysisWorkflowIds)
     .where(eq(videoAnalysisWorkflowIds.videoId, videoId))
