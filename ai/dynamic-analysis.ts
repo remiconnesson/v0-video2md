@@ -9,7 +9,6 @@ export interface DynamicAnalysisInput {
   channelName?: string;
   description?: string;
   transcript: string;
-  additionalInstructions?: string;
 }
 
 export function streamDynamicAnalysis(input: DynamicAnalysisInput) {

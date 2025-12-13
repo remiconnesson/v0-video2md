@@ -104,7 +104,6 @@ export async function saveTranscriptAIAnalysisToDb(
   videoId: string,
   result: Record<string, unknown>,
   version: number,
-  additionalInstructions?: string,
 ) {
   "use step";
 
@@ -118,13 +117,11 @@ export async function saveTranscriptAIAnalysisToDb(
     .values({
       videoId,
       version,
-      additionalInstructions: additionalInstructions ?? null,
       result,
     })
     .onConflictDoUpdate({
       target: [videoAnalysisRuns.videoId, videoAnalysisRuns.version],
       set: {
-        additionalInstructions: additionalInstructions ?? null,
         result,
       },
     });
@@ -132,7 +129,6 @@ export async function saveTranscriptAIAnalysisToDb(
 
 export async function doTranscriptAIAnalysis(
   transcriptData: TranscriptData,
-  additionalInstructions?: string,
 ): Promise<Record<string, unknown>> {
   "use step";
 
@@ -141,7 +137,6 @@ export async function doTranscriptAIAnalysis(
     channelName: transcriptData.channelName,
     description: transcriptData.description ?? undefined,
     transcript: transcriptData.transcript,
-    additionalInstructions,
   });
 
   for await (const partialResult of analysisStream.partialObjectStream) {

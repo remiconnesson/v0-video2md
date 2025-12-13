@@ -12,7 +12,6 @@ import {
 export async function analyzeTranscriptWorkflow(
   videoId: string,
   version: number,
-  additionalInstructions?: string,
 ) {
   "use workflow";
 
@@ -29,10 +28,7 @@ export async function analyzeTranscriptWorkflow(
     transcriptData = (await getTranscriptDataFromDb(videoId))!;
   }
 
-  const analysisResult = await doTranscriptAIAnalysis(
-    transcriptData,
-    additionalInstructions,
-  );
+  const analysisResult = await doTranscriptAIAnalysis(transcriptData);
 
   await saveTranscriptAIAnalysisToDb(videoId, analysisResult, version);
 

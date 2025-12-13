@@ -96,7 +96,6 @@ export const videoAnalysisRuns = pgTable(
       .references(() => videos.videoId, { onDelete: "cascade" }),
     version: integer("version").notNull().default(1),
     result: jsonb("result").$type<Record<string, unknown>>(),
-    additionalInstructions: text("additional_instructions"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
   (table) => [primaryKey({ columns: [table.videoId, table.version] })],
