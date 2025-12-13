@@ -1,3 +1,24 @@
+import { Brand } from "effect";
+
+/**
+ * YouTube video ID format: exactly 11 characters of [a-zA-Z0-9_-]
+ */
+export const YOUTUBE_VIDEO_ID_REGEX = /^[a-zA-Z0-9_-]{11}$/; // TODO: add test for this regex
+
+export type YouTubeVideoId = string & Brand.Brand<"YouTubeVideoId">;
+export const YouTubeVideoId = Brand.nominal<YouTubeVideoId>();
+
+/**
+ * Validates a YouTube video ID format.
+ * @param videoId - The video ID to validate
+ * @returns true if valid, false otherwise
+ */
+export function isValidYouTubeVideoId(
+  videoId: string,
+): videoId is YouTubeVideoId {
+  return YOUTUBE_VIDEO_ID_REGEX.test(videoId);
+}
+
 /**
  * Server-side utility for YouTube URL handling and video ID extraction
  */

@@ -1,18 +1,5 @@
 import { NextResponse } from "next/server";
-
-/**
- * YouTube video ID format: exactly 11 characters of [a-zA-Z0-9_-]
- */
-const YOUTUBE_VIDEO_ID_REGEX = /^[a-zA-Z0-9_-]{11}$/;
-
-/**
- * Validates a YouTube video ID format.
- * @param videoId - The video ID to validate
- * @returns true if valid, false otherwise
- */
-export function isValidYouTubeVideoId(videoId: string): boolean {
-  return YOUTUBE_VIDEO_ID_REGEX.test(videoId);
-}
+import { isValidYouTubeVideoId } from "./youtube-utils";
 
 /**
  * Validates a YouTube video ID and returns an error response if invalid.

@@ -1,6 +1,6 @@
 import { and, eq } from "drizzle-orm";
 import { Match } from "effect";
-import { NextResponse } from "next/server";
+import { type NextRequest, NextResponse, type RouteContext } from "next/server";
 import { getRun, start } from "workflow/api";
 import { z } from "zod";
 import { analyzeTranscriptWorkflow } from "@/app/workflows/analyze-transcript";
@@ -10,18 +10,28 @@ import {
   videoAnalysisRuns,
   videoAnalysisWorkflowIds,
 } from "@/db/schema";
-import { createSSEResponse, validateYouTubeVideoId } from "@/lib/api-utils";
+import { createSSEResponse } from "@/lib/api-utils";
+import type { YouTubeVideoId } from "@/lib/youtube-utils";
+import { isValidYouTubeVideoId } from "@/lib/youtube-utils";
+
+class InvalidYouTubeVideoIdErrorResponse extends NextResponse {
+  constructor(videoId: string) {
+    super(
+      JSON.stringify({ error: "Invalid YouTube video ID format", videoId }),
+      { status: 400 },
+    );
+  }
+}
 
 export async function GET(
-  _request: Request,
-  { params }: { params: Promise<{ videoId: string; version: number }> },
+  _req: NextRequest,
+  ctx: RouteContext<"/video/[videoId]/analysis/[version]">,
 ) {
-  const { videoId, version: versionParam } = await params;
+  const { videoId, version: versionParam } = await ctx.params;
 
   // Validate YouTube video ID
-  const validationError = validateYouTubeVideoId(videoId);
-  if (validationError) {
-    return validationError;
+  if (!isValidYouTubeVideoId(videoId)) {
+    return new InvalidYouTubeVideoIdErrorResponse(videoId);
   }
 
   const version = parseVersion(versionParam);
@@ -148,7 +158,7 @@ async function startNewAnalysisWorkflow({
   videoId,
   version,
 }: {
-  videoId: string;
+  videoId: YouTubeVideoId;
   version: number;
 }) {
   try {
@@ -173,7 +183,7 @@ function parseVersion(version: unknown): number {
 }
 
 async function getCompletedAnalysis(
-  videoId: string,
+  videoId: YouTubeVideoId,
   version: number,
 ): Promise<VideoAnalysisRun | null> {
   const [analysis] = await db
@@ -199,7 +209,7 @@ async function storeWorkflowId({
   version,
   workflowId,
 }: {
-  videoId: string;
+  videoId: YouTubeVideoId;
   version: number;
   workflowId: string;
 }) {
