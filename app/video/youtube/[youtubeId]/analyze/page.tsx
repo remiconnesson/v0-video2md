@@ -41,9 +41,11 @@ export default async function AnalyzePage(
           <Analysis youtubeId={youtubeId} />
         </TabsContent>
 
+        {/*
         <TabsContent value="slides">
           <SlidesPanel videoId={youtubeId} />
         </TabsContent>
+        */}
       </Tabs>
     </>
   );
