@@ -1,7 +1,14 @@
 "use server";
 
+import { desc, eq } from "drizzle-orm";
 import { z } from "zod";
-import { extractYoutubeVideoId } from "@/lib/youtube-utils";
+import { db } from "@/db";
+import { videoAnalysisRuns, videoAnalysisWorkflowIds } from "@/db/schema";
+import {
+  extractYoutubeVideoId,
+  isValidYouTubeVideoId,
+  type YouTubeVideoId,
+} from "@/lib/youtube-utils";
 
 const videoIdSchema = z.object({
   videoId: z
@@ -31,6 +38,8 @@ export async function validateVideoId(_prevState: unknown, formData: FormData) {
   };
 }
 
+// TODO: this below should be in another file, but where?
+
 type GetAnalysisVersionsResult =
   | {
       success: true;
@@ -44,31 +53,31 @@ type GetAnalysisVersionsResult =
 export async function getAnalysisVersions(
   videoId: string,
 ): Promise<GetAnalysisVersionsResult> {
-  try {
-    const response = await fetch(
-      `${process.env.NEXT_PUBLIC_APP_URL}/api/video/${videoId}/analysis/versions`,
-      {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      },
-    );
-
-    if (!response.ok) {
-      return {
-        success: false,
-        error: "Failed to fetch analysis versions",
-      };
-    }
-
-    const data = await response.json();
-    return data as GetAnalysisVersionsResult;
-  } catch (error) {
-    console.error("Error fetching analysis versions:", error);
+  //: Promise<GetAnalysisVersionsResult> {
+  // Validate YouTube video ID
+  if (!isValidYouTubeVideoId(videoId)) {
     return {
       success: false,
-      error: "Failed to fetch analysis versions",
+      error: "Invalid YouTube video ID format",
     };
   }
+
+  const versions = await getAnalysisVersionsForVideo(videoId);
+
+  return {
+    success: true,
+    versions,
+  };
+}
+
+export async function getAnalysisVersionsForVideo(videoId: YouTubeVideoId) {
+  // Get all versions for the video
+  const versions = await db
+    .select({
+      version: videoAnalysisRuns.version,
+    })
+    .from(videoAnalysisWorkflowIds)
+    .where(eq(videoAnalysisWorkflowIds.videoId, videoId))
+    .orderBy(desc(videoAnalysisWorkflowIds.version));
+  return versions;
 }
