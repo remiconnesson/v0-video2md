@@ -1,10 +1,15 @@
 import { and, eq } from "drizzle-orm";
+import { Match } from "effect";
 import { NextResponse } from "next/server";
 import { getRun, start } from "workflow/api";
 import { z } from "zod";
-import { transcriptAnalysisWorkflow } from "@/app/workflows/transcript-analysis";
+import { analyzeTranscriptWorkflow } from "@/app/workflows/analyze-transcript";
 import { db } from "@/db";
-import { videoAnalysisRuns, videoAnalysisWorkflowIds } from "@/db/schema";
+import {
+  type VideoAnalysisRun,
+  videoAnalysisRuns,
+  videoAnalysisWorkflowIds,
+} from "@/db/schema";
 import { createSSEResponse, validateYouTubeVideoId } from "@/lib/api-utils";
 
 // ============================================================================
@@ -18,12 +23,37 @@ import { createSSEResponse, validateYouTubeVideoId } from "@/lib/api-utils";
  2. we trigger analysis on visit 
  3. a reroll will post to analysie/<nextVersion>
 */
+function parseVersion(version: unknown): number {
+  return z.number().int().positive().parse(version);
+}
+
+async function getCompletedAnalysis(
+  videoId: string,
+  version: number,
+): Promise<VideoAnalysisRun | null> {
+  const [analysis] = await db
+    .select({
+      videoId: videoAnalysisRuns.videoId,
+      version: videoAnalysisRuns.version,
+      result: videoAnalysisRuns.result,
+      createdAt: videoAnalysisRuns.createdAt,
+    })
+    .from(videoAnalysisRuns)
+    .where(
+      and(
+        eq(videoAnalysisRuns.videoId, videoId),
+        eq(videoAnalysisRuns.version, version),
+      ),
+    );
+
+  return analysis;
+}
 
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ videoId: string; version: number }> },
 ) {
-  const { videoId, version } = await params;
+  const { videoId, version: versionParam } = await params;
 
   // Validate YouTube video ID
   const validationError = validateYouTubeVideoId(videoId);
@@ -31,95 +61,167 @@ export async function GET(
     return validationError;
   }
 
-  const v = z.number().int().positive().parse(version);
+  const version = parseVersion(versionParam);
 
   // Check for completed analysis in the database
-  const [completedRun] = await db
-    .select({
-      videoId: videoAnalysisRuns.videoId,
-      version: videoAnalysisRuns.version,
-      result: videoAnalysisRuns.result,
-      additionalInstructions: videoAnalysisRuns.additionalInstructions,
-      createdAt: videoAnalysisRuns.createdAt,
-    })
-    .from(videoAnalysisRuns)
-    .where(
-      and(
-        eq(videoAnalysisRuns.videoId, videoId),
-        eq(videoAnalysisRuns.version, v),
-      ),
-    );
+  const analysis = await getCompletedAnalysis(videoId, version);
 
   // If we have a completed analysis, return it
-  if (completedRun) {
-    return NextResponse.json({
-      status: "completed",
-      result: completedRun.result,
-      additionalInstructions: completedRun.additionalInstructions,
-      createdAt: completedRun.createdAt,
+  if (analysis) {
+    return NextResponse.json(analysis);
+  }
+
+  const workflowRecord = await getWorkflowRecord(videoId, version);
+
+  if (workflowRecord) {
+    const workflowId = workflowRecord.workflowId;
+    const run = getRun(workflowId);
+    const status = await run.status;
+    const readable = run.readable;
+
+    return dispatchOngoingWorkflowHandler({
+      workflowId,
+      videoId,
+      version,
+      readable,
+      status,
     });
   }
 
-  // Check for ongoing workflow
+  // No completed analysis and no ongoing workflow, start a new analysis
+  return startNewAnalysisWorkflow({ videoId, version });
+}
+
+async function getWorkflowRecord(videoId: string, version: number) {
   const [workflowRecord] = await db
     .select()
     .from(videoAnalysisWorkflowIds)
     .where(
       and(
         eq(videoAnalysisWorkflowIds.videoId, videoId),
-        eq(videoAnalysisWorkflowIds.version, v),
+        eq(videoAnalysisWorkflowIds.version, version),
       ),
     );
+  return workflowRecord;
+}
 
-  if (workflowRecord) {
-    // We have an ongoing workflow, check its status
-    try {
-      const run = getRun(workflowRecord.workflowId);
+function dispatchOngoingWorkflowHandler({
+  workflowId,
+  videoId,
+  version,
+  readable,
+  status,
+}: {
+  workflowId: string;
+  videoId: string;
+  version: number;
+  readable: ReadableStream;
+  status:
+    | "completed"
+    | "failed"
+    | "cancelled"
+    | "pending"
+    | "running"
+    | "paused";
+}) {
+  const response = Match.value(status).pipe(
+    Match.withReturnType<NextResponse>(),
+    Match.when("completed", () =>
+      handleWorkflowAnomaly({ workflowId, videoId, version }),
+    ),
+    Match.when("failed", () => handleWorkflowFailed()),
+    Match.when("cancelled", () => handleWorkflowFailed()),
+    Match.when("pending", () =>
+      handleWorkflowInProgress({ readable, workflowId }),
+    ),
+    Match.when("running", () =>
+      handleWorkflowInProgress({ readable, workflowId }),
+    ),
+    Match.when("paused", () =>
+      handleWorkflowInProgress({ readable, workflowId }),
+    ),
+    Match.exhaustive,
+  );
 
-      // Check the status of the workflow run
-      // Note: The workflow library likely has status properties on the run object
-      // For now, we'll assume we can get the status and handle it accordingly
+  return response;
+}
+// Store the workflow ID in the database for future reference
+async function storeWorkflowId({
+  videoId,
+  version,
+  workflowId,
+}: {
+  videoId: string;
+  version: number;
+  workflowId: string;
+}) {
+  await db
+    .insert(videoAnalysisWorkflowIds)
+    .values({
+      videoId,
+      version,
+      workflowId,
+    })
+    .onConflictDoUpdate({
+      target: [
+        videoAnalysisWorkflowIds.videoId,
+        videoAnalysisWorkflowIds.version,
+      ],
+      set: {
+        workflowId,
+        createdAt: new Date(),
+      },
+    });
+}
 
-      // If completed, this would be an anomaly since we didn't find it in videoAnalysisRuns
-      // If failed, return error
-      // If running, return the stream
-      // For now, assume we can resume the stream
-      const readable = run.getReadable();
-      return createSSEResponse(readable, workflowRecord.workflowId);
-    } catch (error) {
-      console.error("Failed to get workflow run:", error);
-      return NextResponse.json(
-        { error: "Analysis workflow failed or is no longer available" },
-        { status: 500 },
-      );
-    }
-  }
+function handleWorkflowAnomaly({
+  workflowId,
+  videoId,
+  version,
+}: {
+  workflowId: string;
+  videoId: string;
+  version: number;
+}) {
+  console.error(
+    `Workflow ${workflowId} for video ${videoId} version ${version} appears to be completed but not found in database`,
+  );
+  return NextResponse.json(
+    { error: "Internal server error" }, // hide the details of the error
+    { status: 500 },
+  );
+}
 
-  // No completed analysis and no ongoing workflow, start a new analysis
+function handleWorkflowFailed() {
+  return NextResponse.json(
+    { error: "Workflow failed or cancelled" },
+    { status: 500 },
+  );
+}
+
+function handleWorkflowInProgress({
+  readable,
+  workflowId,
+}: {
+  readable: ReadableStream;
+  workflowId: string;
+}) {
+  return createSSEResponse(readable, workflowId);
+}
+
+async function startNewAnalysisWorkflow({
+  videoId,
+  version,
+}: {
+  videoId: string;
+  version: number;
+}) {
   try {
     // Start the transcript analysis workflow
-    const run = await start(transcriptAnalysisWorkflow, [videoId, v]);
+    const run = await start(analyzeTranscriptWorkflow, [videoId, version]);
 
-    // Store the workflow ID in the database for future reference
-    await db
-      .insert(videoAnalysisWorkflowIds)
-      .values({
-        videoId,
-        version: v,
-        workflowId: run.runId,
-      })
-      .onConflictDoUpdate({
-        target: [
-          videoAnalysisWorkflowIds.videoId,
-          videoAnalysisWorkflowIds.version,
-        ],
-        set: {
-          workflowId: run.runId,
-          createdAt: new Date(),
-        },
-      });
+    await storeWorkflowId({ videoId, version, workflowId: run.runId });
 
-    // Return the SSE response with the workflow stream
     return createSSEResponse(run.readable, run.runId);
   } catch (error) {
     console.error("Failed to start analysis workflow:", error);
