@@ -30,3 +30,15 @@ export function getLikelyNextVersion(versions: Versions): number {
     return versions[0] + 1;
   }
 }
+
+export function getVersion(
+  version: number,
+  versions: Versions,
+  sentinel: number,
+): number {
+  if (version === sentinel) {
+    return versions[0] ?? 1;
+  }
+
+  return version;
+}

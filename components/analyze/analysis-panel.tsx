@@ -2,16 +2,18 @@
 
 import { Check, Copy } from "lucide-react";
 import { useQueryState } from "nuqs";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Streamdown } from "streamdown";
 import {
   VERSION_NOT_PROVIDED_SENTINEL,
   VERSION_SEARCH_PARAM_KEY,
   versionSearchParamParsers,
 } from "@/app/video/youtube/[youtubeId]/analyze/searchParams";
+import type { AnalysisStreamEvent } from "@/app/workflows/steps/transcript-analysis";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { analysisToMarkdown, formatSectionTitle } from "@/lib/analysis-format";
+import { consumeSSE } from "@/lib/sse";
 import { isRecord } from "@/lib/type-utils";
 import { getVersion, type Versions } from "@/lib/versions-utils";
 
@@ -26,18 +28,122 @@ export function AnalysisPanel({ videoId, versions }: AnalysisPanelProps) {
     versionSearchParamParsers.version,
   );
 
-  const displayedVersion = getVersion(
-    version,
-    versions,
-    VERSION_NOT_PROVIDED_SENTINEL,
+  const displayedVersion = useMemo(
+    () => getVersion(version, versions, VERSION_NOT_PROVIDED_SENTINEL),
+    [version, versions],
   );
+
   const [copied, setCopied] = useState(false);
+  const [analysis, setAnalysis] = useState<Record<string, unknown>>({});
+  const [status, setStatus] = useState<
+    "idle" | "loading" | "streaming" | "ready" | "error"
+  >("idle");
+  const [statusMessage, setStatusMessage] = useState<string>("");
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // TODO handle this with streaming
-  /*
-  const analysis = await fetch(`/api/video/${videoId}/analyze/${version}`);
+  useEffect(() => {
+    const controller = new AbortController();
 
-  */
+    async function fetchAnalysis() {
+      setStatus("loading");
+      setStatusMessage("Fetching analysis...");
+      setErrorMessage(null);
+      setAnalysis({});
+
+      try {
+        const response = await fetch(
+          `/api/video/${videoId}/analysis/${displayedVersion}`,
+          { signal: controller.signal },
+        );
+
+        if (!response.ok) {
+          const errorData = await response
+            .json()
+            .catch(() => ({ error: response.statusText }));
+          throw new Error(errorData.error || "Failed to load analysis");
+        }
+
+        const contentType = response.headers.get("content-type") ?? "";
+
+        if (contentType.includes("text/event-stream")) {
+          setStatus("streaming");
+          setStatusMessage("Generating analysis...");
+
+          await consumeSSE<AnalysisStreamEvent>(
+            response,
+            {
+              progress: (event) => {
+                setStatus("streaming");
+                if (event.message) {
+                  setStatusMessage(event.message);
+                } else if (event.phase) {
+                  setStatusMessage(event.phase);
+                }
+              },
+              partial: (event) => {
+                const partialData = event.data;
+                if (!isRecord(partialData)) return;
+
+                setAnalysis((prev) => ({ ...prev, ...partialData }));
+                setStatus("streaming");
+              },
+              result: (event) => {
+                if (isRecord(event.data)) {
+                  setAnalysis(event.data);
+                }
+                setStatus("ready");
+                setStatusMessage("");
+              },
+              complete: () => {
+                setStatus((prev) => (prev === "error" ? prev : "ready"));
+                setStatusMessage("");
+              },
+              error: (event) => {
+                setErrorMessage(event.message);
+                setStatus("error");
+                setStatusMessage("");
+              },
+            },
+            {
+              onError: (streamError) => {
+                if (controller.signal.aborted) return;
+
+                const message =
+                  streamError instanceof Error
+                    ? streamError.message
+                    : "Failed to stream analysis";
+                setErrorMessage(message);
+                setStatus("error");
+                setStatusMessage("");
+              },
+            },
+          );
+        } else {
+          const data = await response.json();
+          const result =
+            isRecord(data) && isRecord(data.result) ? data.result : {};
+
+          setAnalysis(result);
+          setStatus("ready");
+          setStatusMessage("");
+        }
+      } catch (error) {
+        if (controller.signal.aborted) return;
+
+        const message =
+          error instanceof Error ? error.message : "Failed to load analysis";
+        setErrorMessage(message);
+        setStatus("error");
+        setStatusMessage("");
+      }
+    }
+
+    void fetchAnalysis();
+
+    return () => {
+      controller.abort();
+    };
+  }, [videoId, displayedVersion]);
 
   const handleCopyMarkdown = async () => {
     const markdown = analysisToMarkdown(analysis);
@@ -51,13 +157,31 @@ export function AnalysisPanel({ videoId, versions }: AnalysisPanelProps) {
     }
   };
 
+  const hasContent = Object.keys(analysis).length > 0;
+
   return (
     <div className="space-y-4">
-      <CopyButton copied={copied} onCopy={handleCopyMarkdown} />
+      <CopyButton
+        copied={copied}
+        onCopy={handleCopyMarkdown}
+        disabled={!hasContent}
+      />
 
-      {Object.entries(analysis).map(([key, value]) => (
-        <Section key={key} title={key} content={value} />
-      ))}
+      {statusMessage ? (
+        <p className="text-sm text-muted-foreground">{statusMessage}</p>
+      ) : null}
+
+      {errorMessage ? (
+        <p className="text-sm text-destructive">{errorMessage}</p>
+      ) : null}
+
+      {hasContent ? (
+        Object.entries(analysis).map(([key, value]) => (
+          <Section key={key} title={key} content={value} />
+        ))
+      ) : status === "ready" && !errorMessage ? (
+        <p className="text-muted-foreground italic">No analysis available.</p>
+      ) : null}
     </div>
   );
 }
@@ -69,13 +193,21 @@ export function AnalysisPanel({ videoId, versions }: AnalysisPanelProps) {
 function CopyButton({
   copied,
   onCopy,
+  disabled,
 }: {
   copied: boolean;
   onCopy: () => void;
+  disabled?: boolean;
 }) {
   return (
     <div className="flex justify-end">
-      <Button variant="outline" size="sm" onClick={onCopy} className="gap-2">
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={onCopy}
+        className="gap-2"
+        disabled={disabled}
+      >
         {copied ? (
           <>
             <Check className="h-4 w-4" />

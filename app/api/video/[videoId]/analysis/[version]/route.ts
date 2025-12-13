@@ -25,7 +25,7 @@ class InvalidYouTubeVideoIdErrorResponse extends NextResponse {
 
 export async function GET(
   _req: NextRequest,
-  ctx: RouteContext<"/api/video/[videoId]/analysis/[version]">,
+  ctx: RouteContext<"/api/video/[videoId]/analysis/[version]">
 ) {
   const { videoId, version: versionParam } = await ctx.params;
 

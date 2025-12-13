@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   createSSETransformStream,
-  isValidYouTubeVideoId,
   SSE_HEADERS,
   validateYouTubeVideoId,
 } from "./api-utils";
+import { isValidYouTubeVideoId } from "./youtube-utils";
 
 describe("isValidYouTubeVideoId", () => {
   it("should return true for valid video IDs", () => {
