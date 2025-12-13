@@ -41,12 +41,9 @@ export default async function AnalyzePage(
           <Analysis youtubeId={youtubeId} />
         </TabsContent>
 
-        {/*
-        COMMENTED OUT WHILE REFACTORING ANALYSIS PANEL
         <TabsContent value="slides">
           <SlidesPanel videoId={youtubeId} />
         </TabsContent>
-        */}
       </Tabs>
     </>
   );
