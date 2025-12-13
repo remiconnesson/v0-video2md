@@ -147,7 +147,6 @@ export function AnalyzeView({ youtubeId, initialVersion }: AnalyzeViewProps) {
           setRerollOpen(false);
           handleReroll(instructions);
         }}
-        previousInstructions={selectedRun?.additionalInstructions ?? undefined}
       />
     </div>
   );

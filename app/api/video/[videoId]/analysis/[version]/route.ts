@@ -42,7 +42,6 @@ export async function GET(
       videoId: videoAnalysisRuns.videoId,
       version: videoAnalysisRuns.version,
       result: videoAnalysisRuns.result,
-      additionalInstructions: videoAnalysisRuns.additionalInstructions,
       createdAt: videoAnalysisRuns.createdAt,
     })
     .from(videoAnalysisRuns)

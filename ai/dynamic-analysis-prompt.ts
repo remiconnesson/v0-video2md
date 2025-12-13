@@ -82,7 +82,6 @@ export function buildGodPromptUserMessage(input: {
   channelName?: string;
   description?: string;
   transcript: string;
-  additionalInstructions?: string;
 }): string {
   const parts: string[] = [];
 
@@ -97,12 +96,6 @@ export function buildGodPromptUserMessage(input: {
   }
 
   parts.push(`## Transcript\n\`\`\`\n${input.transcript}\n\`\`\``);
-
-  if (input.additionalInstructions) {
-    parts.push(
-      `## Additional Instructions from User\n${input.additionalInstructions}`,
-    );
-  }
 
   parts.push(
     `\nAnalyze this transcript. Think about what would be genuinely USEFUL to extract, design a custom schema for this specific content, and perform the extraction.`,
