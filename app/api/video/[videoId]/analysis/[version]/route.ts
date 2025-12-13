@@ -1,6 +1,7 @@
 import { and, eq } from "drizzle-orm";
 import { Match } from "effect";
-import { type NextRequest, NextResponse, type RouteContext } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
+
 import { getRun, start } from "workflow/api";
 import { z } from "zod";
 import { analyzeTranscriptWorkflow } from "@/app/workflows/analyze-transcript";
@@ -25,7 +26,7 @@ class InvalidYouTubeVideoIdErrorResponse extends NextResponse {
 
 export async function GET(
   _req: NextRequest,
-  ctx: RouteContext<"/video/[videoId]/analysis/[version]">,
+  ctx: RouteContext<"/api/video/[videoId]/analysis/[version]">,
 ) {
   const { videoId, version: versionParam } = await ctx.params;
 
