@@ -63,6 +63,30 @@ export function formatTranscriptForLLM(segments: TranscriptSegment[]): string {
 }
 
 /**
+ * Formats transcript segments into a string suitable for LLM analysis with padded timestamps.
+ * Each segment is prefixed with its timestamp using HH:MM:SS format.
+ *
+ * @param segments - Array of transcript segments
+ * @returns Formatted transcript string with padded timestamps
+ *
+ * @example
+ * formatTranscriptForLLMPadded([
+ *   { start: 0, text: "Hello" },
+ *   { start: 5, text: "World" }
+ * ])
+ * // => "[00:00:00] Hello\n[00:00:05] World"
+ */
+export function formatTranscriptForLLMPadded(
+  segments: TranscriptSegment[],
+): string {
+  return segments
+    .map(
+      (segment) => `[${formatTimestampForLLM(segment.start)}] ${segment.text}`,
+    )
+    .join("\n");
+}
+
+/**
  * Calculates the total duration of a transcript.
  * @param segments - Array of transcript segments
  * @returns Total duration in seconds, or 0 if empty

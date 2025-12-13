@@ -1,18 +1,7 @@
-import { and, desc, eq } from "drizzle-orm";
-import { NextResponse } from "next/server";
-import { getRun, start } from "workflow/api";
+import { and, eq } from "drizzle-orm";
 import { z } from "zod";
-import {
-  type AnalysisStreamEvent,
-  transcriptAnalysisWorkflow,
-} from "@/app/workflows/transcript-analysis";
 import { db } from "@/db";
 import { videoAnalysisRuns } from "@/db/schema";
-import {
-  createSSEResponse,
-  resumeWorkflowStream,
-  validateYouTubeVideoId,
-} from "@/lib/api-utils";
 
 // ============================================================================
 // GET - List all analysis runs for a video
@@ -37,7 +26,7 @@ export async function GET(
   const v = z.number().int().positive().parse(version);
 
   // TODO: extract to fetchAnalysisByIdAndVersion
-  const runs = await db
+  const _runs = await db
     .select({
       videoId: videoAnalysisRuns.videoId,
       version: videoAnalysisRuns.version,
