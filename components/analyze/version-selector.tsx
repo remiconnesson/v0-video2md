@@ -12,13 +12,11 @@ import {
 interface VersionSelectorProps {
   versions: number[];
   currentVersion: number;
-  onVersionChange: (version: number) => void;
 }
 
 export function VersionSelector({
   versions,
   currentVersion,
-  onVersionChange,
 }: VersionSelectorProps) {
   if (versions.length <= 1) {
     return (
@@ -32,7 +30,9 @@ export function VersionSelector({
   return (
     <Select
       value={currentVersion.toString()}
-      onValueChange={(v) => onVersionChange(parseInt(v, 10))}
+      onValueChange={(v: string) => {
+        // TODO: navigateToVersion(parseInt(v, 10))
+      }}
     >
       <SelectTrigger className="w-[120px]">
         <History className="h-4 w-4 mr-2" />

@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { analysisToMarkdown, formatSectionTitle } from "@/lib/analysis-format";
 import { isRecord } from "@/lib/type-utils";
-import { SectionFeedback } from "./section-feedback";
 
 // ============================================================================
 // Analysis Panel - Main Component
@@ -179,10 +178,6 @@ function Section({
 function SectionHeader({
   title,
   description,
-  videoId,
-  runId,
-  sectionKey,
-  hasFeedback,
 }: {
   title: string;
   description?: string;
@@ -199,14 +194,6 @@ function SectionHeader({
           <p className="text-xs text-muted-foreground mt-0.5">{description}</p>
         )}
       </div>
-
-      {hasFeedback && runId !== null && (
-        <SectionFeedback
-          videoId={videoId}
-          runId={runId}
-          sectionKey={sectionKey}
-        />
-      )}
     </div>
   );
 }
