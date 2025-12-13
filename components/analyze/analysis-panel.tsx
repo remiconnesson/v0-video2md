@@ -52,16 +52,13 @@ export function AnalysisPanel({ videoId, versions }: AnalysisPanelProps) {
   };
 
   return (
-    <>
-      <VersionSelector versions={versions} currentVersion={displayedVersion} />
-      <div className="space-y-4">
-        <CopyButton copied={copied} onCopy={handleCopyMarkdown} />
+    <div className="space-y-4">
+      <CopyButton copied={copied} onCopy={handleCopyMarkdown} />
 
-        {Object.entries(analysis).map(([key, value]) => (
-          <Section key={key} title={key} content={value} />
-        ))}
-      </div>
-    </>
+      {Object.entries(analysis).map(([key, value]) => (
+        <Section key={key} title={key} content={value} />
+      ))}
+    </div>
   );
 }
 
