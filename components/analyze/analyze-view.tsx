@@ -27,41 +27,11 @@ interface AnalyzeViewProps {
   initialVersion?: number;
 }
 
-export function AnalyzeView({ youtubeId, initialVersion }: AnalyzeViewProps) {
-  /**
-   * State Machine Overview:
-   * This component implements an implicit state machine with the following states:
-   * 1. loading -> Initial data fetch from server
-   * 2. no_transcript -> Video found but transcript not yet fetched
-   * 3. fetching_transcript -> Actively fetching transcript from YouTube
-   * 4. ready -> Transcript available, can show:
-   *    - Empty state (no analysis runs yet)
-   *    - Running state (analysis in progress)
-   *    - Results state (completed analysis with tabs)
-   *
-   * The pageStatus drives the main state transitions, while sub-states
-   * (hasRuns, isAnalysisRunning, displayResult) manage the ready state variants.
-   */
-  const [rerollOpen, setRerollOpen] = useState(false);
+function handleReroll() {
+  // TODO: navigateToNextVersion;
+}
 
-  const {
-    pageStatus,
-    videoInfo,
-    runs,
-    selectedRun,
-    transcriptState,
-    analysisState,
-    slidesState,
-    isAnalysisRunning,
-    hasRuns,
-    displayResult,
-    handleFetchTranscript,
-    handleVersionChange,
-    handleStartAnalysis,
-    handleReroll,
-    setSlidesState,
-  } = useVideoProcessing(youtubeId, initialVersion);
-
+export function AnalyzeView({ youtubeId, version }: AnalyzeViewProps) {
   // Loading state
   if (pageStatus === "loading") {
     return <LoadingIndication />;
@@ -109,9 +79,8 @@ export function AnalyzeView({ youtubeId, initialVersion }: AnalyzeViewProps) {
         selectedRun={selectedRun}
         isAnalysisRunning={isAnalysisRunning}
         onVersionChange={handleVersionChange}
-        onRerollClick={() => setRerollOpen(true)}
+        onRerollClick={handleReroll}
       />
-
       {/**
        * Known Issue: This empty state briefly flashes on initial load even when runs exist.
        * Root cause: Client component initializes with default state before data is fetched.
@@ -124,11 +93,9 @@ export function AnalyzeView({ youtubeId, initialVersion }: AnalyzeViewProps) {
       {!hasRuns && !isAnalysisRunning && (
         <EmptyState handleStartAnalysis={handleStartAnalysis} />
       )}
-
       {isAnalysisRunning && (
         <ProgressIndicator message={analysisState.message} />
       )}
-
       {displayResult !== null && (
         <ResultsTabs
           displayResult={displayResult}
@@ -139,15 +106,7 @@ export function AnalyzeView({ youtubeId, initialVersion }: AnalyzeViewProps) {
           onSlidesStateChange={setSlidesState}
         />
       )}
-
-      <RerollDialog
-        open={rerollOpen}
-        onOpenChange={setRerollOpen}
-        onSubmit={(instructions) => {
-          setRerollOpen(false);
-          handleReroll(instructions);
-        }}
-      />
+      handleReroll();
     </div>
   );
 }
