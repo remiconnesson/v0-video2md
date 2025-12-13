@@ -3,6 +3,7 @@
 import { History, RefreshCw } from "lucide-react";
 import { useQueryState } from "nuqs";
 import {
+  VERSION_NOT_PROVIDED_SENTINEL,
   VERSION_SEARCH_PARAM_KEY,
   versionSearchParamParsers,
 } from "@/app/video/youtube/[youtubeId]/analyze/searchParams";
@@ -14,25 +15,36 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { Versions } from "@/lib/versions-utils";
-import { getLikelyNextVersion, parseVersion } from "@/lib/versions-utils";
+import {
+  getLikelyNextVersion,
+  getVersion,
+  parseVersion,
+} from "@/lib/versions-utils";
 import { Button } from "../ui/button";
 
-interface VersionSelectorProps {
+export function VersionSelector({
+  videoId,
+  versions,
+}: {
+  videoId: string;
   versions: Versions;
-  currentVersion: number;
-}
-
-export function VersionSelector({ versions }: VersionSelectorProps) {
+}) {
   const [version, setVersion] = useQueryState(
     VERSION_SEARCH_PARAM_KEY,
     versionSearchParamParsers.version,
+  );
+
+  const displayedVersion = getVersion(
+    version,
+    versions,
+    VERSION_NOT_PROVIDED_SENTINEL,
   );
 
   if (versions.length <= 1) {
     return (
       <div className="flex items-center gap-2 text-sm text-muted-foreground">
         <History className="h-4 w-4" />
-        <span>v{version}</span>
+        <span>v{displayedVersion}</span>
       </div>
     );
   }
@@ -44,7 +56,7 @@ export function VersionSelector({ versions }: VersionSelectorProps) {
   return (
     <div className="flex items-center gap-3 flex-shrink-0">
       <Select
-        value={version.toString()}
+        value={displayedVersion.toString()}
         onValueChange={(v: string) => {
           setVersion(parseVersion(v));
         }}

@@ -1,92 +1,81 @@
-import { ArrowLeft, ExternalLink, RefreshCw } from "lucide-react";
-import Link from "next/link";
+import { ExternalLink } from "lucide-react";
+import { start } from "workflow/api";
 import { getAnalysisVersions } from "@/app/actions";
+import { fetchAndSaveTranscriptWorkflow } from "@/app/workflows/fetch-and-save-transcript";
+import { AnalysisPanel } from "@/components/analyze/analysis-panel";
 import { SlidesPanel } from "@/components/analyze/slides-panel";
 import { VersionSelector } from "@/components/analyze/version-selector";
-import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { isRecord } from "@/lib/type-utils";
-import {
-  getSortedVersionsDescending,
-  parseVersions,
-} from "@/lib/versions-utils";
-
+import { getVersion, parseVersions } from "@/lib/versions-utils";
+import { isValidYouTubeVideoId } from "@/lib/youtube-utils";
 import { versionSearchParamsCache } from "./searchParams";
 
 export default async function AnalyzePage(
   props: PageProps<"/video/youtube/[youtubeId]/analyze">,
 ) {
   const { youtubeId } = await props.params;
-  const result = await getAnalysisVersions(youtubeId);
-
-  await versionSearchParamsCache.parse(props.searchParams);
-  const version = await versionSearchParamsCache.get("version");
 
   if (!result.success) {
     return <ErrorScreen errorMessage={result.error} />;
   }
 
-  const versions = getSortedVersionsDescending(parseVersions(result.versions));
-  const displayedVersion = version === -1 ? versions[0] : version;
+  const run = await start(fetchAndSaveTranscriptWorkflow, [youtubeId]);
 
-  if (!versions.includes(displayedVersion)) {
-    return <ErrorScreen errorMessage="Invalid version" />;
-  }
-
-  // TODO: fetch video info
-
-  // TODO: fetch analysis or start it (cf. api)
-
-  // display error + retry OR analysis in progress (w/ streaming) or complete analysis
-  function handleReroll() {
-    // TODO: navigateToNextVersion;
-  }
+  const videoData = await run.returnValue;
 
   return (
-    <Layout>
+    <>
       <div className="flex items-start justify-between gap-4">
-        <VideoInfoDisplay videoInfo={videoInfo} youtubeId={youtubeId} />
-        <div className="flex items-center gap-3 flex-shrink-0">
-          <VersionSelector
-            versions={versions}
-            currentVersion={displayedVersion}
-          />
-          <Button variant="outline" onClick={handleReroll} className="gap-2">
-            <RefreshCw className="h-4 w-4" />
-            Reroll
-          </Button>
-        </div>
-        <ResultsTabs
-          displayResult={displayResult}
-          isAnalysisRunning={isAnalysisRunning}
-          selectedRun={selectedRun}
+        <VideoInfoDisplay
+          title={videoData.title}
+          channelName={videoData.channelName}
           youtubeId={youtubeId}
-          // needs to be split, we don't need to drill slides state from here,
-          slidesState={slidesState}
-          onSlidesStateChange={setSlidesState}
         />
       </div>
-    </Layout>
+      <Tabs defaultValue="analysis" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="analysis">Analysis</TabsTrigger>
+          <TabsTrigger value="slides">Slides</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="analysis">
+          <VersionSelector videoId={youtubeId} />;
+          <AnalysisPanel videoId={youtubeId} />
+        </TabsContent>
+
+        <TabsContent value="slides">
+          <SlidesPanel videoId={youtubeId} />
+        </TabsContent>
+      </Tabs>
+    </>
   );
 }
 
-// dumb component with just a link
-function Layout({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
-      <div className="container mx-auto px-4 py-6 max-w-5xl">
-        <div className="flex items-center gap-4 mb-6">
-          <Link href="/">
-            <Button variant="ghost" size="sm" className="gap-2">
-              <ArrowLeft className="h-4 w-4" />
-              Home
-            </Button>
-          </Link>
-        </div>
+async function Analysis({ youtubeId }: { youtubeId: string }) {
+  const result = await getAnalysisVersions(youtubeId);
 
-        {children}
-      </div>
-    </div>
+  if (!result.success) {
+    throw new Error(result.error);
+  }
+
+  const versions = parseVersions(result.versions);
+
+  const [version, setVersion] = useQueryState(
+    VERSION_SEARCH_PARAM_KEY,
+    versionSearchParamParsers.version,
+  );
+
+  const displayedVersion = getVersion(
+    version,
+    versions,
+    VERSION_NOT_PROVIDED_SENTINEL,
+  );
+
+  return (
+    <>
+      <VersionSelector videoId={youtubeId} versions={versions} />
+      <AnalysisPanel videoId={youtubeId} versions={versions} />
+    </>
   );
 }
 
@@ -95,24 +84,20 @@ function ErrorScreen({ errorMessage }: { errorMessage: string }) {
 }
 
 function VideoInfoDisplay({
-  videoInfo,
+  title,
+  channelName,
   youtubeId,
 }: {
-  videoInfo: VideoInfo | null;
+  title: string;
+  channelName: string;
   youtubeId: string;
 }) {
   return (
     <div className="min-w-0">
-      <h1 className="text-2xl font-bold truncate">
-        {videoInfo?.title ?? "Video Analysis"}
-      </h1>
+      <h1 className="text-2xl font-bold truncate">{title}</h1>
 
       <div className="flex items-center gap-3 mt-1">
-        {videoInfo?.channelName && (
-          <span className="text-sm text-muted-foreground">
-            {videoInfo.channelName}
-          </span>
-        )}
+        <span className="text-sm text-muted-foreground">{channelName}</span>
 
         <a
           href={`https://www.youtube.com/watch?v=${youtubeId}`}
@@ -125,40 +110,5 @@ function VideoInfoDisplay({
         </a>
       </div>
     </div>
-  );
-}
-
-function ResultsTabs({
-  displayResult,
-  isAnalysisRunning,
-  selectedRun,
-  youtubeId,
-}: {
-  displayResult: unknown;
-  isAnalysisRunning: boolean;
-  selectedRun: AnalysisRun | null;
-  youtubeId: string;
-}) {
-  return (
-    <Tabs defaultValue="analysis" className="space-y-4">
-      <TabsList>
-        <TabsTrigger value="analysis">Analysis</TabsTrigger>
-        <TabsTrigger value="slides">Slides</TabsTrigger>
-      </TabsList>
-
-      <TabsContent value="analysis">
-        {isRecord(displayResult) && (
-          <AnalysisPanel
-            analysis={displayResult}
-            runId={isAnalysisRunning ? null : (selectedRun?.id ?? null)}
-            videoId={youtubeId}
-          />
-        )}
-      </TabsContent>
-
-      <TabsContent value="slides">
-        <SlidesPanel videoId={youtubeId} />
-      </TabsContent>
-    </Tabs>
   );
 }

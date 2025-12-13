@@ -1,37 +1,43 @@
 "use client";
 
 import { Check, Copy } from "lucide-react";
+import { useQueryState } from "nuqs";
 import { useState } from "react";
 import { Streamdown } from "streamdown";
+import {
+  VERSION_NOT_PROVIDED_SENTINEL,
+  VERSION_SEARCH_PARAM_KEY,
+  versionSearchParamParsers,
+} from "@/app/video/youtube/[youtubeId]/analyze/searchParams";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { analysisToMarkdown, formatSectionTitle } from "@/lib/analysis-format";
 import { isRecord } from "@/lib/type-utils";
-
-// ============================================================================
-// Analysis Panel - Main Component
-// ============================================================================
+import { getVersion, type Versions } from "@/lib/versions-utils";
 
 interface AnalysisPanelProps {
-  analysis: Record<string, unknown>;
-  runId: number | null;
   videoId: string;
+  versions: Versions;
 }
 
-// ============================================================================
-// Content Conversion Utilities
-// ============================================================================
+export function AnalysisPanel({ videoId, versions }: AnalysisPanelProps) {
+  const [version] = useQueryState(
+    VERSION_SEARCH_PARAM_KEY,
+    versionSearchParamParsers.version,
+  );
 
-// ============================================================================
-// Main Panel Component
-// ============================================================================
-
-export function AnalysisPanel({
-  analysis,
-  runId,
-  videoId,
-}: AnalysisPanelProps) {
+  const displayedVersion = getVersion(
+    version,
+    versions,
+    VERSION_NOT_PROVIDED_SENTINEL,
+  );
   const [copied, setCopied] = useState(false);
+
+  // TODO handle this with streaming
+  /*
+  const analysis = await fetch(`/api/video/${videoId}/analyze/${version}`);
+
+  */
 
   const handleCopyMarkdown = async () => {
     const markdown = analysisToMarkdown(analysis);
@@ -45,21 +51,17 @@ export function AnalysisPanel({
     }
   };
 
-  console.log(analysis);
   return (
-    <div className="space-y-4">
-      <CopyButton copied={copied} onCopy={handleCopyMarkdown} />
+    <>
+      <VersionSelector versions={versions} currentVersion={displayedVersion} />
+      <div className="space-y-4">
+        <CopyButton copied={copied} onCopy={handleCopyMarkdown} />
 
-      {Object.entries(analysis).map(([key, value]) => (
-        <Section
-          key={key}
-          title={key}
-          content={value}
-          runId={runId}
-          videoId={videoId}
-        />
-      ))}
-    </div>
+        {Object.entries(analysis).map(([key, value]) => (
+          <Section key={key} title={key} content={value} />
+        ))}
+      </div>
+    </>
   );
 }
 
@@ -137,35 +139,14 @@ function SectionContent({ content }: { content: unknown }): React.ReactNode {
 // Section Components
 // ============================================================================
 
-function Section({
-  title,
-  content,
-  runId,
-  videoId,
-  description,
-}: {
-  title: string;
-  key: string;
-  content: unknown;
-  runId: number | null;
-  videoId: string;
-  description?: string;
-}) {
+function Section({ title, content }: { title: string; content: unknown }) {
   const key = title;
   const formattedTitle = formatSectionTitle(title) || title;
-  const hasFeedback = runId !== null;
 
   return (
     <Card key={key}>
       <CardHeader>
-        <SectionHeader
-          title={formattedTitle}
-          description={description}
-          videoId={videoId}
-          runId={runId}
-          sectionKey={key}
-          hasFeedback={hasFeedback}
-        />
+        <SectionHeader title={formattedTitle} sectionKey={key} />
       </CardHeader>
 
       <CardContent>
@@ -177,22 +158,15 @@ function Section({
 
 function SectionHeader({
   title,
-  description,
 }: {
   title: string;
   description?: string;
-  videoId: string;
-  runId: number | null;
   sectionKey: string;
-  hasFeedback: boolean;
 }) {
   return (
     <div className="flex items-start justify-between gap-4">
       <div>
         <CardTitle className="text-base">{title}</CardTitle>
-        {description && (
-          <p className="text-xs text-muted-foreground mt-0.5">{description}</p>
-        )}
       </div>
     </div>
   );

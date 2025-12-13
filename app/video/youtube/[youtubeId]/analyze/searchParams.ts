@@ -4,9 +4,11 @@ import {
   parseAsInteger,
 } from "nuqs/server";
 
+export const VERSION_NOT_PROVIDED_SENTINEL = -1;
+
 export const versionSearchParamParsers = {
   version: parseAsInteger
-    .withDefault(-1)
+    .withDefault(VERSION_NOT_PROVIDED_SENTINEL)
     .withOptions({ shallow: false, clearOnDefault: false }),
 };
 
