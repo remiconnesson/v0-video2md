@@ -175,6 +175,10 @@ export function AnalysisPanel({ videoId, versions }: AnalysisPanelProps) {
         <p className="text-sm text-destructive">{errorMessage}</p>
       ) : null}
 
+      {status === "loading" && !statusMessage ? (
+        <p className="text-sm text-muted-foreground">Loading analysis...</p>
+      ) : null}
+
       {hasContent ? (
         Object.entries(analysis).map(([key, value]) => (
           <Section key={key} title={key} content={value} />
