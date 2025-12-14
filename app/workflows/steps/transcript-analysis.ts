@@ -107,11 +107,6 @@ export async function saveTranscriptAIAnalysisToDb(
 ) {
   "use step";
 
-  await emit<AnalysisStreamEvent>(
-    { type: "result", data: result },
-    { finished: true },
-  );
-
   await db
     .insert(videoAnalysisRuns)
     .values({
@@ -125,6 +120,11 @@ export async function saveTranscriptAIAnalysisToDb(
         result,
       },
     });
+
+  await emit<AnalysisStreamEvent>(
+    { type: "result", data: result },
+    { finished: true },
+  );
 }
 
 export async function doTranscriptAIAnalysis(
