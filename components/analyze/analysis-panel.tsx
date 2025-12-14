@@ -275,7 +275,7 @@ function Section({ title, content }: { title: string; content: unknown }) {
   return (
     <Card key={key}>
       <CardHeader>
-        <SectionHeader title={formattedTitle} sectionKey={key} />
+        <SectionHeader title={formattedTitle} />
       </CardHeader>
 
       <CardContent>
@@ -285,13 +285,7 @@ function Section({ title, content }: { title: string; content: unknown }) {
   );
 }
 
-function SectionHeader({
-  title,
-}: {
-  title: string;
-  description?: string;
-  sectionKey: string;
-}) {
+function SectionHeader({ title }: { title: string }) {
   return (
     <div className="flex items-start justify-between gap-4">
       <div>
