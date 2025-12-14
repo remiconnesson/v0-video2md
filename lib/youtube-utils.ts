@@ -301,7 +301,7 @@ export async function resolveShortUrl(
 export async function validateYoutubeVideoId(
   videoId: string,
 ): Promise<boolean> {
-  if (!videoId || !/^[a-zA-Z0-9_-]{11}$/.test(videoId)) {
+  if (!videoId || !isValidYouTubeVideoId(videoId)) {
     return false;
   }
 
@@ -325,7 +325,7 @@ export async function validateYoutubeVideoId(
 export async function fetchYoutubeVideoTitle(
   videoId: string,
 ): Promise<string | null> {
-  if (!videoId || !/^[a-zA-Z0-9_-]{11}$/.test(videoId)) {
+  if (!videoId || !isValidYouTubeVideoId(videoId)) {
     return null;
   }
 
