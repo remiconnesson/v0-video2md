@@ -18,7 +18,7 @@ export function parseVersions(versions: unknown): Versions {
 }
 
 export function getSortedVersionsDescending(versions: number[]): number[] {
-  return versions.sort((a, b) => b - a);
+  return [...versions].sort((a, b) => b - a);
 }
 
 export function getLikelyNextVersion(versions: Versions): number {
