@@ -53,7 +53,6 @@ type GetAnalysisVersionsResult =
 export async function getAnalysisVersions(
   videoId: string,
 ): Promise<GetAnalysisVersionsResult> {
-  //: Promise<GetAnalysisVersionsResult> {
   // Validate YouTube video ID
   if (!isValidYouTubeVideoId(videoId)) {
     return {
