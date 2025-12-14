@@ -55,7 +55,11 @@ async function Analysis({ youtubeId }: { youtubeId: string }) {
   const result = await getAnalysisVersions(youtubeId);
 
   if (!result.success) {
-    throw new Error(result.error);
+    return (
+      <ErrorScreen
+        errorMessage={result.error ?? "Failed to load analysis versions"}
+      />
+    );
   }
 
   const versions = parseVersions(result.versions);

@@ -114,7 +114,10 @@ export const videoAnalysisWorkflowIds = pgTable(
     workflowId: varchar("workflow_id", { length: 100 }).notNull(),
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
-  (table) => [primaryKey({ columns: [table.videoId, table.version] })],
+  (table) => [
+    primaryKey({ columns: [table.videoId, table.version] }),
+    index("video_analysis_workflow_ids_video_id_idx").on(table.workflowId),
+  ],
 );
 
 export type VideoAnalysisWorkflowId =
