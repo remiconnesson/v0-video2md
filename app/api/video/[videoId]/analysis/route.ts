@@ -26,26 +26,24 @@ class InvalidYouTubeVideoIdErrorResponse extends NextResponse {
 export async function GET(
   _req: NextRequest,
   // note for LLMs: this type doesn't need to be imported
-  ctx: RouteContext<"/api/video/[videoId]/analysis/[version]">,
+  ctx: RouteContext<"/api/video/[videoId]/analysis">,
 ) {
-  const { videoId, version: versionParam } = await ctx.params;
+  const { videoId } = await ctx.params;
 
   // Validate YouTube video ID
   if (!isValidYouTubeVideoId(videoId)) {
     return new InvalidYouTubeVideoIdErrorResponse(videoId);
   }
 
-  const version = parseVersion(versionParam);
-
   // Check for completed analysis in the database
-  const analysis = await getCompletedAnalysis(videoId, version);
+  const analysis = await getCompletedAnalysis(videoId);
 
   // If we have a completed analysis, return it
   if (analysis) {
     return NextResponse.json(analysis);
   }
 
-  const workflowRecord = await getWorkflowRecord(videoId, version);
+  const workflowRecord = await getWorkflowRecord(videoId);
 
   if (workflowRecord) {
     const workflowId = workflowRecord.workflowId;
@@ -56,24 +54,21 @@ export async function GET(
     return dispatchOngoingWorkflowHandler({
       workflowId,
       videoId,
-      version,
       readable,
       status,
     });
   }
 
   // No completed analysis and no ongoing workflow, start a new analysis
-  return startNewAnalysisWorkflow({ videoId, version });
+  return startNewAnalysisWorkflow({ videoId });
 }
 
-async function getWorkflowRecord(videoId: string, version: number) {
+async function getWorkflowRecord(videoId: string) {
   const [workflowRecord] = await db
     .select()
     .from(videoAnalysisWorkflowIds)
     .where(
-      and(
-        eq(videoAnalysisWorkflowIds.videoId, videoId),
-        eq(videoAnalysisWorkflowIds.version, version),
+        eq(videoAnalysisWorkflowIds.videoId, videoId)
       ),
     );
   return workflowRecord;
@@ -157,14 +152,12 @@ function handleWorkflowInProgress({
 
 async function startNewAnalysisWorkflow({
   videoId,
-  version,
 }: {
   videoId: YouTubeVideoId;
-  version: number;
 }) {
   try {
     // Start the transcript analysis workflow
-    const run = await start(analyzeTranscriptWorkflow, [videoId, version]);
+    const run = await start(analyzeTranscriptWorkflow, [videoId]);
 
     // Store the workflow ID in the database for future reference
     await storeWorkflowId({ videoId, version, workflowId: run.runId });
@@ -181,29 +174,21 @@ async function startNewAnalysisWorkflow({
 
 async function getCompletedAnalysis(
   videoId: YouTubeVideoId,
-  version: number,
 ): Promise<VideoAnalysisRun | null> {
   const [analysis] = await db
     .select({
       videoId: videoAnalysisRuns.videoId,
-      version: videoAnalysisRuns.version,
       result: videoAnalysisRuns.result,
       createdAt: videoAnalysisRuns.createdAt,
     })
     .from(videoAnalysisRuns)
-    .where(
-      and(
-        eq(videoAnalysisRuns.videoId, videoId),
-        eq(videoAnalysisRuns.version, version),
-      ),
-    );
+    .where(eq(videoAnalysisRuns.videoId, videoId));
 
   return analysis;
 }
 
 async function storeWorkflowId({
   videoId,
-  version,
   workflowId,
 }: {
   videoId: YouTubeVideoId;
@@ -214,14 +199,10 @@ async function storeWorkflowId({
     .insert(videoAnalysisWorkflowIds)
     .values({
       videoId,
-      version,
       workflowId,
     })
     .onConflictDoUpdate({
-      target: [
-        videoAnalysisWorkflowIds.videoId,
-        videoAnalysisWorkflowIds.version,
-      ],
+      target: [videoAnalysisWorkflowIds.videoId],
       set: {
         workflowId,
         createdAt: new Date(),
