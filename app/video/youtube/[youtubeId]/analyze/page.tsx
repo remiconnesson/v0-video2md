@@ -1,12 +1,10 @@
 import { ExternalLink } from "lucide-react";
 import { start } from "workflow/api";
-import { getAnalysisVersions } from "@/app/actions";
 import { fetchAndSaveTranscriptWorkflow } from "@/app/workflows/fetch-and-save-transcript";
 import { AnalysisPanel } from "@/components/analyze/analysis-panel";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { parseVersions } from "@/lib/versions-utils";
-import { isValidYouTubeVideoId } from "@/lib/youtube-utils";
 import { SlidesPanel } from "@/components/analyze/slides-panel";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { isValidYouTubeVideoId } from "@/lib/youtube-utils";
 
 type AnalyzePageProps = {
   params: Promise<{ youtubeId: string }>;
@@ -48,22 +46,6 @@ export default async function AnalyzePage(props: AnalyzePageProps) {
       </Tabs>
     </>
   );
-}
-
-async function Analysis({ youtubeId }: { youtubeId: string }) {
-  const result = await getAnalysisVersions(youtubeId);
-
-  if (!result.success) {
-    return (
-      <ErrorScreen
-        errorMessage={result.error ?? "Failed to load analysis versions"}
-      />
-    );
-  }
-
-  const versions = parseVersions(result.versions);
-
-  return <></>;
 }
 
 function ErrorScreen({ errorMessage }: { errorMessage: string }) {
