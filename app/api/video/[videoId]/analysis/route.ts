@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { Match } from "effect";
 import { type NextRequest, NextResponse } from "next/server";
 import { getRun, start } from "workflow/api";
@@ -10,7 +10,6 @@ import {
   videoAnalysisWorkflowIds,
 } from "@/db/schema";
 import { createSSEResponse } from "@/lib/api-utils";
-import { parseVersion } from "@/lib/versions-utils";
 import type { YouTubeVideoId } from "@/lib/youtube-utils";
 import { isValidYouTubeVideoId } from "@/lib/youtube-utils";
 
@@ -67,23 +66,18 @@ async function getWorkflowRecord(videoId: string) {
   const [workflowRecord] = await db
     .select()
     .from(videoAnalysisWorkflowIds)
-    .where(
-        eq(videoAnalysisWorkflowIds.videoId, videoId)
-      ),
-    );
+    .where(eq(videoAnalysisWorkflowIds.videoId, videoId));
   return workflowRecord;
 }
 
 function dispatchOngoingWorkflowHandler({
   workflowId,
   videoId,
-  version,
   readable,
   status,
 }: {
   workflowId: string;
   videoId: string;
-  version: number;
   readable: ReadableStream;
   status:
     | "completed"
@@ -96,7 +90,7 @@ function dispatchOngoingWorkflowHandler({
   const response = Match.value(status).pipe(
     Match.withReturnType<NextResponse>(),
     Match.when("completed", () =>
-      handleWorkflowAnomaly({ workflowId, videoId, version }),
+      handleWorkflowAnomaly({ workflowId, videoId }),
     ),
     Match.when("failed", () => handleWorkflowFailed()),
     Match.when("cancelled", () => handleWorkflowFailed()),
@@ -118,14 +112,12 @@ function dispatchOngoingWorkflowHandler({
 function handleWorkflowAnomaly({
   workflowId,
   videoId,
-  version,
 }: {
   workflowId: string;
   videoId: string;
-  version: number;
 }) {
   console.error(
-    `Workflow ${workflowId} for video ${videoId} version ${version} appears to be completed but not found in database`,
+    `Workflow ${workflowId} for video ${videoId} appears to be completed but not found in database`,
   );
   return NextResponse.json(
     { error: "Internal server error" }, // hide the details of the error
@@ -160,7 +152,7 @@ async function startNewAnalysisWorkflow({
     const run = await start(analyzeTranscriptWorkflow, [videoId]);
 
     // Store the workflow ID in the database for future reference
-    await storeWorkflowId({ videoId, version, workflowId: run.runId });
+    await storeWorkflowId({ videoId, workflowId: run.runId });
 
     return createSSEResponse(run.readable, run.runId);
   } catch (error) {
@@ -192,7 +184,6 @@ async function storeWorkflowId({
   workflowId,
 }: {
   videoId: YouTubeVideoId;
-  version: number;
   workflowId: string;
 }) {
   await db
