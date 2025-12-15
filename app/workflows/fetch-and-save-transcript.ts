@@ -23,6 +23,7 @@ export async function fetchAndSaveTranscriptWorkflow(videoId: string) {
     const fetchedResult = await fetchYoutubeTranscriptFromApify(videoId);
     console.log("[fetchAndSaveTranscript] 4. Saving to DB...");
     await saveYoutubeTranscriptToDb(fetchedResult);
+    // biome-ignore lint/style/noNonNullAssertion: we know the transcript data is not null
     transcriptData = (await getTranscriptDataFromDb(videoId))!;
   }
 
