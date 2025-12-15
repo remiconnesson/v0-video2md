@@ -9,7 +9,7 @@ export interface TranscriptSegment {
 }
 
 export interface TranscriptResult {
-  id: string;
+  videoId: string;
   url: string;
   title: string;
   date: string;
@@ -40,7 +40,7 @@ export async function saveTranscriptToDb(data: TranscriptResult) {
   await db
     .insert(videos)
     .values({
-      videoId: data.id,
+      videoId: data.videoId,
       url: data.url,
       title: data.title,
       publishedAt: data.date ? new Date(data.date) : null,
@@ -57,7 +57,7 @@ export async function saveTranscriptToDb(data: TranscriptResult) {
   await db
     .insert(scrapTranscriptV1)
     .values({
-      videoId: data.id,
+      videoId: data.videoId,
       channelId: data.channelId,
       description: data.description,
       subscriberCount: data.numberOfSubscribers,

@@ -1,61 +1,106 @@
-import { ArrowLeft } from "lucide-react";
-import Link from "next/link";
-import { AnalyzeView } from "@/components/analyze/analyze-view";
-import { Button } from "@/components/ui/button";
+import { ExternalLink } from "lucide-react";
+import { start } from "workflow/api";
+import { getAnalysisVersions } from "@/app/actions";
+import { fetchAndSaveTranscriptWorkflow } from "@/app/workflows/fetch-and-save-transcript";
+import { AnalysisPanel } from "@/components/analyze/analysis-panel";
+import { VersionSelector } from "@/components/analyze/version-selector";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { parseVersions } from "@/lib/versions-utils";
+import { isValidYouTubeVideoId } from "@/lib/youtube-utils";
+import { SlidesPanel } from "@/components/analyze/slides-panel";
 
-/**
- * Parse and validate version from URL search parameter.
- * We parse version here (in the Server Component) to ensure validation happens
- * before the component tree is rendered, providing better error boundaries
- * and avoiding client-side hydration issues with invalid version values.
- * @param v - Version string from URL search params (e.g., "?v=2")
- * @returns Parsed version number or undefined if not provided
- * @throws Error if version is less than 1
- */
-export function parseVersion(v?: string): number | undefined {
-  if (!v) {
-    return undefined;
-  }
-  const version = parseInt(v, 10);
-  if (version < 1) {
-    throw new Error("Version must be greater than or equal to 1");
-  }
-  return version;
-}
-
-export default async function AnalyzePage({
-  params,
-  searchParams,
-}: {
+type AnalyzePageProps = {
   params: Promise<{ youtubeId: string }>;
-  searchParams: Promise<{ v?: string }>;
-}) {
-  const { youtubeId } = await params;
-  const { v } = await searchParams;
-  const version = parseVersion(v);
+};
+
+export default async function AnalyzePage(props: AnalyzePageProps) {
+  const { youtubeId } = await props.params;
+
+  if (!isValidYouTubeVideoId(youtubeId)) {
+    return <ErrorScreen errorMessage="Invalid YouTube Video ID" />;
+  }
+
+  const run = await start(fetchAndSaveTranscriptWorkflow, [youtubeId]);
+
+  const videoData = await run.returnValue;
 
   return (
-    <Layout>
-      <AnalyzeView youtubeId={youtubeId} initialVersion={version} />
-    </Layout>
+    <>
+      <div className="flex items-start justify-between gap-4">
+        <VideoInfoDisplay
+          title={videoData.title}
+          channelName={videoData.channelName}
+          youtubeId={youtubeId}
+        />
+      </div>
+      <Tabs defaultValue="analysis" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="analysis">Analysis</TabsTrigger>
+          <TabsTrigger value="slides">Slides</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="analysis">
+          <Analysis youtubeId={youtubeId} />
+        </TabsContent>
+
+        <TabsContent value="slides">
+          <SlidesPanel videoId={youtubeId} />
+        </TabsContent>
+      </Tabs>
+    </>
   );
 }
 
-// dumb component with just a link
-function Layout({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
-      <div className="container mx-auto px-4 py-6 max-w-5xl">
-        <div className="flex items-center gap-4 mb-6">
-          <Link href="/">
-            <Button variant="ghost" size="sm" className="gap-2">
-              <ArrowLeft className="h-4 w-4" />
-              Home
-            </Button>
-          </Link>
-        </div>
+async function Analysis({ youtubeId }: { youtubeId: string }) {
+  const result = await getAnalysisVersions(youtubeId);
 
-        {children}
+  if (!result.success) {
+    return (
+      <ErrorScreen
+        errorMessage={result.error ?? "Failed to load analysis versions"}
+      />
+    );
+  }
+
+  const versions = parseVersions(result.versions);
+
+  return (
+    <>
+      <VersionSelector versions={versions} />
+      <AnalysisPanel videoId={youtubeId} versions={versions} />
+    </>
+  );
+}
+
+function ErrorScreen({ errorMessage }: { errorMessage: string }) {
+  return <div>Error: {errorMessage}</div>;
+}
+
+function VideoInfoDisplay({
+  title,
+  channelName,
+  youtubeId,
+}: {
+  title: string;
+  channelName: string;
+  youtubeId: string;
+}) {
+  return (
+    <div className="min-w-0">
+      <h1 className="text-2xl font-bold truncate">{title}</h1>
+
+      <div className="flex items-center gap-3 mt-1">
+        <span className="text-sm text-muted-foreground">{channelName}</span>
+
+        <a
+          href={`https://www.youtube.com/watch?v=${youtubeId}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1"
+        >
+          <ExternalLink className="h-3 w-3" />
+          Watch
+        </a>
       </div>
     </div>
   );

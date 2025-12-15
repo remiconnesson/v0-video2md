@@ -6,7 +6,6 @@ import {
   formatTimestamp,
   formatTimestampForLLM,
   formatTranscriptForLLM,
-  formatTranscriptForLLMPadded,
 } from "./transcript-format";
 
 describe("formatTimestamp", () => {
@@ -62,18 +61,6 @@ describe("formatTranscriptForLLM", () => {
   it("should handle long timestamps", () => {
     const segments = [{ start: 3665, text: "Long video" }];
     expect(formatTranscriptForLLM(segments)).toBe("[1:01:05] Long video");
-  });
-});
-
-describe("formatTranscriptForLLMPadded", () => {
-  it("should format segments with padded timestamps", () => {
-    const segments = [
-      { start: 0, text: "Hello" },
-      { start: 5, text: "World" },
-    ];
-    expect(formatTranscriptForLLMPadded(segments)).toBe(
-      "[00:00:00] Hello\n[00:00:05] World",
-    );
   });
 });
 

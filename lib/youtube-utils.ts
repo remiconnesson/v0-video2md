@@ -1,3 +1,24 @@
+import { Brand } from "effect";
+
+/**
+ * YouTube video ID format: exactly 11 characters of [a-zA-Z0-9_-]
+ */
+export const YOUTUBE_VIDEO_ID_REGEX = /^[a-zA-Z0-9_-]{11}$/; // TODO: add test for this regex
+
+export type YouTubeVideoId = string & Brand.Brand<"YouTubeVideoId">;
+export const YouTubeVideoId = Brand.nominal<YouTubeVideoId>();
+
+/**
+ * Validates a YouTube video ID format.
+ * @param videoId - The video ID to validate
+ * @returns true if valid, false otherwise
+ */
+export function isValidYouTubeVideoId(
+  videoId: string,
+): videoId is YouTubeVideoId {
+  return YOUTUBE_VIDEO_ID_REGEX.test(videoId);
+}
+
 /**
  * Server-side utility for YouTube URL handling and video ID extraction
  */
@@ -149,7 +170,7 @@ function validateUrlForSSRF(urlString: string): {
  * - https://m.youtube.com/watch?v=VIDEO_ID
  * - Plain video IDs (11 characters)
  */
-export function extractYoutubeVideoId(input: string): string | null {
+export function extractYoutubeVideoId(input: string): YouTubeVideoId | null {
   if (!input || typeof input !== "string") {
     return null;
   }
@@ -157,7 +178,7 @@ export function extractYoutubeVideoId(input: string): string | null {
   const trimmedInput = input.trim();
 
   // Check if it's already a valid video ID (11 characters, alphanumeric, dash, underscore)
-  if (/^[a-zA-Z0-9_-]{11}$/.test(trimmedInput)) {
+  if (isValidYouTubeVideoId(trimmedInput)) {
     return trimmedInput;
   }
 
@@ -180,7 +201,7 @@ export function extractYoutubeVideoId(input: string): string | null {
   for (const pattern of patterns) {
     const match = trimmedInput.match(pattern);
     if (match?.[1]) {
-      return match[1];
+      return YouTubeVideoId(match[1]);
     }
   }
 
@@ -192,7 +213,9 @@ export function extractYoutubeVideoId(input: string): string | null {
  * - Handles youtu.be redirects
  * - Includes SSRF protection (allowlist, protocol checks, IP blocklist, manual redirects)
  */
-export async function resolveShortUrl(input: string): Promise<string | null> {
+export async function resolveShortUrl(
+  input: string,
+): Promise<YouTubeVideoId | null> {
   // 1. If we can extract an ID directly, don't hit the network at all.
   const directId = extractYoutubeVideoId(input);
   if (directId) {
@@ -278,7 +301,7 @@ export async function resolveShortUrl(input: string): Promise<string | null> {
 export async function validateYoutubeVideoId(
   videoId: string,
 ): Promise<boolean> {
-  if (!videoId || !/^[a-zA-Z0-9_-]{11}$/.test(videoId)) {
+  if (!videoId || !isValidYouTubeVideoId(videoId)) {
     return false;
   }
 
@@ -302,7 +325,7 @@ export async function validateYoutubeVideoId(
 export async function fetchYoutubeVideoTitle(
   videoId: string,
 ): Promise<string | null> {
-  if (!videoId || !/^[a-zA-Z0-9_-]{11}$/.test(videoId)) {
+  if (!videoId || !isValidYouTubeVideoId(videoId)) {
     return null;
   }
 
@@ -328,7 +351,7 @@ export async function fetchYoutubeVideoTitle(
  */
 export async function processYoutubeInput(
   input: string,
-): Promise<{ videoId: string | null; error?: string }> {
+): Promise<{ videoId: YouTubeVideoId | null; error?: string }> {
   if (!input || typeof input !== "string") {
     return { videoId: null, error: "Invalid input" };
   }

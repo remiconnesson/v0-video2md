@@ -1,0 +1,39 @@
+import {
+  fetchYoutubeTranscriptFromApify,
+  saveYoutubeTranscriptToDb,
+} from "./steps/fetch-transcript";
+import {
+  doTranscriptAIAnalysis,
+  getTranscriptDataFromDb,
+  saveTranscriptAIAnalysisToDb,
+  type TranscriptData,
+} from "./steps/transcript-analysis";
+
+export async function analyzeTranscriptWorkflow(
+  videoId: string,
+  version: number,
+) {
+  "use workflow";
+
+  let transcriptData: TranscriptData | null;
+
+  const cachedTranscriptData = await getTranscriptDataFromDb(videoId);
+
+  if (cachedTranscriptData) {
+    transcriptData = cachedTranscriptData;
+  } else {
+    const fetchedResult = await fetchYoutubeTranscriptFromApify(videoId);
+    await saveYoutubeTranscriptToDb(fetchedResult);
+    // biome-ignore lint/style/noNonNullAssertion: we just inserted it into the db
+    transcriptData = (await getTranscriptDataFromDb(videoId))!;
+  }
+
+  const analysisResult = await doTranscriptAIAnalysis(transcriptData);
+
+  await saveTranscriptAIAnalysisToDb(videoId, analysisResult, version);
+
+  return {
+    success: true,
+    title: transcriptData.title,
+  };
+}
