@@ -3,7 +3,6 @@ import { start } from "workflow/api";
 import { getAnalysisVersions } from "@/app/actions";
 import { fetchAndSaveTranscriptWorkflow } from "@/app/workflows/fetch-and-save-transcript";
 import { AnalysisPanel } from "@/components/analyze/analysis-panel";
-import { VersionSelector } from "@/components/analyze/version-selector";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { parseVersions } from "@/lib/versions-utils";
 import { isValidYouTubeVideoId } from "@/lib/youtube-utils";
@@ -40,7 +39,7 @@ export default async function AnalyzePage(props: AnalyzePageProps) {
         </TabsList>
 
         <TabsContent value="analysis">
-          <Analysis youtubeId={youtubeId} />
+          <AnalysisPanel videoId={youtubeId} />
         </TabsContent>
 
         <TabsContent value="slides">
@@ -64,12 +63,7 @@ async function Analysis({ youtubeId }: { youtubeId: string }) {
 
   const versions = parseVersions(result.versions);
 
-  return (
-    <>
-      <VersionSelector versions={versions} />
-      <AnalysisPanel videoId={youtubeId} versions={versions} />
-    </>
-  );
+  return <></>;
 }
 
 function ErrorScreen({ errorMessage }: { errorMessage: string }) {
