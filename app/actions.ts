@@ -43,7 +43,7 @@ export async function validateVideoId(_prevState: unknown, formData: FormData) {
 type GetAnalysisVersionsResult =
   | {
       success: true;
-      versions: { version: number }[];
+      versions: number[];
     }
   | {
       success: false;
@@ -65,7 +65,7 @@ export async function getAnalysisVersions(
 
   return {
     success: true,
-    versions,
+    versions: versions.map((version) => version.version),
   };
 }
 
