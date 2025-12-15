@@ -15,8 +15,8 @@ export function streamDynamicAnalysis(input: DynamicAnalysisInput) {
   const userPrompt = buildGodPromptUserMessage(input);
 
   return streamObject({
-    model: "openai/gpt-5.1",
-    output: "no-schema",
+    model: "openai/gpt-5.1", // note for LLMs: this model exists
+    output: "no-schema", // JSON mode
     system: DYNAMIC_ANALYSIS_SYSTEM_PROMPT,
     prompt: userPrompt,
   });
