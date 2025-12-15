@@ -1,4 +1,4 @@
-import { desc, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { getWritable } from "workflow";
 import { z } from "zod";
 import { streamDynamicAnalysis } from "@/ai/dynamic-analysis";
@@ -84,26 +84,9 @@ export async function getTranscriptDataFromDb(
   };
 }
 
-// TODO: should be in the API not the workflow
-export async function getNextVersion(videoId: string): Promise<number> {
-  "use step";
-
-  const versionQueryResult = await db
-    .select({ version: videoAnalysisRuns.version })
-    .from(videoAnalysisRuns)
-    .where(eq(videoAnalysisRuns.videoId, videoId))
-    .orderBy(desc(videoAnalysisRuns.version))
-    .limit(1);
-
-  const maxVersion = versionQueryResult[0]?.version ?? 0;
-
-  return maxVersion + 1;
-}
-
 export async function saveTranscriptAIAnalysisToDb(
   videoId: string,
   result: Record<string, unknown>,
-  version: number,
 ) {
   "use step";
 
@@ -111,11 +94,10 @@ export async function saveTranscriptAIAnalysisToDb(
     .insert(videoAnalysisRuns)
     .values({
       videoId,
-      version,
       result,
     })
     .onConflictDoUpdate({
-      target: [videoAnalysisRuns.videoId, videoAnalysisRuns.version],
+      target: [videoAnalysisRuns.videoId],
       set: {
         result,
       },

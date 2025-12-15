@@ -1,38 +1,20 @@
 "use client";
 
 import { Check, Copy } from "lucide-react";
-import { useQueryState } from "nuqs";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Streamdown } from "streamdown";
-import {
-  VERSION_NOT_PROVIDED_SENTINEL,
-  VERSION_SEARCH_PARAM_KEY,
-  versionSearchParamParsers,
-} from "@/app/video/youtube/[youtubeId]/analyze/searchParams";
 import type { AnalysisStreamEvent } from "@/app/workflows/steps/transcript-analysis";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { analysisToMarkdown, formatSectionTitle } from "@/lib/analysis-format";
 import { consumeSSE } from "@/lib/sse";
 import { isRecord } from "@/lib/type-utils";
-import { getVersion, type Versions } from "@/lib/versions-utils";
 
 interface AnalysisPanelProps {
   videoId: string;
-  versions: Versions;
 }
 
-export function AnalysisPanel({ videoId, versions }: AnalysisPanelProps) {
-  const [version] = useQueryState(
-    VERSION_SEARCH_PARAM_KEY,
-    versionSearchParamParsers.version,
-  );
-
-  const displayedVersion = useMemo(
-    () => getVersion(version, versions, VERSION_NOT_PROVIDED_SENTINEL),
-    [version, versions],
-  );
-
+export function AnalysisPanel({ videoId }: AnalysisPanelProps) {
   const [copied, setCopied] = useState(false);
   const [analysis, setAnalysis] = useState<Record<string, unknown>>({});
   const [status, setStatus] = useState<
@@ -51,10 +33,9 @@ export function AnalysisPanel({ videoId, versions }: AnalysisPanelProps) {
       setAnalysis({});
 
       try {
-        const response = await fetch(
-          `/api/video/${videoId}/analysis/${displayedVersion}`,
-          { signal: controller.signal },
-        );
+        const response = await fetch(`/api/video/${videoId}/analysis`, {
+          signal: controller.signal,
+        });
 
         if (!response.ok) {
           const errorData = await response
@@ -143,7 +124,7 @@ export function AnalysisPanel({ videoId, versions }: AnalysisPanelProps) {
     return () => {
       controller.abort();
     };
-  }, [videoId, displayedVersion]);
+  }, [videoId]);
 
   const handleCopyMarkdown = async () => {
     const markdown = analysisToMarkdown(analysis);

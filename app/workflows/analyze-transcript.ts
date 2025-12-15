@@ -9,10 +9,7 @@ import {
   type TranscriptData,
 } from "./steps/transcript-analysis";
 
-export async function analyzeTranscriptWorkflow(
-  videoId: string,
-  version: number,
-) {
+export async function analyzeTranscriptWorkflow(videoId: string) {
   "use workflow";
 
   let transcriptData: TranscriptData | null;
@@ -30,7 +27,7 @@ export async function analyzeTranscriptWorkflow(
 
   const analysisResult = await doTranscriptAIAnalysis(transcriptData);
 
-  await saveTranscriptAIAnalysisToDb(videoId, analysisResult, version);
+  await saveTranscriptAIAnalysisToDb(videoId, analysisResult);
 
   return {
     success: true,
