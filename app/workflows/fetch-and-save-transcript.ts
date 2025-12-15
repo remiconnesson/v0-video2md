@@ -9,19 +9,23 @@ import {
 
 export async function fetchAndSaveTranscriptWorkflow(videoId: string) {
   "use workflow";
-
-  let transcriptData: TranscriptData | null;
+  console.log("[fetchAndSaveTranscript] 1. Start, videoId:", videoId);
 
   const cachedTranscriptData = await getTranscriptDataFromDb(videoId);
+  console.log("[fetchAndSaveTranscript] 2. Cached:", !!cachedTranscriptData);
+
+  let transcriptData: TranscriptData | null;
 
   if (cachedTranscriptData) {
     transcriptData = cachedTranscriptData;
   } else {
+    console.log("[fetchAndSaveTranscript] 3. Fetching from Apify...");
     const fetchedResult = await fetchYoutubeTranscriptFromApify(videoId);
+    console.log("[fetchAndSaveTranscript] 4. Saving to DB...");
     await saveYoutubeTranscriptToDb(fetchedResult);
-    // biome-ignore lint/style/noNonNullAssertion: we just inserted it into the db
     transcriptData = (await getTranscriptDataFromDb(videoId))!;
   }
 
+  console.log("[fetchAndSaveTranscript] 5. Returning:", transcriptData?.title);
   return transcriptData;
 }
