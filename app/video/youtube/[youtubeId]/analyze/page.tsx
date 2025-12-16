@@ -20,12 +20,7 @@ export default async function AnalyzePage(props: AnalyzePageProps) {
   }
 
   console.log("[AnalyzePage] 3. Starting workflow...");
-  const run = await start(fetchAndSaveTranscriptWorkflow, [youtubeId]);
-  console.log("[AnalyzePage] 4. Workflow started, runId:", run.runId);
-
-  console.log("[AnalyzePage] 5. Awaiting returnValue...");
-  const videoData = await run.returnValue;
-  console.log("[AnalyzePage] 6. Got returnValue:", videoData?.title);
+  const videoData = await fetchAndSaveTranscriptWorkflow(youtubeId);
 
   return (
     <>
