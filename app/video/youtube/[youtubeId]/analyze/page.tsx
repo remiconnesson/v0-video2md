@@ -1,6 +1,5 @@
 import { ExternalLink } from "lucide-react";
-import { start } from "workflow/api";
-import { fetchAndSaveTranscriptWorkflow } from "@/app/workflows/fetch-and-save-transcript";
+import { fetchAndSaveTranscriptWorkflow } from "@/app/actions";
 import { AnalysisPanel } from "@/components/analyze/analysis-panel";
 import { SlidesPanel } from "@/components/analyze/slides-panel";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";

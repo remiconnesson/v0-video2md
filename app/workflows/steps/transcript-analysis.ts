@@ -42,6 +42,7 @@ export interface TranscriptData {
 // ============================================================================
 
 async function getTranscriptRow(videoId: string) {
+  "use step";
   const results = await db
     .select({
       videoId: videos.videoId,
