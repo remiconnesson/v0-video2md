@@ -1,9 +1,8 @@
 import { ExternalLink } from "lucide-react";
-import { start } from "workflow/api";
-import { fetchAndSaveTranscriptWorkflow } from "@/app/workflows/fetch-and-save-transcript";
 import { AnalysisPanel } from "@/components/analyze/analysis-panel";
 import { SlidesPanel } from "@/components/analyze/slides-panel";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { fetchAndSaveTranscript } from "@/lib/fetch-and-save-transcript";
 import { isValidYouTubeVideoId } from "@/lib/youtube-utils";
 
 type AnalyzePageProps = {
@@ -19,13 +18,11 @@ export default async function AnalyzePage(props: AnalyzePageProps) {
     return <ErrorScreen errorMessage="Invalid YouTube Video ID" />;
   }
 
-  console.log("[AnalyzePage] 3. Starting workflow...");
-  const run = await start(fetchAndSaveTranscriptWorkflow, [youtubeId]);
-  console.log("[AnalyzePage] 4. Workflow started, runId:", run.runId);
-
-  console.log("[AnalyzePage] 5. Awaiting returnValue...");
-  const videoData = await run.returnValue;
-  console.log("[AnalyzePage] 6. Got returnValue:", videoData?.title);
+  console.log("[AnalyzePage] 3. Fetching transcript data...");
+  // Direct function call instead of workflow to work around RSC hang issue
+  // See: https://github.com/vercel/workflow/issues/618
+  const videoData = await fetchAndSaveTranscript(youtubeId);
+  console.log("[AnalyzePage] 4. Got transcript data:", videoData.title);
 
   return (
     <>
