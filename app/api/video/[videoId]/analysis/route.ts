@@ -2,7 +2,6 @@ import { eq } from "drizzle-orm";
 import { Match } from "effect";
 import { type NextRequest, NextResponse } from "next/server";
 import { getRun, start } from "workflow/api";
-import { analyzeTranscriptWorkflow } from "@/app/workflows/analyze-transcript";
 import { db } from "@/db";
 import {
   type VideoAnalysisRun,
@@ -12,6 +11,7 @@ import {
 import { createSSEResponse } from "@/lib/api-utils";
 import type { YouTubeVideoId } from "@/lib/youtube-utils";
 import { isValidYouTubeVideoId } from "@/lib/youtube-utils";
+import { analyzeTranscriptWorkflow } from "@/workflows/analyze-transcript";
 
 class InvalidYouTubeVideoIdErrorResponse extends NextResponse {
   constructor(videoId: string) {
