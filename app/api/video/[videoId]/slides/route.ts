@@ -1,10 +1,10 @@
 import { asc, eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { start } from "workflow/api";
-import { extractSlidesWorkflow } from "@/app/workflows/extract-slides";
 import { db } from "@/db";
 import { videoSlideExtractions, videoSlides } from "@/db/schema";
 import { createSSEResponse } from "@/lib/api-utils";
+import { extractSlidesWorkflow } from "@/workflows/extract-slides";
 
 // ============================================================================
 // GET - Get extraction status and existing slides

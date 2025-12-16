@@ -3,12 +3,12 @@
 import { Check, Copy } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Streamdown } from "streamdown";
-import type { AnalysisStreamEvent } from "@/app/workflows/steps/transcript-analysis";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { analysisToMarkdown, formatSectionTitle } from "@/lib/analysis-format";
 import { consumeSSE } from "@/lib/sse";
 import { isRecord } from "@/lib/type-utils";
+import type { AnalysisStreamEvent } from "@/workflows/steps/transcript-analysis";
 
 interface AnalysisPanelProps {
   videoId: string;
