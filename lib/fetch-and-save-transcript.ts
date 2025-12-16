@@ -1,3 +1,10 @@
+/*
+ * Workaround for https://github.com/vercel/workflow/issues/618 where `await run.returnValue` hangs infinitely in production when using Vercel workflow with RSC.
+
+Moved the fetch-and-save-transcript logic from the workflow directly into a lib utility function that can be called synchronously from RSC.
+
+Tried to reuse the workflow steps directly but stumbled upon another issue https://github.com/vercel/workflow/issues/630, where you can't call a step function outside of a workflow if that functions uses dependencies not marked with "use step"
+*/
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
