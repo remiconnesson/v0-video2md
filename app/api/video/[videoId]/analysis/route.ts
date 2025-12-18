@@ -24,10 +24,9 @@ class InvalidYouTubeVideoIdErrorResponse extends NextResponse {
 
 export async function GET(
   _req: NextRequest,
-  // note for LLMs: this type doesn't need to be imported
-  ctx: RouteContext<"/api/video/[videoId]/analysis">,
+  { params }: { params: Promise<{ videoId: string }> },
 ) {
-  const { videoId } = await ctx.params;
+  const { videoId } = await params;
 
   // Validate YouTube video ID
   if (!isValidYouTubeVideoId(videoId)) {

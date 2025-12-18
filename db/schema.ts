@@ -165,13 +165,8 @@ export const videoSlides = pgTable(
     duration: real("duration").notNull(),
 
     // First frame data
-    firstFrameS3Uri: text("first_frame_s3_uri"),
-    firstFrameS3Bucket: varchar("first_frame_s3_bucket", { length: 100 }),
-    firstFrameS3Key: text("first_frame_s3_key"),
     firstFrameImageUrl: text("first_frame_image_url"),
-    firstFrameHasText: boolean("first_frame_has_text").default(false),
-    firstFrameTextConfidence: integer("first_frame_text_confidence"), // 0-100
-    firstFrameTextBoxCount: integer("first_frame_text_box_count"),
+    firstFramePhash: varchar("first_frame_phash", { length: 64 }), // Perceptual hash for duplicate detection
     firstFrameIsDuplicate: boolean("first_frame_is_duplicate").default(false),
     firstFrameDuplicateOfSegmentId: integer(
       "first_frame_duplicate_of_segment_id",
@@ -183,13 +178,8 @@ export const videoSlides = pgTable(
     firstFrameSkipReason: text("first_frame_skip_reason"),
 
     // Last frame data
-    lastFrameS3Uri: text("last_frame_s3_uri"),
-    lastFrameS3Bucket: varchar("last_frame_s3_bucket", { length: 100 }),
-    lastFrameS3Key: text("last_frame_s3_key"),
     lastFrameImageUrl: text("last_frame_image_url"),
-    lastFrameHasText: boolean("last_frame_has_text").default(false),
-    lastFrameTextConfidence: integer("last_frame_text_confidence"), // 0-100
-    lastFrameTextBoxCount: integer("last_frame_text_box_count"),
+    lastFramePhash: varchar("last_frame_phash", { length: 64 }), // Perceptual hash for duplicate detection
     lastFrameIsDuplicate: boolean("last_frame_is_duplicate").default(false),
     lastFrameDuplicateOfSegmentId: integer(
       "last_frame_duplicate_of_segment_id",
@@ -224,13 +214,11 @@ export const slideFeedback = pgTable(
     slideIndex: integer("slide_index").notNull(),
 
     // First frame validation
-    firstFrameHasTextValidated: boolean("first_frame_has_text_validated"),
     firstFrameIsDuplicateValidated: boolean(
       "first_frame_is_duplicate_validated",
     ),
 
     // Last frame validation
-    lastFrameHasTextValidated: boolean("last_frame_has_text_validated"),
     lastFrameIsDuplicateValidated: boolean("last_frame_is_duplicate_validated"),
 
     // Sameness feedback

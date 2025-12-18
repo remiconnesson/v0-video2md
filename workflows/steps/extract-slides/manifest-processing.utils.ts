@@ -7,8 +7,7 @@ import type { FrameMetadata, StaticSegment } from "@/lib/slides-types";
 
 export interface ProcessedFrame {
   imageUrl: string | null;
-  hasText: boolean;
-  textConfidence: number;
+  phash: string | null;
   isDuplicate: boolean;
   duplicateOfSegmentId: number | null;
   duplicateOfFramePosition: string | null;
@@ -17,13 +16,13 @@ export interface ProcessedFrame {
 
 /**
  * Determines if a static segment has any usable frames.
- * A segment is usable if it has at least one frame with an S3 URI.
+ * A segment is usable if it has at least one frame with a URL.
  */
 export function hasUsableFrames(segment: StaticSegment): boolean {
   const firstFrame = segment.first_frame;
   const lastFrame = segment.last_frame;
 
-  return Boolean(firstFrame?.s3_uri || lastFrame?.s3_uri);
+  return Boolean(firstFrame?.url || lastFrame?.url);
 }
 
 /**
@@ -38,8 +37,7 @@ export function normalizeFrameMetadata(
   if (!frame) {
     return {
       imageUrl: null,
-      hasText: false,
-      textConfidence: 0,
+      phash: null,
       isDuplicate: false,
       duplicateOfSegmentId: null,
       duplicateOfFramePosition: null,
@@ -49,8 +47,7 @@ export function normalizeFrameMetadata(
 
   return {
     imageUrl,
-    hasText: frame.has_text,
-    textConfidence: Math.round(frame.text_confidence * 100),
+    phash: frame.phash ?? null,
     isDuplicate: frame.duplicate_of !== null,
     duplicateOfSegmentId: frame.duplicate_of?.segment_id ?? null,
     duplicateOfFramePosition: frame.duplicate_of?.frame_position ?? null,

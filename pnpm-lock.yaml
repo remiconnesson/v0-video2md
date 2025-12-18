@@ -200,6 +200,12 @@ importers:
       server-only:
         specifier: latest
         version: 0.0.1
+      sharp:
+        specifier: ^0.34.5
+        version: 0.34.5
+      sharp-phash:
+        specifier: ^2.2.0
+        version: 2.2.0(sharp@0.34.5)
       shiki:
         specifier: ^3.20.0
         version: 3.20.0
@@ -224,6 +230,9 @@ importers:
       workflow:
         specifier: 4.0.1-beta.31
         version: 4.0.1-beta.31(@aws-sdk/client-sts@3.936.0)(@babel/core@7.28.5)(@opentelemetry/api@1.9.0)(@types/react@19.2.7)(babel-plugin-react-compiler@1.0.0)(immer@11.0.1)(next@16.0.10(@babel/core@7.28.5)(@opentelemetry/api@1.9.0)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.1(react@19.2.1))(react@19.2.1))(react-dom@19.2.1(react@19.2.1))(react@19.2.1)(typescript@5.9.3)
+      youtubei.js:
+        specifier: ^16.0.1
+        version: 16.0.1
       zod:
         specifier: ^4.2.0
         version: 4.2.0
@@ -1133,6 +1142,9 @@ packages:
 
   '@braintree/sanitize-url@7.1.1':
     resolution: {integrity: sha512-i1L7noDNxtFyL5DmZafWy1wRVhGehQmzZaz1HiN5e7iylJMSZR7ekOV7NsIqa5qBldlLrsKv4HbgFUVlQrz8Mw==}
+
+  '@bufbuild/protobuf@2.10.2':
+    resolution: {integrity: sha512-uFsRXwIGyu+r6AMdz+XijIIZJYpoWeYzILt5yZ2d3mCjQrWUTVpVD9WL/jZAbvp+Ed04rOhrsk7FiTcEDseB5A==}
 
   '@chevrotain/cst-dts-gen@11.0.3':
     resolution: {integrity: sha512-BvIKpRLeS/8UbfxXxgC33xOumsacaeCKAjAeLyOn7Pcp95HiRbrpl14S+9vaZLolnbssPIUuiUd8IvgkRyt6NQ==}
@@ -6726,6 +6738,10 @@ packages:
     resolution: {integrity: sha512-8q7VEgMJW4J8tcfVPy8g09NcQwZdbwFEqhe/WZkoIzjn/3TGDwtOCYtXGxA3O8tPzpczCCDgv+P2P5y00ZJOOg==}
     engines: {node: '>= 8'}
 
+  meriyah@6.1.4:
+    resolution: {integrity: sha512-Sz8FzjzI0kN13GK/6MVEsVzMZEPvOhnmmI1lU5+/1cGOiK3QUahntrNNtdVeihrO7t9JpoH75iMNXg6R6uWflQ==}
+    engines: {node: '>=18.0.0'}
+
   mermaid@11.12.2:
     resolution: {integrity: sha512-n34QPDPEKmaeCG4WDMGy0OT6PSyxKCfy2pJgShP+Qow2KLrvWjclwbc3yXfSIf4BanqWEhQEpngWwNp/XhZt6w==}
 
@@ -8142,6 +8158,12 @@ packages:
   setprototypeof@1.2.0:
     resolution: {integrity: sha512-E5LDX7Wrp85Kil5bhZv46j8jOeboKq5JMmYM3gVGdGH8xFpPWXUMsNrlODCrkoxMEeNi/XZIwuRvY4XNwYMJpw==}
 
+  sharp-phash@2.2.0:
+    resolution: {integrity: sha512-/gBoes9EycJkt/2aakKl9BeSGxFbPpZ5lCDtpRRlnU+vkqqcdXi8YLIlXnJsTtTBmaL82zh1bPkV7uZSSIsj8w==}
+    engines: {node: '>= 10'}
+    peerDependencies:
+      sharp: '>= 0.32.0'
+
   sharp@0.34.5:
     resolution: {integrity: sha512-Ou9I5Ft9WNcCbXrU9cMgPBcCK8LiwLqcbywW3t4oDV37n1pzpuNLsYiAV8eODnjbtQlSDwZ2cUEeQz4E54Hltg==}
     engines: {node: ^18.17.0 || ^20.3.0 || >=21.0.0}
@@ -9169,6 +9191,9 @@ packages:
   yocto-queue@1.2.2:
     resolution: {integrity: sha512-4LCcse/U2MHZ63HAJVE+v71o7yOdIe4cZ70Wpf8D/IyjDKYQLV5GD46B+hSTjJsvV5PztjvHoU580EftxjDZFQ==}
     engines: {node: '>=12.20'}
+
+  youtubei.js@16.0.1:
+    resolution: {integrity: sha512-3802bCAGkBc2/G5WUTc0l/bO5mPYJbQAHL04d9hE9PnrDHoBUT8MN721Yqt4RCNncAXdHcfee9VdJy3Fhq1r5g==}
 
   yup@1.7.1:
     resolution: {integrity: sha512-GKHFX2nXul2/4Dtfxhozv701jLQHdf6J34YDh2cEkpqoo8le5Mg6/LrdseVLrFarmFygZTlfIhHx/QKfb/QWXw==}
@@ -10847,6 +10872,8 @@ snapshots:
 
   '@braintree/sanitize-url@7.1.1': {}
 
+  '@bufbuild/protobuf@2.10.2': {}
+
   '@chevrotain/cst-dts-gen@11.0.3':
     dependencies:
       '@chevrotain/gast': 11.0.3
@@ -11503,8 +11530,7 @@ snapshots:
       '@iconify/types': 2.0.0
       mlly: 1.8.0
 
-  '@img/colour@1.0.0':
-    optional: true
+  '@img/colour@1.0.0': {}
 
   '@img/sharp-darwin-arm64@0.34.5':
     optionalDependencies:
@@ -17478,6 +17504,8 @@ snapshots:
 
   merge2@1.4.1: {}
 
+  meriyah@6.1.4: {}
+
   mermaid@11.12.2:
     dependencies:
       '@braintree/sanitize-url': 7.1.1
@@ -19483,6 +19511,10 @@ snapshots:
   setprototypeof@1.2.0:
     optional: true
 
+  sharp-phash@2.2.0(sharp@0.34.5):
+    dependencies:
+      sharp: 0.34.5
+
   sharp@0.34.5:
     dependencies:
       '@img/colour': 1.0.0
@@ -19513,7 +19545,6 @@ snapshots:
       '@img/sharp-win32-arm64': 0.34.5
       '@img/sharp-win32-ia32': 0.34.5
       '@img/sharp-win32-x64': 0.34.5
-    optional: true
 
   shebang-command@2.0.0:
     dependencies:
@@ -20681,6 +20712,11 @@ snapshots:
     optional: true
 
   yocto-queue@1.2.2: {}
+
+  youtubei.js@16.0.1:
+    dependencies:
+      '@bufbuild/protobuf': 2.10.2
+      meriyah: 6.1.4
 
   yup@1.7.1:
     dependencies:

@@ -10,9 +10,7 @@ import { slideFeedback, videos } from "@/db/schema";
 
 const slideFeedbackSchema = z.object({
   slideIndex: z.number().int().min(0),
-  firstFrameHasTextValidated: z.boolean().nullable().optional(),
   firstFrameIsDuplicateValidated: z.boolean().nullable().optional(),
-  lastFrameHasTextValidated: z.boolean().nullable().optional(),
   lastFrameIsDuplicateValidated: z.boolean().nullable().optional(),
   framesSameness: z.enum(["same", "different"]).nullable().optional(),
   isFirstFramePicked: z.boolean().nullable().optional(),
@@ -93,10 +91,8 @@ export async function POST(
     .values({
       videoId,
       slideIndex: feedback.slideIndex,
-      firstFrameHasTextValidated: feedback.firstFrameHasTextValidated ?? null,
       firstFrameIsDuplicateValidated:
         feedback.firstFrameIsDuplicateValidated ?? null,
-      lastFrameHasTextValidated: feedback.lastFrameHasTextValidated ?? null,
       lastFrameIsDuplicateValidated:
         feedback.lastFrameIsDuplicateValidated ?? null,
       framesSameness: feedback.framesSameness ?? null,
@@ -106,10 +102,8 @@ export async function POST(
     .onConflictDoUpdate({
       target: [slideFeedback.videoId, slideFeedback.slideIndex],
       set: {
-        firstFrameHasTextValidated: feedback.firstFrameHasTextValidated ?? null,
         firstFrameIsDuplicateValidated:
           feedback.firstFrameIsDuplicateValidated ?? null,
-        lastFrameHasTextValidated: feedback.lastFrameHasTextValidated ?? null,
         lastFrameIsDuplicateValidated:
           feedback.lastFrameIsDuplicateValidated ?? null,
         framesSameness: feedback.framesSameness ?? null,

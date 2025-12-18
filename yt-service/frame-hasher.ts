@@ -12,24 +12,24 @@ import distance from "sharp-phash/distance";
  * Default threshold of 5 matches Python implementation.
  */
 export function areHashesSimilar(
-	hash1: string,
-	hash2: string,
-	threshold = 5,
+  hash1: string,
+  hash2: string,
+  threshold = 5,
 ): boolean {
-	return distance(hash1, hash2) <= threshold;
+  return distance(hash1, hash2) <= threshold;
 }
 
 function computeCenterCrop(
-	width: number,
-	height: number,
-	centerCropRatio = 0.6,
+  width: number,
+  height: number,
+  centerCropRatio = 0.6,
 ): { left: number; top: number; cropW: number; cropH: number } {
-	// Compute center crop dimensions
-	const cropW = Math.max(1, Math.floor(width * centerCropRatio));
-	const cropH = Math.max(1, Math.floor(height * centerCropRatio));
-	const left = Math.floor((width - cropW) / 2);
-	const top = Math.floor((height - cropH) / 2);
-	return { left, top, cropW, cropH };
+  // Compute center crop dimensions
+  const cropW = Math.max(1, Math.floor(width * centerCropRatio));
+  const cropH = Math.max(1, Math.floor(height * centerCropRatio));
+  const left = Math.floor((width - cropW) / 2);
+  const top = Math.floor((height - cropH) / 2);
+  return { left, top, cropW, cropH };
 }
 
 /**
@@ -37,54 +37,54 @@ function computeCenterCrop(
  * Ported from Python: _compute_frame_hash in video_analyzer.py
  */
 export async function computeGridHashes(
-	imageBuffer: Buffer,
-	gridCols = 4,
-	gridRows = 4,
-	centerCropRatio = 0.6,
+  imageBuffer: Buffer,
+  gridCols = 4,
+  gridRows = 4,
+  centerCropRatio = 0.6,
 ): Promise<string[]> {
-	const { width, height } = await sharp(imageBuffer).metadata();
+  const { width, height } = await sharp(imageBuffer).metadata();
 
-	// Extract center crop
-	const { left, top, cropW, cropH } = computeCenterCrop(
-		width,
-		height,
-		centerCropRatio,
-	);
+  // Extract center crop
+  const { left, top, cropW, cropH } = computeCenterCrop(
+    width,
+    height,
+    centerCropRatio,
+  );
 
-	const croppedBuffer = await sharp(imageBuffer)
-		.extract({ left, top, width: cropW, height: cropH })
-		.toBuffer();
+  const croppedBuffer = await sharp(imageBuffer)
+    .extract({ left, top, width: cropW, height: cropH })
+    .toBuffer();
 
-	// Compute cell dimensions
-	const cellW = Math.floor(cropW / gridCols);
-	const cellH = Math.floor(cropH / gridRows);
+  // Compute cell dimensions
+  const cellW = Math.floor(cropW / gridCols);
+  const cellH = Math.floor(cropH / gridRows);
 
-	if (cellW === 0 || cellH === 0) {
-		throw new Error(
-			`Grid dimensions (${gridCols}x${gridRows}) result in zero-sized cells for image (${cropW}x${cropH})`,
-		);
-	}
+  if (cellW === 0 || cellH === 0) {
+    throw new Error(
+      `Grid dimensions (${gridCols}x${gridRows}) result in zero-sized cells for image (${cropW}x${cropH})`,
+    );
+  }
 
-	// Compute hash for each grid cell
-	const hashes: string[] = [];
+  // Compute hash for each grid cell
+  const hashes: string[] = [];
 
-	for (let row = 0; row < gridRows; row++) {
-		for (let col = 0; col < gridCols; col++) {
-			const cellBuffer = await sharp(croppedBuffer)
-				.extract({
-					left: col * cellW,
-					top: row * cellH,
-					width: cellW,
-					height: cellH,
-				})
-				.toBuffer();
+  for (let row = 0; row < gridRows; row++) {
+    for (let col = 0; col < gridCols; col++) {
+      const cellBuffer = await sharp(croppedBuffer)
+        .extract({
+          left: col * cellW,
+          top: row * cellH,
+          width: cellW,
+          height: cellH,
+        })
+        .toBuffer();
 
-			const hash = await phash(cellBuffer);
-			hashes.push(hash);
-		}
-	}
+      const hash = await phash(cellBuffer);
+      hashes.push(hash);
+    }
+  }
 
-	return hashes;
+  return hashes;
 }
 
 /**
@@ -92,21 +92,51 @@ export async function computeGridHashes(
  * Returns true if enough cells match.
  */
 export function compareGridHashes(
-	hashes1: string[],
-	hashes2: string[],
-	threshold = 5,
-	minMatchRatio = 0.8,
+  hashes1: string[],
+  hashes2: string[],
+  threshold = 5,
+  minMatchRatio = 0.8,
 ): boolean {
-	if (hashes1.length !== hashes2.length || hashes1.length === 0) {
-		return false;
-	}
+  if (hashes1.length !== hashes2.length || hashes1.length === 0) {
+    return false;
+  }
 
-	let matches = 0;
-	for (let i = 0; i < hashes1.length; i++) {
-		if (areHashesSimilar(hashes1[i], hashes2[i], threshold)) {
-			matches++;
-		}
-	}
+  let matches = 0;
+  for (let i = 0; i < hashes1.length; i++) {
+    if (areHashesSimilar(hashes1[i], hashes2[i], threshold)) {
+      matches++;
+    }
+  }
 
-	return matches / hashes1.length >= minMatchRatio;
+  return matches / hashes1.length >= minMatchRatio;
+}
+
+/**
+ * Compute a single perceptual hash on the full cropped frame.
+ * Used for duplicate detection across slides.
+ */
+export async function computeFrameHash(
+  imageBuffer: Buffer,
+  centerCropRatio = 0.6,
+): Promise<string> {
+  const metadata = await sharp(imageBuffer).metadata();
+  const width = metadata.width ?? 0;
+  const height = metadata.height ?? 0;
+
+  if (width === 0 || height === 0) {
+    throw new Error("Cannot compute hash for image with zero dimensions");
+  }
+
+  // Extract center crop
+  const { left, top, cropW, cropH } = computeCenterCrop(
+    width,
+    height,
+    centerCropRatio,
+  );
+
+  const croppedBuffer = await sharp(imageBuffer)
+    .extract({ left, top, width: cropW, height: cropH })
+    .toBuffer();
+
+  return phash(croppedBuffer);
 }

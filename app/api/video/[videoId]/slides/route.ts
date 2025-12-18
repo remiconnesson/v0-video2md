@@ -33,8 +33,7 @@ export async function GET(
       duration: videoSlides.duration,
       // First frame data
       firstFrameImageUrl: videoSlides.firstFrameImageUrl,
-      firstFrameHasText: videoSlides.firstFrameHasText,
-      firstFrameTextConfidence: videoSlides.firstFrameTextConfidence,
+      firstFramePhash: videoSlides.firstFramePhash,
       firstFrameIsDuplicate: videoSlides.firstFrameIsDuplicate,
       firstFrameDuplicateOfSegmentId:
         videoSlides.firstFrameDuplicateOfSegmentId,
@@ -43,8 +42,7 @@ export async function GET(
       firstFrameSkipReason: videoSlides.firstFrameSkipReason,
       // Last frame data
       lastFrameImageUrl: videoSlides.lastFrameImageUrl,
-      lastFrameHasText: videoSlides.lastFrameHasText,
-      lastFrameTextConfidence: videoSlides.lastFrameTextConfidence,
+      lastFramePhash: videoSlides.lastFramePhash,
       lastFrameIsDuplicate: videoSlides.lastFrameIsDuplicate,
       lastFrameDuplicateOfSegmentId: videoSlides.lastFrameDuplicateOfSegmentId,
       lastFrameDuplicateOfFramePosition:
@@ -129,15 +127,13 @@ export async function GET(
       endTime: s.endTime,
       duration: s.duration,
       firstFrameImageUrl: s.firstFrameImageUrl,
-      firstFrameHasText: s.firstFrameHasText,
-      firstFrameTextConfidence: s.firstFrameTextConfidence,
+      firstFramePhash: s.firstFramePhash,
       firstFrameIsDuplicate: s.firstFrameIsDuplicate,
       firstFrameDuplicateOfSegmentId: s.firstFrameDuplicateOfSegmentId,
       firstFrameDuplicateOfFramePosition: s.firstFrameDuplicateOfFramePosition,
       firstFrameSkipReason: s.firstFrameSkipReason,
       lastFrameImageUrl: s.lastFrameImageUrl,
-      lastFrameHasText: s.lastFrameHasText,
-      lastFrameTextConfidence: s.lastFrameTextConfidence,
+      lastFramePhash: s.lastFramePhash,
       lastFrameIsDuplicate: s.lastFrameIsDuplicate,
       lastFrameDuplicateOfSegmentId: s.lastFrameDuplicateOfSegmentId,
       lastFrameDuplicateOfFramePosition: s.lastFrameDuplicateOfFramePosition,

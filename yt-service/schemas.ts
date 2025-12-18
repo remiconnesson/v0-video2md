@@ -13,37 +13,37 @@ export const jobStatusSchema = z.nativeEnum(JobStatus);
 
 // Job schema
 export const jobSchema = z.object({
-	videoId: z.string(),
-	status: jobStatusSchema,
-	progress: z.number().min(0).max(100),
-	message: z.string(),
-	updatedAt: z.string().datetime(),
-	metadataUri: z.string().optional(),
-	error: z.string().optional(),
-	frameCount: z.number().int().optional(),
+  videoId: z.string(),
+  status: jobStatusSchema,
+  progress: z.number().min(0).max(100),
+  message: z.string(),
+  updatedAt: z.string().datetime(),
+  metadataUri: z.string().optional(),
+  error: z.string().optional(),
+  frameCount: z.number().int().optional(),
 });
 
 // Process request params
 export const processParamsSchema = z.object({
-	videoId: videoIdSchema,
+  videoId: videoIdSchema,
 });
 
 // API response schemas
 export const healthResponseSchema = z.object({
-	status: z.enum(["alive", "ready", "draining"]),
+  status: z.enum(["alive", "ready", "draining"]),
 });
 
 export const errorResponseSchema = z.object({
-	error: z.string(),
-	detail: z.string().optional(),
+  error: z.string(),
+  detail: z.string().optional(),
 });
 
 export const processResponseSchema = z.object({
-	message: z.string(),
-	videoId: z.string(),
-	track: z.string(),
-	stream: z.string(),
-	job: jobSchema.optional(),
+  message: z.string(),
+  videoId: z.string(),
+  track: z.string(),
+  stream: z.string(),
+  job: jobSchema.optional(),
 });
 
 // Type exports from schemas

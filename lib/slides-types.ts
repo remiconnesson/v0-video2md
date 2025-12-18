@@ -11,16 +11,10 @@ const DuplicateOfSchema = z.object({
 
 const FrameMetadataSchema = z.object({
   frame_id: z.string().nullable(),
-  has_text: z.boolean(),
-  text_confidence: z.number(),
-  text_total_area_ratio: z.number(),
-  text_largest_area_ratio: z.number(),
-  text_box_count: z.number(),
+  phash: z.string().nullable(),
   duplicate_of: DuplicateOfSchema.nullable(),
   skip_reason: z.string().nullable(),
-  s3_key: z.string().nullable(),
-  s3_bucket: z.string().nullable(),
-  s3_uri: z.string().nullable(),
+  blob_path: z.string().nullable(),
   url: z.string().nullable(),
 });
 
@@ -39,8 +33,6 @@ const StaticSegmentSchema = BaseSegmentSchema.extend({
   first_frame: FrameMetadataSchema.optional(),
   last_frame: FrameMetadataSchema.optional(),
   url: z.string().nullable().optional(),
-  has_text: z.boolean().optional(),
-  text_confidence: z.number().optional(),
 });
 
 const SegmentSchema = z.discriminatedUnion("kind", [
@@ -80,8 +72,7 @@ export interface SlideData {
 
   // First frame data
   firstFrameImageUrl: string | null;
-  firstFrameHasText: boolean;
-  firstFrameTextConfidence: number;
+  firstFramePhash: string | null;
   firstFrameIsDuplicate: boolean;
   firstFrameDuplicateOfSegmentId: number | null;
   firstFrameDuplicateOfFramePosition: string | null; // "first" | "last"
@@ -89,8 +80,7 @@ export interface SlideData {
 
   // Last frame data
   lastFrameImageUrl: string | null;
-  lastFrameHasText: boolean;
-  lastFrameTextConfidence: number;
+  lastFramePhash: string | null;
   lastFrameIsDuplicate: boolean;
   lastFrameDuplicateOfSegmentId: number | null;
   lastFrameDuplicateOfFramePosition: string | null; // "first" | "last"
@@ -106,9 +96,7 @@ export interface SlideData {
 
 export interface SlideFeedbackData {
   slideIndex: number;
-  firstFrameHasTextValidated: boolean | null;
   firstFrameIsDuplicateValidated: boolean | null;
-  lastFrameHasTextValidated: boolean | null;
   lastFrameIsDuplicateValidated: boolean | null;
   framesSameness: "same" | "different" | null;
   isFirstFramePicked: boolean | null;

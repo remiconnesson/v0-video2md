@@ -2,15 +2,14 @@ import {
   emitComplete,
   emitError,
   emitProgress,
-  fetchManifest,
-  monitorJobProgress,
-  processSlidesFromManifest,
-  triggerExtraction,
+  emitSlide,
+  processVideoLocally,
+  saveSlidesToDatabase,
   updateExtractionStatus,
 } from "./steps/extract-slides";
 
 // ============================================================================
-// Main Workflow
+// Main Workflow - Local Processing
 // ============================================================================
 
 export async function extractSlidesWorkflow(videoId: string) {
@@ -19,21 +18,31 @@ export async function extractSlidesWorkflow(videoId: string) {
   let currentStep = "initialization";
 
   try {
-    currentStep = "triggering extraction";
-    await emitProgress("starting", 0, "Starting slide extraction...");
-    await triggerExtraction(videoId);
+    currentStep = "processing video";
+    await emitProgress("downloading", 0, "Starting video processing...");
 
-    currentStep = "monitoring job progress";
-    await emitProgress("monitoring", 10, "Processing video on server...");
-    const manifestUri = await monitorJobProgress(videoId);
+    // Process video locally using yt-service utilities
+    const processingResult = await processVideoLocally(
+      videoId,
+      async (stage, progress, message) => {
+        // Emit progress updates
+        await emitProgress(stage, progress, message);
+      },
+    );
 
-    currentStep = "fetching manifest";
-    await emitProgress("fetching", 80, "Fetching slide manifest...");
-    const manifest = await fetchManifest(manifestUri);
-
-    currentStep = "processing slides";
+    currentStep = "saving slides";
     await emitProgress("saving", 90, "Saving slides to database...");
-    const totalSlides = await processSlidesFromManifest(videoId, manifest);
+
+    // Save slides to database and emit each slide
+    const { savedSlides, totalSlides } = await saveSlidesToDatabase(
+      videoId,
+      processingResult.segments,
+    );
+
+    // Emit each slide for real-time updates
+    for (const slide of savedSlides) {
+      await emitSlide(slide);
+    }
 
     currentStep = "updating status";
     await updateExtractionStatus(videoId, "completed", totalSlides);

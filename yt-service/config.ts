@@ -7,40 +7,40 @@ import { z } from "zod";
 
 // Schema for environment validation
 const envSchema = z.object({
-	// Optional proxy configuration
-	ZYTE_API_KEY: z.string().optional(),
-	ZYTE_HOST: z.string().default("api.zyte.com"),
+  // Optional proxy configuration
+  ZYTE_API_KEY: z.string().optional(),
+  ZYTE_HOST: z.string().default("api.zyte.com"),
 
-	// API authentication
-	API_PASSWORD: z.string().default(""),
+  // API authentication
+  API_PASSWORD: z.string().default(""),
 
-	// Vercel Blob configuration
-	BLOB_READ_WRITE_TOKEN: z.string().optional(),
+  // Vercel Blob configuration
+  BLOB_READ_WRITE_TOKEN: z.string().optional(),
 
-	// Image quality settings
-	SLIDE_IMAGE_QUALITY: z.number().default(80),
+  // Image quality settings
+  SLIDE_IMAGE_QUALITY: z.number().default(80),
 });
 
 // Parse and validate environment
 function getConfig() {
-	const parsed = envSchema.safeParse(process.env);
+  const parsed = envSchema.safeParse(process.env);
 
-	if (!parsed.success) {
-		console.error("Environment validation failed:", parsed.error.flatten());
-		throw new Error("Invalid environment configuration");
-	}
+  if (!parsed.success) {
+    console.error("Environment validation failed:", parsed.error.flatten());
+    throw new Error("Invalid environment configuration");
+  }
 
-	return parsed.data;
+  return parsed.data;
 }
 
 // Export validated config (lazy evaluation)
 let _config: z.infer<typeof envSchema> | null = null;
 
 export function config() {
-	if (!_config) {
-		_config = getConfig();
-	}
-	return _config;
+  if (!_config) {
+    _config = getConfig();
+  }
+  return _config;
 }
 
 export const getZyteApiKey = () => config().ZYTE_API_KEY;
