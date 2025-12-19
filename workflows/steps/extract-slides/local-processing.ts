@@ -3,10 +3,9 @@
  * Replaces the external VPS API calls with local processing.
  */
 
-import { getWritable } from "workflow";
 import { db } from "@/db";
 import { videoSlides } from "@/db/schema";
-import type { SlideData, SlideStreamEvent } from "@/lib/slides-types";
+import type { SlideData } from "@/lib/slides-types";
 import {
   type ProcessingResult,
   processYouTubeVideo,
