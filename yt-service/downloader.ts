@@ -11,30 +11,10 @@ import { Innertube, UniversalCache } from "youtubei.js";
 import { DEFAULT_USER_AGENT, TEMP_DIR } from "./config";
 import type { DownloadResult, StreamUrls } from "./types";
 
-type StreamingFormat = {
-  has_audio?: boolean;
-  has_video?: boolean;
-  mime_type?: string;
-  height?: number;
-  bitrate?: number;
-  average_bitrate?: number;
-  content_length?: string;
-  url?: string;
-  decipher?: (player: unknown) => string | Promise<string>;
-};
-
-type StreamingData = {
-  formats?: StreamingFormat[];
-  adaptive_formats?: StreamingFormat[];
-};
-
-type VideoInfo = {
-  streaming_data?: StreamingData;
-  basic_info?: {
-    title?: string;
-    id?: string;
-  };
-};
+type VideoInfo = Awaited<ReturnType<typeof Innertube.prototype.getInfo>>;
+type StreamingFormat = NonNullable<
+  VideoInfo["streaming_data"]
+>["formats"][number];
 
 let ytClientPromise: Promise<Innertube> | null = null;
 
@@ -219,7 +199,7 @@ export async function downloadVideoWithYtdl(
     }
 
     const client = await getClient();
-    const info = (await client.getInfo(videoId)) as VideoInfo;
+    const info = await client.getInfo(videoId);
 
     const formats = collectFormats(info);
 
@@ -230,47 +210,16 @@ export async function downloadVideoWithYtdl(
     );
 
     // Priority 1: MP4 with height <= 720p (preferred for compatibility)
-    let selectedFormat = formats
+    const formatsBelow720p = formats
       .filter(
         (format) =>
           format.has_video &&
           isMp4Format(format) &&
           (format.height || 0) <= 720,
       )
-      .sort((a, b) => {
-        const audioPresence =
-          Number(b.has_audio || 0) - Number(a.has_audio || 0);
-        if (audioPresence !== 0) return audioPresence;
-        return (b.height || 0) - (a.height || 0);
-      })[0];
+      .sort((a, b) => (b.height || 0) - (a.height || 0));
 
-    // Priority 2: Any MP4 format (even higher resolution)
-    if (!selectedFormat) {
-      console.log("No MP4 <= 720p found, trying any MP4 format...");
-      selectedFormat = formats
-        .filter((format) => format.has_video && isMp4Format(format))
-        .sort((a, b) => {
-          const audioPresence =
-            Number(b.has_audio || 0) - Number(a.has_audio || 0);
-          if (audioPresence !== 0) return audioPresence;
-          // Prefer lower resolution for faster download
-          return (a.height || 0) - (b.height || 0);
-        })[0];
-    }
-
-    // Priority 3: WebM format (fallback)
-    if (!selectedFormat) {
-      console.log("No MP4 format found, trying WebM...");
-      selectedFormat = formats
-        .filter((format) => format.has_video && isVideoFormat(format))
-        .sort((a, b) => {
-          const audioPresence =
-            Number(b.has_audio || 0) - Number(a.has_audio || 0);
-          if (audioPresence !== 0) return audioPresence;
-          // Prefer lower resolution for faster download
-          return (a.height || 0) - (b.height || 0);
-        })[0];
-    }
+    const selectedFormat = formatsBelow720p[0];
 
     if (!selectedFormat) {
       const formatInfo = formats
@@ -288,6 +237,7 @@ export async function downloadVideoWithYtdl(
     );
 
     const directUrl = await getFormatUrl(selectedFormat, client);
+    console.log("⚡ Direct URL:", directUrl);
     if (!directUrl) {
       return { success: false, error: "Unable to resolve download URL" };
     }
