@@ -167,9 +167,6 @@ export const videoSlides = pgTable(
     // First frame data
     firstFrameImageUrl: text("first_frame_image_url"),
     firstFramePhash: varchar("first_frame_phash", { length: 64 }), // Perceptual hash for duplicate detection
-    firstFrameHasText: boolean("first_frame_has_text").default(false), // Legacy: kept for existing data
-    firstFrameTextConfidence: integer("first_frame_text_confidence"), // Legacy: 0-100
-    firstFrameTextBoxCount: integer("first_frame_text_box_count"), // Legacy
     firstFrameIsDuplicate: boolean("first_frame_is_duplicate").default(false),
     firstFrameDuplicateOfSegmentId: integer(
       "first_frame_duplicate_of_segment_id",
@@ -183,9 +180,6 @@ export const videoSlides = pgTable(
     // Last frame data
     lastFrameImageUrl: text("last_frame_image_url"),
     lastFramePhash: varchar("last_frame_phash", { length: 64 }), // Perceptual hash for duplicate detection
-    lastFrameHasText: boolean("last_frame_has_text").default(false), // Legacy: kept for existing data
-    lastFrameTextConfidence: integer("last_frame_text_confidence"), // Legacy: 0-100
-    lastFrameTextBoxCount: integer("last_frame_text_box_count"), // Legacy
     lastFrameIsDuplicate: boolean("last_frame_is_duplicate").default(false),
     lastFrameDuplicateOfSegmentId: integer(
       "last_frame_duplicate_of_segment_id",
@@ -220,13 +214,11 @@ export const slideFeedback = pgTable(
     slideIndex: integer("slide_index").notNull(),
 
     // First frame validation
-    firstFrameHasTextValidated: boolean("first_frame_has_text_validated"), // Legacy: kept for existing data
     firstFrameIsDuplicateValidated: boolean(
       "first_frame_is_duplicate_validated",
     ),
 
     // Last frame validation
-    lastFrameHasTextValidated: boolean("last_frame_has_text_validated"), // Legacy: kept for existing data
     lastFrameIsDuplicateValidated: boolean("last_frame_is_duplicate_validated"),
 
     // Sameness feedback
