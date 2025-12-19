@@ -7,7 +7,7 @@
 
 import { createWriteStream, promises as fs } from "node:fs";
 import path from "node:path";
-import { Innertube, UniversalCache } from "youtubei.js";
+import { Innertube, UniversalCache, Utils } from "youtubei.js";
 import { DEFAULT_USER_AGENT, TEMP_DIR } from "./config";
 import type { DownloadResult, StreamUrls } from "./types";
 
@@ -24,6 +24,7 @@ async function getClient(): Promise<Innertube> {
     ytClientPromise = Innertube.create({
       cache: new UniversalCache(false),
       user_agent: DEFAULT_USER_AGENT,
+      generate_session_locally: true,
     });
   }
 
@@ -199,51 +200,28 @@ export async function downloadVideoWithYtdl(
     }
 
     const client = await getClient();
-    const info = await client.getInfo(videoId);
+    await fs.mkdir(path.dirname(outputPath), { recursive: true });
 
-    const formats = collectFormats(info);
+    const stream = await client.download(videoId, {
+      type: "video",
+      quality: "best",
+      format: "mp4",
+    });
 
-    // Log available formats for debugging
-    const videoFormats = formats.filter((f) => f.has_video);
-    console.log(
-      `Available video formats: ${videoFormats.length} (heights: ${videoFormats.map((f) => `${f.height || "?"}p`).join(", ")})`,
-    );
+    const writeStream = createWriteStream(outputPath);
 
-    // Priority 1: MP4 with height <= 720p (preferred for compatibility)
-    const formatsBelow720p = formats
-      .filter(
-        (format) =>
-          format.has_video &&
-          isMp4Format(format) &&
-          (format.height || 0) <= 720,
-      )
-      .sort((a, b) => (b.height || 0) - (a.height || 0));
-
-    const selectedFormat = formatsBelow720p[0];
-
-    if (!selectedFormat) {
-      const formatInfo = formats
-        .filter((f) => f.has_video)
-        .map((f) => `${f.mime_type}@${f.height || "?"}p`)
-        .join(", ");
-      return {
-        success: false,
-        error: `No suitable format found. Available: ${formatInfo || "none"}`,
-      };
+    for await (const chunk of Utils.streamToIterable(stream)) {
+      writeStream.write(chunk);
     }
 
-    console.log(
-      `Selected format: ${selectedFormat.mime_type} @ ${selectedFormat.height || "?"}p`,
-    );
+    writeStream.end();
 
-    const directUrl = await getFormatUrl(selectedFormat, client);
-    console.log("⚡ Direct URL:", directUrl);
-    if (!directUrl) {
-      return { success: false, error: "Unable to resolve download URL" };
-    }
+    await new Promise<void>((resolve, reject) => {
+      writeStream.on("finish", resolve);
+      writeStream.on("error", reject);
+    });
 
-    // Delegate to generic downloader to keep progress handling consistent.
-    return downloadVideo(directUrl, outputPath);
+    return { success: true, path: outputPath };
   } catch (error: unknown) {
     const err = toError(error);
     console.error("Download failed:", err.message);
