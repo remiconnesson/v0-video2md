@@ -39,6 +39,7 @@ type VideoInfo = {
 let ytClientPromise: Promise<Innertube> | null = null;
 
 async function getClient(): Promise<Innertube> {
+  "use step";
   if (!ytClientPromise) {
     ytClientPromise = Innertube.create({
       cache: new UniversalCache(false),
@@ -50,6 +51,7 @@ async function getClient(): Promise<Innertube> {
 }
 
 function extractVideoId(videoUrl: string): string | null {
+  "use step";
   try {
     const url = new URL(videoUrl);
     if (url.hostname === "youtu.be") {
@@ -74,10 +76,12 @@ function extractVideoId(videoUrl: string): string | null {
 }
 
 function isMp4Format(format: StreamingFormat): boolean {
+  "use step";
   return (format.mime_type || "").includes("mp4");
 }
 
 function collectFormats(info: VideoInfo): StreamingFormat[] {
+  "use step";
   const streamingData = info.streaming_data;
   if (!streamingData) return [];
 
@@ -91,6 +95,7 @@ async function getFormatUrl(
   format: StreamingFormat,
   client: Innertube,
 ): Promise<string | null> {
+  "use step";
   if (typeof format.decipher === "function") {
     try {
       const deciphered = await format.decipher(client.session.player);
@@ -114,6 +119,7 @@ export type { DownloadResult, StreamUrls };
  * Ported from Python: get_stream_urls()
  */
 export async function getStreamUrls(videoUrl: string): Promise<StreamUrls> {
+  "use step";
   try {
     const videoId = extractVideoId(videoUrl);
     if (!videoId) {
@@ -197,6 +203,7 @@ export async function downloadVideoWithYtdl(
   outputPath: string,
   onProgress?: (progress: number) => void,
 ): Promise<DownloadResult> {
+  "use step";
   try {
     const videoId = extractVideoId(videoUrl);
     if (!videoId) {
@@ -248,6 +255,7 @@ export async function downloadVideo(
   outputPath: string,
   onProgress?: (progress: number) => void,
 ): Promise<DownloadResult> {
+  "use step";
   try {
     const headers = getDefaultHeaders();
 
@@ -321,6 +329,7 @@ export async function getFileSize(
   url: string,
   headers: Record<string, string>,
 ): Promise<number> {
+  "use step";
   // Try to get size from URL query param (YouTube often includes this)
   const urlObj = new URL(url);
   const clen = urlObj.searchParams.get("clen");
@@ -354,6 +363,7 @@ export async function getFileSize(
  * Get default request headers.
  */
 function getDefaultHeaders(): Record<string, string> {
+  "use step";
   return {
     "User-Agent": DEFAULT_USER_AGENT,
   };
@@ -363,6 +373,7 @@ function getDefaultHeaders(): Record<string, string> {
  * Sanitize a title for use in filenames.
  */
 export function sanitizeTitle(title: string): string {
+  "use step";
   return (
     title
       .replace(/[^a-zA-Z0-9 ]/g, "")
@@ -375,6 +386,7 @@ export function sanitizeTitle(title: string): string {
  * Generate a unique filename for a video.
  */
 export function generateVideoFilename(title: string, videoId: string): string {
+  "use step";
   const safeTitle = sanitizeTitle(title);
   return `${safeTitle}_${videoId}.mp4`;
 }
@@ -383,6 +395,7 @@ export function generateVideoFilename(title: string, videoId: string): string {
  * Get the full path for a video file in temp directory.
  */
 export function getVideoPath(filename: string): string {
+  "use step";
   return path.join(TEMP_DIR, filename);
 }
 
@@ -390,6 +403,7 @@ export function getVideoPath(filename: string): string {
  * Check if a file exists.
  */
 export async function fileExists(filePath: string): Promise<boolean> {
+  "use step";
   try {
     await fs.access(filePath);
     return true;
@@ -402,6 +416,7 @@ export async function fileExists(filePath: string): Promise<boolean> {
  * Delete a file if it exists.
  */
 export async function deleteFile(filePath: string): Promise<void> {
+  "use step";
   try {
     await fs.unlink(filePath);
   } catch {
@@ -413,6 +428,7 @@ export async function deleteFile(filePath: string): Promise<void> {
  * Clean up old downloads from temp directory.
  */
 export async function cleanupOldDownloads(retentionHours = 24): Promise<void> {
+  "use step";
   try {
     const cutoff = Date.now() - retentionHours * 60 * 60 * 1000;
     const files = await fs.readdir(TEMP_DIR);
@@ -437,6 +453,7 @@ export async function cleanupOldDownloads(retentionHours = 24): Promise<void> {
 }
 
 function toError(error: unknown): Error {
+  "use step";
   return error instanceof Error
     ? error
     : new Error(String(error || "❓ Unknown error"));

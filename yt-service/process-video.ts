@@ -51,6 +51,7 @@ function findDuplicate(
   }>,
   threshold = 5,
 ): { segmentId: number; framePosition: "first" | "last" } | null {
+  "use step";
   if (!frameHash) return null;
 
   for (const prev of previousStaticSegments) {
@@ -81,6 +82,7 @@ export async function processYouTubeVideo(
   videoId: string,
   onProgress?: ProcessingProgressCallback,
 ): Promise<ProcessingResult> {
+  "use step";
   let videoPath: string | undefined;
 
   try {
@@ -198,6 +200,7 @@ async function processStaticSegment(
   segment: DetectedSegment,
   index: number,
 ): Promise<StaticSegment> {
+  "use step";
   // Convert and upload first frame
   const firstFrameWebp = await sharp(segment.representativeFrameBuffer!)
     .webp({ quality: getSlideImageQuality() })
@@ -272,6 +275,7 @@ function detectDuplicates(
     lastFrameHash: string | undefined;
   }>,
 ): void {
+  "use step";
   let staticIndex = 0;
 
   for (const segment of segments) {
@@ -317,6 +321,7 @@ async function downloadVideo(
   videoId: string,
   onProgress?: (progress: number) => void,
 ): Promise<string> {
+  "use step";
   const filename = generateVideoFilename("video", videoId);
   const videoPath = getVideoPath(filename);
   const videoUrl = getVideoUrl(videoId);

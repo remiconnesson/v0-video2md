@@ -75,6 +75,7 @@ export async function extractFrames(
   fps = 1,
   maxWidth = 1280,
 ): Promise<string[]> {
+  "use step";
   // Ensure output directory exists
   await fs.mkdir(outputDir, { recursive: true });
 
@@ -125,6 +126,7 @@ export async function extractFrames(
  * Get video duration using ffprobe.
  */
 export async function getVideoDuration(videoPath: string): Promise<number> {
+  "use step";
   return new Promise((resolve, reject) => {
     const args = [
       "-v",
@@ -190,6 +192,7 @@ export class SegmentDetector {
    * Process a single frame through the state machine.
    */
   async processFrame(frame: FrameData): Promise<void> {
+    "use step";
     // Compute hashes if not already done
     if (!frame.hashes) {
       const buffer = frame.imageBuffer || (await fs.readFile(frame.imagePath));
@@ -222,6 +225,7 @@ export class SegmentDetector {
   }
 
   private handleStaticState(frame: FrameData, isSimilar: boolean): void {
+    "use step";
     if (isSimilar) {
       if (!this.currentSegment) {
         throw new Error("Current segment is null");
@@ -245,6 +249,7 @@ export class SegmentDetector {
   }
 
   private handleMovingState(frame: FrameData): void {
+    "use step";
     if (this.tentativeStartHashes) {
       if (!frame.hashes) {
         throw new Error("Frame hashes are null");
@@ -312,6 +317,7 @@ export class SegmentDetector {
   }
 
   private startNewSegment(type: "static" | "moving", frame: FrameData): void {
+    "use step";
     this.currentSegment = {
       type,
       startTime: frame.timestamp,
@@ -334,6 +340,7 @@ export class SegmentDetector {
   }
 
   private commitCurrentSegment(): void {
+    "use step";
     if (!this.currentSegment || this.currentSegment.frames.length === 0) {
       return;
     }
@@ -356,6 +363,7 @@ export class SegmentDetector {
    * Finalize analysis and return segments.
    */
   finalize(): DetectedSegment[] {
+    "use step";
     this.commitCurrentSegment();
     return this.segments;
   }
@@ -364,6 +372,7 @@ export class SegmentDetector {
    * Get current segments (for progress reporting).
    */
   getSegments(): DetectedSegment[] {
+    "use step";
     return this.segments;
   }
 }
@@ -377,6 +386,7 @@ export async function analyzeVideo(
   config: Partial<AnalysisConfig> = {},
   onProgress?: (current: number, total: number, segmentCount: number) => void,
 ): Promise<AnalysisResult> {
+  "use step";
   const fullConfig = { ...DEFAULT_CONFIG, ...config };
 
   // Create temp directory for frames
@@ -471,6 +481,7 @@ export async function analyzeVideo(
 export function getStaticSegments(
   segments: DetectedSegment[],
 ): DetectedSegment[] {
+  "use step";
   return segments.filter(
     (s) => s.type === "static" && s.representativeFramePath,
   );

@@ -11,6 +11,7 @@ import { getBlobReadWriteToken } from "./config";
  * Throws if not configured.
  */
 function getBlobToken(): string {
+  "use step";
   const token = getBlobReadWriteToken();
 
   if (!token) {
@@ -32,6 +33,7 @@ export async function uploadToBlob(
   contentType = "image/webp",
   metadata?: Record<string, string>,
 ): Promise<string> {
+  "use step";
   const token = getBlobToken();
 
   const blob = await put(pathname, data, {
@@ -54,6 +56,7 @@ export async function uploadToBlob(
 export async function checkBlobExists(
   pathname: string,
 ): Promise<string | null> {
+  "use step";
   const token = getBlobToken();
 
   try {
@@ -74,6 +77,7 @@ export async function checkBlobExists(
  * Note: Unlike S3 presigned URLs, these URLs don't expire.
  */
 export async function getPublicUrl(pathname: string): Promise<string> {
+  "use step";
   const token = getBlobToken();
 
   try {
@@ -91,6 +95,7 @@ export async function getPublicUrl(pathname: string): Promise<string> {
  * Returns the manifest URL if it exists.
  */
 export async function checkJobExists(videoId: string): Promise<string | null> {
+  "use step";
   const manifestPath = `slides/${videoId}/manifest.json`;
   return await checkBlobExists(manifestPath);
 }
