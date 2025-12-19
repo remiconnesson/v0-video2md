@@ -22,13 +22,8 @@ export async function extractSlidesWorkflow(videoId: string) {
     await emitProgress("downloading", 0, "Starting video processing...");
 
     // Process video locally using yt-service utilities
-    const processingResult = await processVideoLocally(
-      videoId,
-      async (stage, progress, message) => {
-        // Emit progress updates
-        await emitProgress(stage, progress, message);
-      },
-    );
+    // Progress is emitted from within the step using getWritable()
+    const processingResult = await processVideoLocally(videoId);
 
     currentStep = "saving slides";
     await emitProgress("saving", 90, "Saving slides to database...");

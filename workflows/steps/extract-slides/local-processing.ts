@@ -3,9 +3,10 @@
  * Replaces the external VPS API calls with local processing.
  */
 
+import { getWritable } from "workflow";
 import { db } from "@/db";
 import { videoSlides } from "@/db/schema";
-import type { SlideData } from "@/lib/slides-types";
+import type { SlideData, SlideStreamEvent } from "@/lib/slides-types";
 import {
   type ProcessingResult,
   processYouTubeVideo,
@@ -18,7 +19,6 @@ import type { Segment, StaticSegment } from "@/yt-service/types";
 
 export async function processVideoLocally(
   videoId: string,
-  onProgress?: (stage: string, progress: number, message: string) => void,
 ): Promise<ProcessingResult> {
   "use step";
 
@@ -26,13 +26,24 @@ export async function processVideoLocally(
     `🎬 processVideoLocally: Starting local processing for video ${videoId}`,
   );
 
+  // Get writable stream to emit progress updates
+  const writable = getWritable<SlideStreamEvent>();
+
   const result = await processYouTubeVideo(
     videoId,
-    (stage, progress, message) => {
+    async (stage, progress, message) => {
       console.log(
         `🎬 processVideoLocally: [${stage}] ${progress.toFixed(1)}% - ${message}`,
       );
-      onProgress?.(stage, progress, message);
+      // Emit progress to the stream
+      const writer = writable.getWriter();
+      await writer.write({
+        type: "progress",
+        status: stage,
+        progress,
+        message,
+      });
+      writer.releaseLock();
     },
   );
 
