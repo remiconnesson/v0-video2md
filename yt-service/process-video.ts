@@ -19,15 +19,6 @@ const getVideoUrl = (videoId: string) =>
   `https://www.youtube.com/watch?v=${videoId}`;
 
 /**
- * Progress callback type for video processing
- */
-export type ProcessingProgressCallback = (
-  stage: "downloading" | "analyzing" | "uploading" | "detecting_duplicates",
-  progress: number,
-  message: string,
-) => void;
-
-/**
  * Result of video processing
  */
 export interface ProcessingResult {
@@ -80,7 +71,6 @@ function findDuplicate(
 
 export async function processYouTubeVideo(
   videoId: string,
-  onProgress?: ProcessingProgressCallback,
 ): Promise<ProcessingResult> {
   "use step";
   let videoPath: string | undefined;
@@ -93,30 +83,11 @@ export async function processYouTubeVideo(
     }
 
     // Step 1: Download video
-    onProgress?.("downloading", 0, "Starting video download...");
-    const downloadedVideoPath = await downloadVideo(videoId, (progress) => {
-      onProgress?.(
-        "downloading",
-        progress * 100,
-        `Downloading video... ${Math.floor(progress * 100)}%`,
-      );
-    });
+    const downloadedVideoPath = await downloadVideo(videoId);
     videoPath = downloadedVideoPath;
 
     // Step 2: Analyze video
-    onProgress?.("analyzing", 0, "Starting video analysis...");
-    const analysisResult = await analyzeVideo(
-      downloadedVideoPath,
-      {},
-      (current, total, segmentCount) => {
-        const progress = (current / total) * 100;
-        onProgress?.(
-          "analyzing",
-          progress,
-          `Analyzing frames... ${current}/${total} (${segmentCount} segments)`,
-        );
-      },
-    );
+    const analysisResult = await analyzeVideo(downloadedVideoPath, {});
 
     // Step 3: Process and upload segments
     const segments: Segment[] = [];
@@ -133,13 +104,6 @@ export async function processYouTubeVideo(
 
     for (const segment of analysisResult.segments) {
       if (segment.type === "static" && segment.representativeFrameBuffer) {
-        const progress = (staticSegmentIndex / totalStaticSegments) * 100;
-        onProgress?.(
-          "uploading",
-          progress,
-          `Uploading slides... ${staticSegmentIndex + 1}/${totalStaticSegments}`,
-        );
-
         const staticSegment = await processStaticSegment(
           videoId,
           segment,
@@ -167,9 +131,7 @@ export async function processYouTubeVideo(
     }
 
     // Step 4: Detect duplicates
-    onProgress?.("detecting_duplicates", 0, "Detecting duplicate slides...");
     detectDuplicates(segments, staticSegmentsForDuplicateCheck);
-    onProgress?.("detecting_duplicates", 100, "Duplicate detection complete");
 
     console.log(`Successfully processed video ${videoId}`);
 
@@ -317,20 +279,13 @@ function detectDuplicates(
   }
 }
 
-async function downloadVideo(
-  videoId: string,
-  onProgress?: (progress: number) => void,
-): Promise<string> {
+async function downloadVideo(videoId: string): Promise<string> {
   "use step";
   const filename = generateVideoFilename("video", videoId);
   const videoPath = getVideoPath(filename);
   const videoUrl = getVideoUrl(videoId);
 
-  const downloadResult = await downloadVideoWithYtdl(
-    videoUrl,
-    videoPath,
-    onProgress,
-  );
+  const downloadResult = await downloadVideoWithYtdl(videoUrl, videoPath);
   if (!downloadResult.success) {
     throw new Error(`Download failed: ${downloadResult.error}`);
   }

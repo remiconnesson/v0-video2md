@@ -1,7 +1,6 @@
 import {
   emitComplete,
   emitError,
-  emitProgress,
   emitSlide,
   processVideoLocally,
   saveSlidesToDatabase,
@@ -19,14 +18,11 @@ export async function extractSlidesWorkflow(videoId: string) {
 
   try {
     currentStep = "processing video";
-    await emitProgress("downloading", 0, "Starting video processing...");
 
     // Process video locally using yt-service utilities
-    // Progress is emitted from within the step using getWritable()
     const processingResult = await processVideoLocally(videoId);
 
     currentStep = "saving slides";
-    await emitProgress("saving", 90, "Saving slides to database...");
 
     // Save slides to database and emit each slide
     const { savedSlides, totalSlides } = await saveSlidesToDatabase(

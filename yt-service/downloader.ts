@@ -201,7 +201,6 @@ export async function getStreamUrls(videoUrl: string): Promise<StreamUrls> {
 export async function downloadVideoWithYtdl(
   videoUrl: string,
   outputPath: string,
-  onProgress?: (progress: number) => void,
 ): Promise<DownloadResult> {
   "use step";
   try {
@@ -239,7 +238,7 @@ export async function downloadVideoWithYtdl(
     }
 
     // Delegate to generic downloader to keep progress handling consistent.
-    return downloadVideo(directUrl, outputPath, onProgress);
+    return downloadVideo(directUrl, outputPath);
   } catch (error: unknown) {
     const err = toError(error);
     console.error("Download failed:", err.message);
@@ -253,7 +252,6 @@ export async function downloadVideoWithYtdl(
 export async function downloadVideo(
   url: string,
   outputPath: string,
-  onProgress?: (progress: number) => void,
 ): Promise<DownloadResult> {
   "use step";
   try {
@@ -288,18 +286,11 @@ export async function downloadVideo(
       return { success: false, error: "No response body" };
     }
 
-    let downloadedBytes = 0;
-
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
 
       writeStream.write(value);
-      downloadedBytes += value.length;
-
-      if (onProgress && totalSize > 0) {
-        onProgress(downloadedBytes / totalSize);
-      }
     }
 
     writeStream.end();
@@ -310,9 +301,7 @@ export async function downloadVideo(
       writeStream.on("error", reject);
     });
 
-    console.log(
-      `Downloaded: ${outputPath} (${(downloadedBytes / 1024 / 1024).toFixed(1)} MB)`,
-    );
+    console.log(`Downloaded: ${outputPath}`);
 
     return { success: true, path: outputPath };
   } catch (error: unknown) {

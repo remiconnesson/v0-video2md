@@ -384,7 +384,6 @@ export class SegmentDetector {
 export async function analyzeVideo(
   videoPath: string,
   config: Partial<AnalysisConfig> = {},
-  onProgress?: (current: number, total: number, segmentCount: number) => void,
 ): Promise<AnalysisResult> {
   "use step";
   const fullConfig = { ...DEFAULT_CONFIG, ...config };
@@ -429,11 +428,6 @@ export async function analyzeVideo(
       };
 
       await detector.processFrame(frame);
-
-      // Report progress
-      if (onProgress) {
-        onProgress(i + 1, totalFrames, detector.getSegments().length);
-      }
     }
 
     const segments = detector.finalize();

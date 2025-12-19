@@ -26,26 +26,7 @@ export async function processVideoLocally(
     `🎬 processVideoLocally: Starting local processing for video ${videoId}`,
   );
 
-  // Get writable stream to emit progress updates
-  const writable = getWritable<SlideStreamEvent>();
-
-  const result = await processYouTubeVideo(
-    videoId,
-    async (stage, progress, message) => {
-      console.log(
-        `🎬 processVideoLocally: [${stage}] ${progress.toFixed(1)}% - ${message}`,
-      );
-      // Emit progress to the stream
-      const writer = writable.getWriter();
-      await writer.write({
-        type: "progress",
-        status: stage,
-        progress,
-        message,
-      });
-      writer.releaseLock();
-    },
-  );
+  const result = await processYouTubeVideo(videoId);
 
   console.log(
     `🎬 processVideoLocally: Completed processing for video ${videoId}`,

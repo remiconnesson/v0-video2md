@@ -2,22 +2,6 @@ import { getWritable } from "workflow";
 import type { SlideData, SlideStreamEvent } from "@/lib/slides-types";
 
 // ============================================================================
-// Step: Emit progress
-// ============================================================================
-
-export async function emitProgress(
-  status: string,
-  progress: number,
-  message: string,
-) {
-  "use step";
-  const writable = getWritable<SlideStreamEvent>();
-  const writer = writable.getWriter();
-  await writer.write({ type: "progress", status, progress, message });
-  writer.releaseLock();
-}
-
-// ============================================================================
 // Step: Emit slide
 // ============================================================================
 
