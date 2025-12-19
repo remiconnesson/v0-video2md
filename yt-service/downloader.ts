@@ -51,7 +51,6 @@ async function getClient(): Promise<Innertube> {
 }
 
 function extractVideoId(videoUrl: string): string | null {
-  "use step";
   try {
     const url = new URL(videoUrl);
     if (url.hostname === "youtu.be") {
@@ -76,12 +75,10 @@ function extractVideoId(videoUrl: string): string | null {
 }
 
 function isMp4Format(format: StreamingFormat): boolean {
-  "use step";
   return (format.mime_type || "").includes("mp4");
 }
 
 function collectFormats(info: VideoInfo): StreamingFormat[] {
-  "use step";
   const streamingData = info.streaming_data;
   if (!streamingData) return [];
 
@@ -352,7 +349,6 @@ export async function getFileSize(
  * Get default request headers.
  */
 function getDefaultHeaders(): Record<string, string> {
-  "use step";
   return {
     "User-Agent": DEFAULT_USER_AGENT,
   };
@@ -362,7 +358,6 @@ function getDefaultHeaders(): Record<string, string> {
  * Sanitize a title for use in filenames.
  */
 export function sanitizeTitle(title: string): string {
-  "use step";
   return (
     title
       .replace(/[^a-zA-Z0-9 ]/g, "")
@@ -375,7 +370,6 @@ export function sanitizeTitle(title: string): string {
  * Generate a unique filename for a video.
  */
 export function generateVideoFilename(title: string, videoId: string): string {
-  "use step";
   const safeTitle = sanitizeTitle(title);
   return `${safeTitle}_${videoId}.mp4`;
 }
@@ -384,7 +378,6 @@ export function generateVideoFilename(title: string, videoId: string): string {
  * Get the full path for a video file in temp directory.
  */
 export function getVideoPath(filename: string): string {
-  "use step";
   return path.join(TEMP_DIR, filename);
 }
 
@@ -442,7 +435,6 @@ export async function cleanupOldDownloads(retentionHours = 24): Promise<void> {
 }
 
 function toError(error: unknown): Error {
-  "use step";
   return error instanceof Error
     ? error
     : new Error(String(error || "❓ Unknown error"));

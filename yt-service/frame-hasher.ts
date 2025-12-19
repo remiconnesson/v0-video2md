@@ -16,7 +16,6 @@ export function areHashesSimilar(
   hash2: string,
   threshold = 5,
 ): boolean {
-  "use step";
   return distance(hash1, hash2) <= threshold;
 }
 
@@ -25,7 +24,6 @@ function computeCenterCrop(
   height: number,
   centerCropRatio = 0.6,
 ): { left: number; top: number; cropW: number; cropH: number } {
-  "use step";
   // Compute center crop dimensions
   const cropW = Math.max(1, Math.floor(width * centerCropRatio));
   const cropH = Math.max(1, Math.floor(height * centerCropRatio));
@@ -100,7 +98,6 @@ export function compareGridHashes(
   threshold = 5,
   minMatchRatio = 0.8,
 ): boolean {
-  "use step";
   if (hashes1.length !== hashes2.length || hashes1.length === 0) {
     return false;
   }

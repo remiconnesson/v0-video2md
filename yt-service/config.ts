@@ -23,7 +23,6 @@ const envSchema = z.object({
 
 // Parse and validate environment
 function getConfig() {
-  "use step";
   const parsed = envSchema.safeParse(process.env);
 
   if (!parsed.success) {
@@ -38,7 +37,6 @@ function getConfig() {
 let _config: z.infer<typeof envSchema> | null = null;
 
 export function config() {
-  "use step";
   if (!_config) {
     _config = getConfig();
   }
@@ -46,29 +44,24 @@ export function config() {
 }
 
 export function getZyteApiKey() {
-  "use step";
   return config().ZYTE_API_KEY;
 }
 export function getZyteHost() {
-  "use step";
   return config().ZYTE_HOST;
 }
 
 // API authentication
 export function getApiPassword() {
-  "use step";
   return config().API_PASSWORD;
 }
 
 // Vercel Blob configuration
 export function getBlobReadWriteToken() {
-  "use step";
   return config().BLOB_READ_WRITE_TOKEN;
 }
 
 // Image quality settings
 export function getSlideImageQuality() {
-  "use step";
   return config().SLIDE_IMAGE_QUALITY;
 }
 

@@ -192,7 +192,6 @@ export class SegmentDetector {
    * Process a single frame through the state machine.
    */
   async processFrame(frame: FrameData): Promise<void> {
-    "use step";
     // Compute hashes if not already done
     if (!frame.hashes) {
       const buffer = frame.imageBuffer || (await fs.readFile(frame.imagePath));
@@ -225,7 +224,6 @@ export class SegmentDetector {
   }
 
   private handleStaticState(frame: FrameData, isSimilar: boolean): void {
-    "use step";
     if (isSimilar) {
       if (!this.currentSegment) {
         throw new Error("Current segment is null");
@@ -249,7 +247,6 @@ export class SegmentDetector {
   }
 
   private handleMovingState(frame: FrameData): void {
-    "use step";
     if (this.tentativeStartHashes) {
       if (!frame.hashes) {
         throw new Error("Frame hashes are null");
@@ -317,7 +314,6 @@ export class SegmentDetector {
   }
 
   private startNewSegment(type: "static" | "moving", frame: FrameData): void {
-    "use step";
     this.currentSegment = {
       type,
       startTime: frame.timestamp,
@@ -340,7 +336,6 @@ export class SegmentDetector {
   }
 
   private commitCurrentSegment(): void {
-    "use step";
     if (!this.currentSegment || this.currentSegment.frames.length === 0) {
       return;
     }
@@ -363,7 +358,6 @@ export class SegmentDetector {
    * Finalize analysis and return segments.
    */
   finalize(): DetectedSegment[] {
-    "use step";
     this.commitCurrentSegment();
     return this.segments;
   }
@@ -372,7 +366,6 @@ export class SegmentDetector {
    * Get current segments (for progress reporting).
    */
   getSegments(): DetectedSegment[] {
-    "use step";
     return this.segments;
   }
 }
@@ -475,7 +468,6 @@ export async function analyzeVideo(
 export function getStaticSegments(
   segments: DetectedSegment[],
 ): DetectedSegment[] {
-  "use step";
   return segments.filter(
     (s) => s.type === "static" && s.representativeFramePath,
   );

@@ -42,7 +42,6 @@ function findDuplicate(
   }>,
   threshold = 5,
 ): { segmentId: number; framePosition: "first" | "last" } | null {
-  "use step";
   if (!frameHash) return null;
 
   for (const prev of previousStaticSegments) {
@@ -237,7 +236,6 @@ function detectDuplicates(
     lastFrameHash: string | undefined;
   }>,
 ): void {
-  "use step";
   let staticIndex = 0;
 
   for (const segment of segments) {

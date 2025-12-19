@@ -11,7 +11,6 @@ import { getBlobReadWriteToken } from "./config";
  * Throws if not configured.
  */
 function getBlobToken(): string {
-  "use step";
   const token = getBlobReadWriteToken();
 
   if (!token) {
