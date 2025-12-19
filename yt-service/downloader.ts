@@ -80,12 +80,19 @@ function isMp4Format(format: StreamingFormat): boolean {
 
 function collectFormats(info: VideoInfo): StreamingFormat[] {
   const streamingData = info.streaming_data;
-  if (!streamingData) return [];
+  if (!streamingData) {
+    console.warn("No streaming_data available in video info");
+    return [];
+  }
 
-  return [
-    ...(streamingData.formats || []),
-    ...(streamingData.adaptive_formats || []),
-  ];
+  const formats = streamingData.formats || [];
+  const adaptiveFormats = streamingData.adaptive_formats || [];
+
+  console.log(
+    `Collected formats: ${formats.length} standard, ${adaptiveFormats.length} adaptive`,
+  );
+
+  return [...formats, ...adaptiveFormats];
 }
 
 async function getFormatUrl(
@@ -191,6 +198,11 @@ export async function getStreamUrls(videoUrl: string): Promise<StreamUrls> {
   }
 }
 
+function isVideoFormat(format: StreamingFormat): boolean {
+  const mimeType = format.mime_type || "";
+  return mimeType.includes("mp4") || mimeType.includes("webm");
+}
+
 /**
  * Download a video directly using youtubei.js stream URLs.
  * This is simpler and works well for Vercel.
@@ -210,7 +222,15 @@ export async function downloadVideoWithYtdl(
     const info = (await client.getInfo(videoId)) as VideoInfo;
 
     const formats = collectFormats(info);
-    const mp4Formats = formats
+
+    // Log available formats for debugging
+    const videoFormats = formats.filter((f) => f.has_video);
+    console.log(
+      `Available video formats: ${videoFormats.length} (heights: ${videoFormats.map((f) => `${f.height || "?"}p`).join(", ")})`,
+    );
+
+    // Priority 1: MP4 with height <= 720p (preferred for compatibility)
+    let selectedFormat = formats
       .filter(
         (format) =>
           format.has_video &&
@@ -222,12 +242,50 @@ export async function downloadVideoWithYtdl(
           Number(b.has_audio || 0) - Number(a.has_audio || 0);
         if (audioPresence !== 0) return audioPresence;
         return (b.height || 0) - (a.height || 0);
-      });
+      })[0];
 
-    const selectedFormat = mp4Formats[0];
+    // Priority 2: Any MP4 format (even higher resolution)
     if (!selectedFormat) {
-      return { success: false, error: "No suitable format found" };
+      console.log("No MP4 <= 720p found, trying any MP4 format...");
+      selectedFormat = formats
+        .filter((format) => format.has_video && isMp4Format(format))
+        .sort((a, b) => {
+          const audioPresence =
+            Number(b.has_audio || 0) - Number(a.has_audio || 0);
+          if (audioPresence !== 0) return audioPresence;
+          // Prefer lower resolution for faster download
+          return (a.height || 0) - (b.height || 0);
+        })[0];
     }
+
+    // Priority 3: WebM format (fallback)
+    if (!selectedFormat) {
+      console.log("No MP4 format found, trying WebM...");
+      selectedFormat = formats
+        .filter((format) => format.has_video && isVideoFormat(format))
+        .sort((a, b) => {
+          const audioPresence =
+            Number(b.has_audio || 0) - Number(a.has_audio || 0);
+          if (audioPresence !== 0) return audioPresence;
+          // Prefer lower resolution for faster download
+          return (a.height || 0) - (b.height || 0);
+        })[0];
+    }
+
+    if (!selectedFormat) {
+      const formatInfo = formats
+        .filter((f) => f.has_video)
+        .map((f) => `${f.mime_type}@${f.height || "?"}p`)
+        .join(", ");
+      return {
+        success: false,
+        error: `No suitable format found. Available: ${formatInfo || "none"}`,
+      };
+    }
+
+    console.log(
+      `Selected format: ${selectedFormat.mime_type} @ ${selectedFormat.height || "?"}p`,
+    );
 
     const directUrl = await getFormatUrl(selectedFormat, client);
     if (!directUrl) {

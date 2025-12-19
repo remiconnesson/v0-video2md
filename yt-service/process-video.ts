@@ -1,5 +1,5 @@
 import sharp from "sharp";
-import { checkJobExists, uploadToBlob } from "./blob-service";
+import { uploadToBlob } from "./blob-service";
 import { getSlideImageQuality } from "./config";
 import {
   deleteFile,
@@ -75,11 +75,8 @@ export async function processYouTubeVideo(
   let videoPath: string | undefined;
 
   try {
-    // Check if already processed
-    const existingManifest = await checkJobExists(videoId);
-    if (existingManifest) {
-      throw new Error(`Video ${videoId} has already been processed`);
-    }
+    // Note: We don't check for existing manifests in local processing
+    // since results are stored in the database, not blob storage
 
     // Step 1: Download video
     const downloadedVideoPath = await downloadVideo(videoId);

@@ -62,11 +62,19 @@ export async function checkBlobExists(
     const blob = await head(pathname, { token });
     return blob.url;
   } catch (error: any) {
+    console.log(`🔍 checkBlobExists: Checking blob ${pathname}, error:`, {
+      message: error.message,
+      statusCode: error.statusCode,
+      code: error.code,
+      name: error.name,
+    });
+
     // Vercel Blob throws errors when blob doesn't exist with various messages
     if (
       error.message?.includes("not found") ||
       error.message?.includes("does not exist") ||
-      error.statusCode === 404
+      error.statusCode === 404 ||
+      error.code === "NOT_FOUND"
     ) {
       return null;
     }
@@ -99,14 +107,4 @@ export async function getPublicUrl(pathname: string): Promise<string> {
       `Failed to get public URL for ${pathname}: ${error.message}`,
     );
   }
-}
-
-/**
- * Check if a job's manifest already exists in Blob storage.
- * Returns the manifest URL if it exists.
- */
-export async function checkJobExists(videoId: string): Promise<string | null> {
-  "use step";
-  const manifestPath = `slides/${videoId}/manifest.json`;
-  return await checkBlobExists(manifestPath);
 }
