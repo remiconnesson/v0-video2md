@@ -62,8 +62,12 @@ export async function checkBlobExists(
     const blob = await head(pathname, { token });
     return blob.url;
   } catch (error: any) {
-    // Vercel Blob throws BlobNotFoundError when blob doesn't exist
-    if (error.message?.includes("not found") || error.statusCode === 404) {
+    // Vercel Blob throws errors when blob doesn't exist with various messages
+    if (
+      error.message?.includes("not found") ||
+      error.message?.includes("does not exist") ||
+      error.statusCode === 404
+    ) {
       return null;
     }
     throw error;
@@ -83,6 +87,14 @@ export async function getPublicUrl(pathname: string): Promise<string> {
     const blob = await head(pathname, { token });
     return blob.url;
   } catch (error: any) {
+    // Handle blob not found errors
+    if (
+      error.message?.includes("not found") ||
+      error.message?.includes("does not exist") ||
+      error.statusCode === 404
+    ) {
+      throw new Error(`Blob not found: ${pathname}`);
+    }
     throw new Error(
       `Failed to get public URL for ${pathname}: ${error.message}`,
     );
