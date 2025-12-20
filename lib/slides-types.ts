@@ -24,7 +24,7 @@ const SegmentSchema = z.object({
 
 const ManifestDataSchema = z.object({
   segments: z.array(SegmentSchema),
-  updated_at: z.string(), // ISO 8601 timestamp
+  updated_at: z.iso.datetime(),
 });
 
 export const VideoManifestSchema = z.record(z.string(), ManifestDataSchema); // video_id -> manifest data
