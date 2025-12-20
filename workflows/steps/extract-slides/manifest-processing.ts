@@ -40,11 +40,17 @@ export async function fetchManifest(
 
   const json = await response.json();
 
-  console.log(json);
-  const blabla = VideoManifestSchema.safeParse(json);
-  console.log(JSON.stringify(blabla, null, 2));
+  const result = VideoManifestSchema.safeParse(json);
 
-  const manifest = VideoManifestSchema.parse(json);
+  if (!result.success) {
+    console.error(
+      `💾 fetchManifest: Invalid manifest for video ${videoId} JSON: ${JSON.stringify(result, null, 2)}`,
+      {},
+    );
+    throw new Error(`Invalid manifest for video ${videoId}`);
+  }
+
+  const manifest = result.data;
   return manifest;
 }
 
