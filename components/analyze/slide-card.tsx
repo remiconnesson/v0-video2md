@@ -226,7 +226,7 @@ export function SlideCard({
     initialFeedback?.isFirstFramePicked ?? true,
   );
   const [isLastFramePicked, setIsLastFramePicked] = useState<boolean>(
-    initialFeedback?.isLastFramePicked ?? true,
+    initialFeedback?.isLastFramePicked ?? false,
   );
 
   // Track when we're syncing from external feedback to prevent submission loop
