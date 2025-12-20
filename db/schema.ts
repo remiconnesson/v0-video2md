@@ -93,11 +93,11 @@ export const videoAnalysisRuns = pgTable(
   {
     videoId: varchar("video_id", { length: 32 })
       .notNull()
+      .primaryKey()
       .references(() => videos.videoId, { onDelete: "cascade" }),
     result: jsonb("result").$type<Record<string, unknown>>(),
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
-  (table) => [primaryKey({ columns: [table.videoId] })],
 );
 
 export type VideoAnalysisRun = typeof videoAnalysisRuns.$inferSelect;
@@ -108,12 +108,12 @@ export const videoAnalysisWorkflowIds = pgTable(
   {
     videoId: varchar("video_id", { length: 32 })
       .notNull()
+      .primaryKey()
       .references(() => videos.videoId, { onDelete: "cascade" }),
     workflowId: varchar("workflow_id", { length: 100 }).notNull(),
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
   (table) => [
-    primaryKey({ columns: [table.videoId] }),
     index("video_analysis_workflow_ids_video_id_idx").on(table.workflowId),
   ],
 );
