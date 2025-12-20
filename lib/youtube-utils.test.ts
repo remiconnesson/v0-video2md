@@ -23,6 +23,12 @@ afterAll(() => {
   consoleWarnSpy.mockRestore();
 });
 
+// Clear mocks between tests to prevent cross-test pollution
+beforeEach(() => {
+  consoleErrorSpy.mockClear();
+  consoleWarnSpy.mockClear();
+});
+
 describe("extractYoutubeVideoId", () => {
   it("should extract video ID from standard youtube.com watch URL", () => {
     const videoId = extractYoutubeVideoId(
