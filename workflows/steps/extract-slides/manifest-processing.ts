@@ -147,7 +147,7 @@ export async function processSlidesFromManifest(
     `💾 processSlidesFromManifest: Found ${staticSegments.length} static segments for video ${videoId}`,
   );
 
-  let slideIndex = 0;
+  let slideIndex = 1; // ⚠️ Start at 1 since backend is using 1-based indexing for slides, TODO: unforce it by test
   let successfulSlides = 0;
   let failedSlides = 0;
 
