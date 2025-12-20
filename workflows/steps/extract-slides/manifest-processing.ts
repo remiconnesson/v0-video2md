@@ -172,5 +172,6 @@ export async function processSlidesFromManifest(
     },
   );
 
-  return slideNumber;
+  const totalSlides = slideNumber - 1;
+  return totalSlides;
 }
