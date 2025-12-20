@@ -63,6 +63,7 @@
     "cmdk": "latest",
     "dotenv": "latest",
     "drizzle-orm": "latest",
+    "drizzle-zod": "^0.8.3",
     "effect": "^3.19.12",
     "embla-carousel-react": "latest",
     "eventsource-parser": "^3.0.6",

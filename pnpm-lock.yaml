@@ -152,6 +152,9 @@ importers:
       drizzle-orm:
         specifier: latest
         version: 0.45.1(7ffa84614e40291a84da32625578efab)
+      drizzle-zod:
+        specifier: ^0.8.3
+        version: 0.8.3(drizzle-orm@0.45.1(7ffa84614e40291a84da32625578efab))(zod@4.2.0)
       effect:
         specifier: ^3.19.12
         version: 3.19.12
@@ -5311,6 +5314,12 @@ packages:
         optional: true
       sqlite3:
         optional: true
+
+  drizzle-zod@0.8.3:
+    resolution: {integrity: sha512-66yVOuvGhKJnTdiqj1/Xaaz9/qzOdRJADpDa68enqS6g3t0kpNkwNYjUuaeXgZfO/UWuIM9HIhSlJ6C5ZraMww==}
+    peerDependencies:
+      drizzle-orm: '>=0.36.0'
+      zod: ^3.25.0 || ^4.0.0
 
   dunder-proto@1.0.1:
     resolution: {integrity: sha512-KIN/nDJBQRcXw0MLVhZE9iQHmG68qAVIBg9CqmUYjmQIhgij9U5MFvrqkUL5FbtyyzZuOeOt0zdeRe4UY7ct+A==}
@@ -15694,6 +15703,11 @@ snapshots:
       postgres: 3.4.7
       sql.js: 1.13.0
       sqlite3: 5.1.7
+
+  drizzle-zod@0.8.3(drizzle-orm@0.45.1(7ffa84614e40291a84da32625578efab))(zod@4.2.0):
+    dependencies:
+      drizzle-orm: 0.45.1(7ffa84614e40291a84da32625578efab)
+      zod: 4.2.0
 
   dunder-proto@1.0.1:
     dependencies:
