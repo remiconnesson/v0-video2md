@@ -12,16 +12,8 @@ const DuplicateOfSchema = z.object({
 
 const FrameMetadataSchema = z.object({
   frame_id: z.string().nullable(),
-  has_text: z.boolean(),
-  text_confidence: z.number(),
-  text_total_area_ratio: z.number(),
-  text_largest_area_ratio: z.number(),
-  text_box_count: z.number(),
   duplicate_of: DuplicateOfSchema.nullable(),
   skip_reason: z.string().nullable(),
-  s3_key: z.string().nullable(),
-  s3_bucket: z.string().nullable(),
-  s3_uri: z.string().nullable(),
   url: z.string().nullable(),
 });
 
@@ -39,9 +31,8 @@ const StaticSegmentSchema = BaseSegmentSchema.extend({
   kind: z.literal("static"),
   first_frame: FrameMetadataSchema.optional(),
   last_frame: FrameMetadataSchema.optional(),
+  // TODO: find out why we have an URL here
   url: z.string().nullable().optional(),
-  has_text: z.boolean().optional(),
-  text_confidence: z.number().optional(),
 });
 
 const SegmentSchema = z.discriminatedUnion("kind", [
@@ -84,14 +75,10 @@ export interface SlideData
     | "lastFrameDuplicateOfFramePosition"
   > {
   // First frame data
-  firstFrameHasText: boolean;
-  firstFrameTextConfidence: number;
   firstFrameIsDuplicate: boolean;
   firstFrameDuplicateOfFramePosition: "first" | "last" | null;
 
   // Last frame data
-  lastFrameHasText: boolean;
-  lastFrameTextConfidence: number;
   lastFrameIsDuplicate: boolean;
   lastFrameDuplicateOfFramePosition: "first" | "last" | null;
 
