@@ -361,15 +361,11 @@ describe("fetchYoutubeVideoTitle", () => {
   });
 
   it("should handle fetch errors gracefully", async () => {
-    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-
     const mockFetch = vi.fn().mockRejectedValueOnce(new Error("Network error"));
     global.fetch = mockFetch;
 
     const title = await fetchYoutubeVideoTitle("dQw4w9WgXcQ");
     expect(title).toBeNull();
-
-    errorSpy.mockRestore();
   });
 });
 
