@@ -3,14 +3,14 @@ import { z } from "zod";
 import { slideFeedback, videoSlides } from "@/db/schema";
 
 const FrameMetadataSchema = z.object({
-  frame_id: z.string().nullable(),
+  frame_id: z.string(),
   duplicate_of: z
     .object({
       segment_id: z.number(),
       frame_position: z.enum(["first", "last"]),
     })
     .nullable(),
-  url: z.string().nullable(),
+  url: z.string(),
 });
 
 const SegmentSchema = z.object({
@@ -18,8 +18,8 @@ const SegmentSchema = z.object({
   start_time: z.number(), // float in seconds
   end_time: z.number(), // float in seconds
   duration: z.number(), // float in seconds
-  first_frame: FrameMetadataSchema.optional(),
-  last_frame: FrameMetadataSchema.optional(),
+  first_frame: FrameMetadataSchema,
+  last_frame: FrameMetadataSchema,
 });
 
 const ManifestDataSchema = z.object({
@@ -44,16 +44,11 @@ export type SlideStreamEvent =
   | { type: "complete"; totalSlides: number }
   | { type: "error"; message: string };
 
-export const SlideDataSchema = createSelectSchema(videoSlides)
-  .omit({
-    id: true,
-    videoId: true,
-    createdAt: true,
-  })
-  .extend({
-    imageProcessingError: z.string().nullish(),
-    dbError: z.string().nullish(),
-  });
+export const SlideDataSchema = createSelectSchema(videoSlides).omit({
+  id: true,
+  videoId: true,
+  createdAt: true,
+});
 
 export type SlideData = z.infer<typeof SlideDataSchema>;
 
