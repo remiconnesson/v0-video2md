@@ -5,62 +5,42 @@
 
 import type { FrameMetadata, Segment } from "@/lib/slides-types";
 
-export interface ProcessedFrame {
-  imageUrl: string | null;
-  isDuplicate: boolean;
-  duplicateOfSlideNumber: number | null;
-  duplicateOfFramePosition: "first" | "last" | null;
-}
+type FrameSide = "firstFrame" | "lastFrame";
 
-/**
- * Determines if a static segment has any usable frames.
- * A segment is usable if it has at least one frame.
- */
-export function hasUsableFrames(segment: Segment): boolean {
-  // Only static segments have frames
-  if (segment.kind !== "static") {
-    return false;
-  }
+type NormalizeIsDuplicateResult<S extends FrameSide> =
+  | ({
+      readonly [K in `${S}IsDuplicate`]: false;
+    } & {
+      readonly [K in `${S}DuplicateOfSlideNumber`]: null;
+    } & {
+      readonly [K in `${S}DuplicateOfFramePosition`]: null;
+    })
+  | ({
+      readonly [K in `${S}IsDuplicate`]: true;
+    } & {
+      readonly [K in `${S}DuplicateOfSlideNumber`]: number;
+    } & {
+      readonly [K in `${S}DuplicateOfFramePosition`]: "first" | "last";
+    });
 
-  const firstFrame = segment.first_frame;
-  const lastFrame = segment.last_frame;
-
-  return Boolean(firstFrame || lastFrame);
-}
-
-/**
- * Extracts frame metadata into a normalized format.
- * @param frame - Raw frame metadata from manifest
- * @param imageUrl - Processed public image URL (or null if processing failed)
- */
-export function normalizeFrameMetadata(
-  frame: FrameMetadata | undefined,
-  imageUrl: string | null,
-): ProcessedFrame {
-  if (!frame) {
-    return {
-      imageUrl: null,
-      isDuplicate: false,
-      duplicateOfSlideNumber: null,
-      duplicateOfFramePosition: null,
-    };
-  }
-
+export function normalizeIsDuplicate<S extends FrameSide>(
+  frame: FrameMetadata,
+  firstOrLast: S,
+): NormalizeIsDuplicateResult<S> {
   if (frame.duplicate_of === null) {
     return {
-      imageUrl,
-      isDuplicate: false,
-      duplicateOfSlideNumber: null,
-      duplicateOfFramePosition: null,
-    };
+      [`${firstOrLast}IsDuplicate`]: false,
+      [`${firstOrLast}DuplicateOfSlideNumber`]: null,
+      [`${firstOrLast}DuplicateOfFramePosition`]: null,
+    } as const as NormalizeIsDuplicateResult<S>;
   }
 
   return {
-    imageUrl,
-    isDuplicate: true,
-    duplicateOfSlideNumber: frame.duplicate_of.segment_id,
-    duplicateOfFramePosition: frame.duplicate_of.frame_position,
-  };
+    [`${firstOrLast}IsDuplicate`]: true,
+    [`${firstOrLast}DuplicateOfSlideNumber`]: frame.duplicate_of.segment_id,
+    [`${firstOrLast}DuplicateOfFramePosition`]:
+      frame.duplicate_of.frame_position,
+  } as const as NormalizeIsDuplicateResult<S>;
 }
 
 /**

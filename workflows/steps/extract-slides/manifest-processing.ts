@@ -8,7 +8,7 @@ import {
 import {
   extractSlideTimings,
   filterStaticSegments,
-  normalizeFrameMetadata,
+  normalizeIsDuplicate,
 } from "./manifest-processing.utils";
 import { emitSlide } from "./stream-emitters";
 
@@ -80,32 +80,17 @@ export async function processSlidesFromManifest(
     const firstFrame = segment.first_frame;
     const lastFrame = segment.last_frame;
 
-    const firstFrameImageUrl = null;
-    const lastFrameImageUrl = null;
-    const imageProcessingError: string | null = null;
-
     const timings = extractSlideTimings(segment);
-    const firstFrameData = normalizeFrameMetadata(
-      firstFrame,
-      firstFrameImageUrl,
-    );
-    const lastFrameData = normalizeFrameMetadata(lastFrame, lastFrameImageUrl);
 
     const slideData: SlideData = {
       slideNumber,
       frameId: firstFrame?.frame_id || lastFrame?.frame_id || null,
       ...timings,
-      firstFrameImageUrl: firstFrameData.imageUrl,
-      firstFrameIsDuplicate: firstFrameData.isDuplicate,
-      firstFrameDuplicateOfSlideNumber: firstFrameData.duplicateOfSlideNumber,
-      firstFrameDuplicateOfFramePosition:
-        firstFrameData.duplicateOfFramePosition,
+      firstFrameImageUrl: firstFrame.url,
+      ...normalizeIsDuplicate(firstFrame, "firstFrame"),
 
-      lastFrameImageUrl: lastFrameData.imageUrl,
-      lastFrameIsDuplicate: lastFrameData.isDuplicate,
-      lastFrameDuplicateOfSlideNumber: lastFrameData.duplicateOfSlideNumber,
-      lastFrameDuplicateOfFramePosition: lastFrameData.duplicateOfFramePosition,
-      imageProcessingError,
+      lastFrameImageUrl: lastFrame.url,
+      ...normalizeIsDuplicate(lastFrame, "lastFrame"),
     };
 
     console.log(
