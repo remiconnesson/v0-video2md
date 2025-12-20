@@ -53,7 +53,7 @@ fetchManifest.maxRetries = 1;
 export async function processSlidesFromManifest(
   videoId: YouTubeVideoId,
   manifest: VideoManifest,
-): Promise<void> {
+): Promise<number> {
   "use step";
 
   console.log(
@@ -119,4 +119,7 @@ export async function processSlidesFromManifest(
       totalSegments: staticSegments.length,
     },
   );
+
+  const totalSlides = slideNumber - 1;
+  return totalSlides;
 }
