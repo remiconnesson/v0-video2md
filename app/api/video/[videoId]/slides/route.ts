@@ -41,7 +41,8 @@ export async function GET(
       // Last frame data
       lastFrameImageUrl: videoSlides.lastFrameImageUrl,
       lastFrameIsDuplicate: videoSlides.lastFrameIsDuplicate,
-      lastFrameDuplicateOfSlideNumber: videoSlides.lastFrameDuplicateOfSlideNumber,
+      lastFrameDuplicateOfSlideNumber:
+        videoSlides.lastFrameDuplicateOfSlideNumber,
       lastFrameDuplicateOfFramePosition:
         videoSlides.lastFrameDuplicateOfFramePosition,
     })

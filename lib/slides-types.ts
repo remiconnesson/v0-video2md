@@ -18,13 +18,8 @@ const SegmentSchema = z.object({
   start_time: z.number(), // float in seconds
   end_time: z.number(), // float in seconds
   duration: z.number(), // float in seconds
-});
-  start_time: z.number(), // float in seconds
-  end_time: z.number(), // float in seconds
-  duration: z.number(), // float in seconds
   first_frame: FrameMetadataSchema.optional(),
   last_frame: FrameMetadataSchema.optional(),
-  url: z.string().nullable().optional(),
 });
 
 const ManifestDataSchema = z.object({
@@ -49,12 +44,7 @@ export type SlideStreamEvent =
   | { type: "complete"; totalSlides: number }
   | { type: "error"; message: string };
 
-export const SlideDataSchema = createSelectSchema(videoSlides, {
-  firstFrameDuplicateOfFramePosition: z.enum(["first", "last"]).nullable(),
-  lastFrameDuplicateOfFramePosition: z.enum(["first", "last"]).nullable(),
-  firstFrameIsDuplicate: z.boolean(),
-  lastFrameIsDuplicate: z.boolean(),
-})
+export const SlideDataSchema = createSelectSchema(videoSlides)
   .omit({
     id: true,
     videoId: true,
