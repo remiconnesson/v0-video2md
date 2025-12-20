@@ -35,6 +35,14 @@ export const analysisStatusEnum = pgEnum("analysis_status", [
 
 export type AnalysisStatus = (typeof analysisStatusEnum.enumValues)[number];
 
+export const framePositionEnum = pgEnum("frame_position", ["first", "last"]);
+
+export type FramePosition = (typeof framePositionEnum.enumValues)[number];
+
+export const samenessEnum = pgEnum("sameness", ["same", "different"]);
+
+export type Sameness = (typeof samenessEnum.enumValues)[number];
+
 // ============================================================================
 // Core Video Tables
 // ============================================================================
@@ -166,10 +174,9 @@ export const videoSlides = pgTable(
     firstFrameDuplicateOfSegmentId: integer(
       "first_frame_duplicate_of_segment_id",
     ),
-    firstFrameDuplicateOfFramePosition: varchar(
+    firstFrameDuplicateOfFramePosition: framePositionEnum(
       "first_frame_duplicate_of_frame_position",
-      { length: 16 },
-    ), // "first" | "last"
+    ),
     firstFrameSkipReason: text("first_frame_skip_reason"),
 
     // Last frame data
@@ -178,10 +185,9 @@ export const videoSlides = pgTable(
     lastFrameDuplicateOfSegmentId: integer(
       "last_frame_duplicate_of_segment_id",
     ),
-    lastFrameDuplicateOfFramePosition: varchar(
+    lastFrameDuplicateOfFramePosition: framePositionEnum(
       "last_frame_duplicate_of_frame_position",
-      { length: 16 },
-    ), // "first" | "last"
+    ),
     lastFrameSkipReason: text("last_frame_skip_reason"),
 
     createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -216,7 +222,7 @@ export const slideFeedback = pgTable(
     lastFrameIsDuplicateValidated: boolean("last_frame_is_duplicate_validated"),
 
     // Sameness feedback
-    framesSameness: varchar("frames_sameness", { length: 16 }), // "same" | "different"
+    framesSameness: samenessEnum("frames_sameness"),
 
     // Frame selection - whether individual frames are picked for export
     isFirstFramePicked: boolean("is_first_frame_picked")

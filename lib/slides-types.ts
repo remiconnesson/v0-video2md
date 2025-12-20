@@ -1,5 +1,6 @@
+import { createSelectSchema } from "drizzle-zod";
 import { z } from "zod";
-import type { SlideFeedback, VideoSlide } from "@/db/schema";
+import { slideFeedback, videoSlides } from "@/db/schema";
 
 // ============================================================================
 // Manifest Schema (matches your S3 output)
@@ -60,42 +61,34 @@ export type SlideStreamEvent =
   | { type: "complete"; totalSlides: number }
   | { type: "error"; message: string };
 
-export interface SlideData
-  extends Omit<
-    VideoSlide,
-    | "id"
-    | "videoId"
-    | "createdAt"
-    | "firstFrameIsDuplicate"
-    | "lastFrameIsDuplicate"
-    | "firstFrameDuplicateOfFramePosition"
-    | "lastFrameDuplicateOfFramePosition"
-  > {
-  // First frame data
-  firstFrameIsDuplicate: boolean;
-  firstFrameDuplicateOfFramePosition: "first" | "last" | null;
+export const SlideDataSchema = createSelectSchema(videoSlides, {
+  firstFrameDuplicateOfFramePosition: z.enum(["first", "last"]).nullable(),
+  lastFrameDuplicateOfFramePosition: z.enum(["first", "last"]).nullable(),
+})
+  .omit({
+    id: true,
+    videoId: true,
+    createdAt: true,
+  })
+  .extend({
+    imageProcessingError: z.string().nullish(),
+    dbError: z.string().nullish(),
+  });
 
-  // Last frame data
-  lastFrameIsDuplicate: boolean;
-  lastFrameDuplicateOfFramePosition: "first" | "last" | null;
-
-  imageProcessingError?: string | null;
-  dbError?: string | null;
-}
+export type SlideData = z.infer<typeof SlideDataSchema>;
 
 // ============================================================================
 // Slide Feedback Types
 // ============================================================================
 
-export interface SlideFeedbackData
-  extends Omit<
-    SlideFeedback,
-    "id" | "videoId" | "createdAt" | "updatedAt" | "framesSameness"
-  > {
-  firstFrameHasTextValidated: boolean | null;
-  lastFrameHasTextValidated: boolean | null;
-  framesSameness: "same" | "different" | null;
-}
+export const SlideFeedbackDataSchema = createSelectSchema(slideFeedback).omit({
+  id: true,
+  videoId: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type SlideFeedbackData = z.infer<typeof SlideFeedbackDataSchema>;
 
 // ============================================================================
 // Job Status (from VPS)
