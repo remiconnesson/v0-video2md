@@ -25,11 +25,11 @@ export async function extractSlidesWorkflow(videoId: string) {
 
     currentStep = "monitoring job progress";
     await emitProgress("monitoring", 10, "Processing video on server...");
-    const manifestUri = await monitorJobProgress(videoId);
+    await monitorJobProgress(videoId);
 
     currentStep = "fetching manifest";
     await emitProgress("fetching", 80, "Fetching slide manifest...");
-    const manifest = await fetchManifest(manifestUri);
+    const manifest = await fetchManifest(videoId);
 
     currentStep = "processing slides";
     await emitProgress("saving", 90, "Saving slides to database...");
