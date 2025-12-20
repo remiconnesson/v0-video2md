@@ -3,7 +3,7 @@
  * Extracted from workflow steps for testability and reuse.
  */
 
-import type { FrameMetadata, StaticSegment } from "@/lib/slides-types";
+import type { FrameMetadata, Segment } from "@/lib/slides-types";
 
 export interface ProcessedFrame {
   imageUrl: string | null;
@@ -17,7 +17,12 @@ export interface ProcessedFrame {
  * Determines if a static segment has any usable frames.
  * A segment is usable if it has at least one frame.
  */
-export function hasUsableFrames(segment: StaticSegment): boolean {
+export function hasUsableFrames(segment: Segment): boolean {
+  // Only static segments have frames
+  if (segment.kind !== "static") {
+    return false;
+  }
+
   const firstFrame = segment.first_frame;
   const lastFrame = segment.last_frame;
 
@@ -74,21 +79,23 @@ export function generateBlobPath(
  * @param segments - Mixed array of segments
  * @returns Only static segments
  */
-export function filterStaticSegments(
-  segments: Array<{ kind: string }>,
-): StaticSegment[] {
-  return segments.filter((s): s is StaticSegment => s.kind === "static");
+export function filterStaticSegments(segments: Segment[]): Segment[] {
+  return segments.filter((s) => s.kind === "static");
 }
 
 /**
  * Calculates slide timing information.
  * @param segment - Static segment with timing data
  */
-export function extractSlideTimings(segment: StaticSegment): {
+export function extractSlideTimings(segment: Segment): {
   startTime: number;
   endTime: number;
   duration: number;
 } {
+  if (segment.kind !== "static") {
+    throw new Error("extractSlideTimings only works with static segments");
+  }
+
   return {
     startTime: segment.start_time,
     endTime: segment.end_time,

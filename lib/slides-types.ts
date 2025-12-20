@@ -2,54 +2,39 @@ import { createSelectSchema } from "drizzle-zod";
 import { z } from "zod";
 import { slideFeedback, videoSlides } from "@/db/schema";
 
-// ============================================================================
-// Manifest Schema (matches your S3 output)
-// ============================================================================
-
-const DuplicateOfSchema = z.object({
-  segment_id: z.number(),
-  frame_position: z.string(),
-});
-
 const FrameMetadataSchema = z.object({
   frame_id: z.string().nullable(),
-  duplicate_of: DuplicateOfSchema.nullable(),
+  duplicate_of: z
+    .object({
+      segment_id: z.number(),
+      frame_position: z.string(),
+    })
+    .nullable(),
   skip_reason: z.string().nullable(),
+  url: z.string().nullable(),
 });
 
-const BaseSegmentSchema = z.object({
-  start_time: z.number(),
-  end_time: z.number(),
-  duration: z.number(),
-});
-
-const MovingSegmentSchema = BaseSegmentSchema.extend({
-  kind: z.literal("moving"),
-});
-
-const StaticSegmentSchema = BaseSegmentSchema.extend({
-  kind: z.literal("static"),
+const SegmentSchema = z.object({
+  kind: z.string(), // 'static' or 'moving'
+  start_time: z.number(), // float in seconds
+  end_time: z.number(), // float in seconds
+  duration: z.number(), // float in seconds
   first_frame: FrameMetadataSchema.optional(),
   last_frame: FrameMetadataSchema.optional(),
+  url: z.string().nullable().optional(),
 });
 
-const SegmentSchema = z.discriminatedUnion("kind", [
-  MovingSegmentSchema,
-  StaticSegmentSchema,
-]);
-
-const VideoDataSchema = z.object({
+const ManifestDataSchema = z.object({
   segments: z.array(SegmentSchema),
-  // Allow datetime with offset (e.g., +00:00) or Z suffix, and local times without timezone
-  updated_at: z.string().datetime({ offset: true, local: true }),
+  updated_at: z.string(), // ISO 8601 timestamp
 });
 
-export const VideoManifestSchema = z.record(z.string(), VideoDataSchema);
+export const VideoManifestSchema = z.record(z.string(), ManifestDataSchema); // video_id -> manifest data
 
-export type VideoManifest = z.infer<typeof VideoManifestSchema>;
-export type Segment = z.infer<typeof SegmentSchema>;
-export type StaticSegment = z.infer<typeof StaticSegmentSchema>;
 export type FrameMetadata = z.infer<typeof FrameMetadataSchema>;
+export type Segment = z.infer<typeof SegmentSchema>;
+export type ManifestData = z.infer<typeof ManifestDataSchema>;
+export type VideoManifest = z.infer<typeof VideoManifestSchema>;
 
 // ============================================================================
 // Stream Event Types (workflow → frontend)

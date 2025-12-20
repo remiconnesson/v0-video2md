@@ -1,30 +1,30 @@
 import { describe, expect, it } from "vitest";
 
-import type { FrameMetadata, StaticSegment } from "@/lib/slides-types";
+import type { FrameMetadata, Segment } from "@/lib/slides-types";
 import {
-  buildS3HttpUrl,
   extractSlideTimings,
   filterStaticSegments,
   generateBlobPath,
   hasUsableFrames,
   normalizeFrameMetadata,
-  parseS3Uri,
 } from "./manifest-processing.utils";
 
 describe("manifest-processing utils", () => {
-  const baseSegment: StaticSegment = {
+  const baseSegment: Segment = {
     kind: "static",
     start_time: 0,
     end_time: 10,
     duration: 10,
     first_frame: undefined,
     last_frame: undefined,
+    url: null,
   };
 
   const sampleFrame: FrameMetadata = {
     frame_id: "frame-123",
     duplicate_of: { segment_id: 2, frame_position: "last" },
     skip_reason: "duplicate",
+    url: "https://example.com/frame-123.webp",
   };
 
   it("should detect usable frames", () => {
@@ -44,8 +44,8 @@ describe("manifest-processing utils", () => {
     expect(
       hasUsableFrames({
         ...baseSegment,
-        first_frame: null,
-        last_frame: null,
+        first_frame: undefined,
+        last_frame: undefined,
       }),
     ).toBe(false);
     expect(hasUsableFrames({ ...baseSegment, first_frame: undefined })).toBe(
@@ -79,43 +79,6 @@ describe("manifest-processing utils", () => {
       duplicateOfFramePosition: null,
       skipReason: null,
     });
-  });
-
-  it("should parse valid s3 URIs and reject invalid ones", () => {
-    expect(parseS3Uri("s3://bucket/key")).toEqual({
-      bucket: "bucket",
-      key: "key",
-    });
-    expect(parseS3Uri("s3://bucket/path/to/nested/key")).toEqual({
-      bucket: "bucket",
-      key: "path/to/nested/key",
-    });
-    expect(parseS3Uri("s3://bucket/key/")).toEqual({
-      bucket: "bucket",
-      key: "key/",
-    });
-    expect(parseS3Uri("")).toBeNull();
-    expect(parseS3Uri("invalid://bucket/key")).toBeNull();
-    expect(parseS3Uri("s3://bucket")).toBeNull();
-    expect(parseS3Uri("s3://")).toBeNull();
-  });
-
-  it("should build HTTP URLs without double slashes", () => {
-    expect(buildS3HttpUrl("https://example.com/", "bucket", "key")).toBe(
-      "https://example.com/bucket/key",
-    );
-    expect(buildS3HttpUrl("https://example.com", "bucket", "key")).toBe(
-      "https://example.com/bucket/key",
-    );
-    expect(buildS3HttpUrl("https://example.com", "", "key")).toBe(
-      "https://example.com//key",
-    );
-    expect(buildS3HttpUrl("https://example.com", "bucket", "")).toBe(
-      "https://example.com/bucket/",
-    );
-    expect(
-      buildS3HttpUrl("https://example.com", "bucket with space", "key%20one"),
-    ).toBe("https://example.com/bucket with space/key%20one");
   });
 
   it("should build blob paths using frame IDs when available", () => {

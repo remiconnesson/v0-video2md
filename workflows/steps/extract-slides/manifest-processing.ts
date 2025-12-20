@@ -131,35 +131,35 @@ export async function processSlidesFromManifest(
       console.log(
         `💾 processSlidesFromManifest: Saving slide ${slideIndex} to database`,
       );
-      await db
-        .insert(videoSlides)
-        .values({
-          id: videoId,
-          slideIndex,
-          frameId: firstFrame?.frame_id || lastFrame?.frame_id || null,
-          startTime: segment.start_time,
-          endTime: segment.end_time,
-          duration: segment.duration,
+      const slideData = {
+        videoId,
+        slideIndex,
+        frameId: firstFrame?.frame_id || lastFrame?.frame_id || null,
+        startTime: segment.start_time,
+        endTime: segment.end_time,
+        duration: segment.duration,
 
-          // First frame data
-          firstFrameImageUrl: firstFrameImageUrl || null,
-          firstFrameIsDuplicate: firstFrame?.duplicate_of !== null,
-          firstFrameDuplicateOfSegmentId:
-            firstFrame?.duplicate_of?.segment_id ?? null,
-          firstFrameDuplicateOfFramePosition:
-            firstFrame?.duplicate_of?.frame_position ?? null,
-          firstFrameSkipReason: firstFrame?.skip_reason ?? null,
+        // First frame data
+        firstFrameImageUrl: firstFrameImageUrl || null,
+        firstFrameIsDuplicate: firstFrame?.duplicate_of !== null,
+        firstFrameDuplicateOfSegmentId:
+          firstFrame?.duplicate_of?.segment_id ?? null,
+        firstFrameDuplicateOfFramePosition:
+          (firstFrame?.duplicate_of?.frame_position as "first" | "last") ??
+          null,
+        firstFrameSkipReason: firstFrame?.skip_reason ?? null,
 
-          // Last frame data
-          lastFrameImageUrl: lastFrameImageUrl || null,
-          lastFrameIsDuplicate: lastFrame?.duplicate_of !== null,
-          lastFrameDuplicateOfSegmentId:
-            lastFrame?.duplicate_of?.segment_id ?? null,
-          lastFrameDuplicateOfFramePosition:
-            lastFrame?.duplicate_of?.frame_position ?? null,
-          lastFrameSkipReason: lastFrame?.skip_reason ?? null,
-        })
-        .onConflictDoNothing();
+        // Last frame data
+        lastFrameImageUrl: lastFrameImageUrl || null,
+        lastFrameIsDuplicate: lastFrame?.duplicate_of !== null,
+        lastFrameDuplicateOfSegmentId:
+          lastFrame?.duplicate_of?.segment_id ?? null,
+        lastFrameDuplicateOfFramePosition:
+          (lastFrame?.duplicate_of?.frame_position as "first" | "last") ?? null,
+        lastFrameSkipReason: lastFrame?.skip_reason ?? null,
+      };
+
+      await db.insert(videoSlides).values(slideData).onConflictDoNothing();
 
       console.log(
         `💾 processSlidesFromManifest: Successfully saved slide ${slideIndex} to database`,
