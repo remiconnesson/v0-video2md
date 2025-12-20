@@ -71,6 +71,7 @@ export type SlideStreamEvent =
   | { type: "complete"; totalSlides: number }
   | { type: "error"; message: string };
 
+// TODO: this should be derived from DB schema
 export interface SlideData {
   slideIndex: number;
   frameId: string | null;
