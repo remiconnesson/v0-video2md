@@ -131,7 +131,7 @@ function FrameCard({
               />
             </div>
             <span className="text-xs text-muted-foreground">
-              #{(duplicateOfSegmentId ?? 0) + 1}
+              #{duplicateOfSegmentId}
             </span>
           </div>
         )}
@@ -149,7 +149,7 @@ function FrameCard({
               )}
             >
               {isDuplicate
-                ? `Duplicate of #${(duplicateOfSegmentId ?? 0) + 1}-${duplicateOfFramePosition || "?"}`
+                ? `Duplicate of #${duplicateOfSegmentId}-${duplicateOfFramePosition || "?"}`
                 : "Unique"}
             </span>
           </div>
