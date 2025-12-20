@@ -1,5 +1,11 @@
 # Agent Instructions for video2md
 
+## Important
+
+1. We use `pnpm`!!! Please start all new sessions by running `pnpm install`.
+2. Use `pnpm format`, `pnpm fix` and `pnpm tsc --noEmit` before saying your code is done.
+
+
 ## Project Overview
 
 video2md is a Next.js 16 application that processes YouTube videos to extract transcripts, perform AI-powered analysis, and extract presentation slides. It serves as a "Knowledge Base Ingestion" tool for importing content from YouTube videos into structured, searchable formats.
