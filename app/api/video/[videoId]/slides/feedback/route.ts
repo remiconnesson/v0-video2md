@@ -1,22 +1,18 @@
 import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
-import { z } from "zod";
 import { db } from "@/db";
 import { slideFeedback, videos } from "@/db/schema";
+import { createInsertSchema } from "drizzle-zod";
 
 // ============================================================================
 // Schemas
 // ============================================================================
 
-const slideFeedbackSchema = z.object({
-  slideIndex: z.number().int().min(0),
-  firstFrameHasTextValidated: z.boolean().nullable().optional(),
-  firstFrameIsDuplicateValidated: z.boolean().nullable().optional(),
-  lastFrameHasTextValidated: z.boolean().nullable().optional(),
-  lastFrameIsDuplicateValidated: z.boolean().nullable().optional(),
-  framesSameness: z.enum(["same", "different"]).nullable().optional(),
-  isFirstFramePicked: z.boolean().nullable().optional(),
-  isLastFramePicked: z.boolean().nullable().optional(),
+const slideFeedbackSchema = createInsertSchema(slideFeedback).omit({
+  id: true,
+  videoId: true,
+  createdAt: true,
+  updatedAt: true,
 });
 
 // ============================================================================
@@ -92,30 +88,12 @@ export async function POST(
     .insert(slideFeedback)
     .values({
       videoId,
-      slideIndex: feedback.slideIndex,
-      firstFrameHasTextValidated: feedback.firstFrameHasTextValidated ?? null,
-      firstFrameIsDuplicateValidated:
-        feedback.firstFrameIsDuplicateValidated ?? null,
-      lastFrameHasTextValidated: feedback.lastFrameHasTextValidated ?? null,
-      lastFrameIsDuplicateValidated:
-        feedback.lastFrameIsDuplicateValidated ?? null,
-      framesSameness: feedback.framesSameness ?? null,
-      isFirstFramePicked: feedback.isFirstFramePicked ?? true,
-      isLastFramePicked: feedback.isLastFramePicked ?? false,
+      ...feedback,
     })
     .onConflictDoUpdate({
       target: [slideFeedback.videoId, slideFeedback.slideIndex],
       set: {
-        firstFrameHasTextValidated: feedback.firstFrameHasTextValidated ?? null,
-        firstFrameIsDuplicateValidated:
-          feedback.firstFrameIsDuplicateValidated ?? null,
-        lastFrameHasTextValidated: feedback.lastFrameHasTextValidated ?? null,
-        lastFrameIsDuplicateValidated:
-          feedback.lastFrameIsDuplicateValidated ?? null,
-        framesSameness: feedback.framesSameness ?? null,
-        isFirstFramePicked: feedback.isFirstFramePicked ?? true,
-        isLastFramePicked: feedback.isLastFramePicked ?? false,
-        updatedAt: new Date(),
+        ...feedback,
       },
     });
 
