@@ -161,7 +161,6 @@ export const videoSlides = pgTable(
       .notNull()
       .references(() => videos.videoId, { onDelete: "cascade" }),
     slideNumber: integer("slide_index").notNull(),
-    frameId: varchar("frame_id", { length: 100 }),
 
     // Timing
     startTime: real("start_time").notNull(), // seconds with floating point precision

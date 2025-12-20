@@ -27,7 +27,6 @@ export async function GET(
   const slides = await db
     .select({
       slideNumber: videoSlides.slideNumber,
-      frameId: videoSlides.frameId,
       startTime: videoSlides.startTime,
       endTime: videoSlides.endTime,
       duration: videoSlides.duration,
@@ -119,7 +118,6 @@ export async function GET(
     errorMessage: extraction?.errorMessage ?? null,
     slides: slides.map((s) => ({
       slideNumber: s.slideNumber,
-      frameId: s.frameId,
       startTime: s.startTime,
       endTime: s.endTime,
       duration: s.duration,

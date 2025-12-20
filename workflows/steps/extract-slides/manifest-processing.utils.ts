@@ -48,23 +48,6 @@ export function normalizeIsDuplicate<S extends FrameSide>(
 }
 
 /**
- * Generates a blob storage path for a slide image.
- * @param videoId - YouTube video ID
- * @param frameId - Frame identifier
- * @param slideNumber - Number of the slide
- * @param framePosition - "first" or "last"
- */
-export function generateBlobPath(
-  videoId: string,
-  frameId: string | null,
-  slideNumber: number,
-  framePosition: "first" | "last",
-): string {
-  const identifier = frameId || `${slideNumber}-${framePosition}`;
-  return `slides/${videoId}/${identifier}.webp`;
-}
-
-/**
  * Filters static segments from a list of segments.
  * @param segments - Mixed array of segments
  * @returns Only static segments

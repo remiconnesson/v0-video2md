@@ -106,7 +106,6 @@ export async function processSlidesFromManifest(
 
     const slideData: SlideData = {
       slideNumber,
-      frameId: firstFrame?.frame_id || lastFrame?.frame_id || null,
       ...timings,
       firstFrameImageUrl: firstFrame.url,
       ...normalizeIsDuplicate(firstFrame, "firstFrame"),
