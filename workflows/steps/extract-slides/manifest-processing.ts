@@ -48,8 +48,6 @@ export async function fetchManifest(
   return manifest;
 }
 
-fetchManifest.maxRetries = 1;
-
 export async function processSlidesFromManifest(
   videoId: YouTubeVideoId,
   manifest: VideoManifest,
