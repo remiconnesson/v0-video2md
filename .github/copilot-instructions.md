@@ -54,7 +54,6 @@ pnpm test:watch  # Run tests in watch mode
 ### Component Structure
 
 - Extract complex inline JSX into named sub-components
-- Use clear section separators with comments (e.g., `// ============ Section Name`)
 - Keep components focused and single-purpose
 - Examples: `components/analyze/analyze-view.tsx`, `components/processed-videos-list.tsx`
 
