@@ -10,6 +10,7 @@ import {
   filterStaticSegments,
   normalizeFrameMetadata,
 } from "./manifest-processing.utils";
+import { emitSlide } from "./stream-emitters";
 
 // ============================================================================
 // Step: Fetch manifest (Restored Old URL Logic)
@@ -74,8 +75,6 @@ export async function processSlidesFromManifest(
   );
 
   let slideNumber = 1;
-  let successfulSlides = 0;
-  let failedSlides = 0;
 
   for (const segment of staticSegments) {
     const firstFrame = segment.first_frame;
@@ -109,72 +108,21 @@ export async function processSlidesFromManifest(
       imageProcessingError,
     };
 
-    // Save to database
-    try {
-      console.log(
-        `💾 processSlidesFromManifest: Saving slide ${slideNumber} to database`,
-      );
-      const dbSlideData = {
+    console.log(
+      `💾 processSlidesFromManifest: Saving slide ${slideNumber} to database`,
+    );
+    await db
+      .insert(videoSlides)
+      .values({
         videoId,
-        slideNumber,
-        frameId: firstFrame?.frame_id || lastFrame?.frame_id || null,
-        startTime: segment.start_time,
-        endTime: segment.end_time,
-        duration: segment.duration,
+        ...slideData,
+      })
+      .onConflictDoNothing();
 
-        // First frame data
-        firstFrameImageUrl: firstFrameImageUrl || null,
-        firstFrameIsDuplicate: firstFrame?.duplicate_of !== null,
-        firstFrameDuplicateOfSlideNumber:
-          firstFrame?.duplicate_of?.segment_id ?? null,
-        firstFrameDuplicateOfFramePosition:
-          (firstFrame?.duplicate_of?.frame_position as "first" | "last") ??
-          null,
+    console.log(
+      `💾 processSlidesFromManifest: Successfully saved slide ${slideNumber} to database`,
+    );
 
-        // Last frame data
-        lastFrameImageUrl: lastFrameImageUrl || null,
-        lastFrameIsDuplicate: lastFrame?.duplicate_of !== null,
-        lastFrameDuplicateOfSlideNumber:
-          lastFrame?.duplicate_of?.segment_id ?? null,
-        lastFrameDuplicateOfFramePosition:
-          (lastFrame?.duplicate_of?.frame_position as "first" | "last") ?? null,
-      };
-
-      await db.insert(videoSlides).values(dbSlideData).onConflictDoNothing();
-
-      console.log(
-        `💾 processSlidesFromManifest: Successfully saved slide ${slideNumber} to database`,
-      );
-      successfulSlides++;
-    } catch (dbError) {
-      failedSlides++;
-      const dbErrorMessage = `Database save failed: ${dbError instanceof Error ? dbError.message : "Unknown DB error"}`;
-      console.error(
-        `💾 processSlidesFromManifest: Failed to save slide ${slideNumber} to database:`,
-        {
-          videoId,
-          slideNumber,
-          frameId: firstFrame?.frame_id || lastFrame?.frame_id || null,
-          error:
-            dbError instanceof Error
-              ? {
-                  name: dbError.name,
-                  message: dbError.message,
-                  stack: dbError.stack,
-                }
-              : dbError,
-        },
-      );
-
-      // Continue processing other slides even if DB save fails
-      // But emit the slide with error info
-      slideData.firstFrameImageUrl = null;
-      slideData.lastFrameImageUrl = null;
-      slideData.dbError = dbErrorMessage;
-    }
-
-    // Import emitSlide dynamically to avoid circular dependency
-    const { emitSlide } = await import("./stream-emitters");
     await emitSlide(slideData);
     slideNumber++;
   }
@@ -183,17 +131,8 @@ export async function processSlidesFromManifest(
     `💾 processSlidesFromManifest: Slide processing completed for video ${videoId}:`,
     {
       totalSegments: staticSegments.length,
-      successfulSlides,
-      failedSlides,
-      successRate: `${Math.round((successfulSlides / staticSegments.length) * 100)}%`,
     },
   );
-
-  if (failedSlides > 0) {
-    console.warn(
-      `💾 processSlidesFromManifest: ${failedSlides} slides failed to process for video ${videoId}, but ${successfulSlides} succeeded`,
-    );
-  }
 
   return slideNumber;
 }
