@@ -37,7 +37,6 @@ interface FrameCardProps {
   isDuplicate: boolean;
   duplicateOfSegmentId: number | null;
   duplicateOfFramePosition: string | null;
-  skipReason: string | null;
   allSlides: SlideData[];
   onZoom: () => void;
   validation: FrameValidation;
@@ -52,7 +51,6 @@ function FrameCard({
   isDuplicate,
   duplicateOfSegmentId,
   duplicateOfFramePosition,
-  skipReason,
   allSlides,
   onZoom,
   validation,
@@ -188,13 +186,6 @@ function FrameCard({
             </Button>
           </div>
         </div>
-
-        {/* Skip reason if present */}
-        {skipReason && (
-          <div className="p-2 rounded-md bg-yellow-50 dark:bg-yellow-950/30 text-yellow-700 dark:text-yellow-400 text-xs">
-            Skip: {skipReason}
-          </div>
-        )}
       </div>
     </div>
   );
@@ -358,7 +349,6 @@ export function SlideCard({
             isDuplicate={slide.firstFrameIsDuplicate}
             duplicateOfSegmentId={slide.firstFrameDuplicateOfSegmentId}
             duplicateOfFramePosition={slide.firstFrameDuplicateOfFramePosition}
-            skipReason={slide.firstFrameSkipReason}
             allSlides={allSlides}
             onZoom={() => handleZoom("first")}
             validation={firstValidation}
@@ -372,7 +362,6 @@ export function SlideCard({
             isDuplicate={slide.lastFrameIsDuplicate}
             duplicateOfSegmentId={slide.lastFrameDuplicateOfSegmentId}
             duplicateOfFramePosition={slide.lastFrameDuplicateOfFramePosition}
-            skipReason={slide.lastFrameSkipReason}
             allSlides={allSlides}
             onZoom={() => handleZoom("last")}
             validation={lastValidation}

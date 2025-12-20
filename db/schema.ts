@@ -177,7 +177,6 @@ export const videoSlides = pgTable(
     firstFrameDuplicateOfFramePosition: framePositionEnum(
       "first_frame_duplicate_of_frame_position",
     ),
-    firstFrameSkipReason: text("first_frame_skip_reason"),
 
     // Last frame data
     lastFrameImageUrl: text("last_frame_image_url"),
@@ -188,7 +187,6 @@ export const videoSlides = pgTable(
     lastFrameDuplicateOfFramePosition: framePositionEnum(
       "last_frame_duplicate_of_frame_position",
     ),
-    lastFrameSkipReason: text("last_frame_skip_reason"),
 
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },

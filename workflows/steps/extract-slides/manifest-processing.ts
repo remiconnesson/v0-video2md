@@ -116,13 +116,11 @@ export async function processSlidesFromManifest(
       firstFrameDuplicateOfSegmentId: firstFrameData.duplicateOfSegmentId,
       firstFrameDuplicateOfFramePosition:
         firstFrameData.duplicateOfFramePosition as "first" | "last" | null,
-      firstFrameSkipReason: firstFrameData.skipReason,
       lastFrameImageUrl: lastFrameData.imageUrl,
       lastFrameIsDuplicate: lastFrameData.isDuplicate,
       lastFrameDuplicateOfSegmentId: lastFrameData.duplicateOfSegmentId,
       lastFrameDuplicateOfFramePosition:
         lastFrameData.duplicateOfFramePosition as "first" | "last" | null,
-      lastFrameSkipReason: lastFrameData.skipReason,
       imageProcessingError,
     };
 
@@ -147,7 +145,6 @@ export async function processSlidesFromManifest(
         firstFrameDuplicateOfFramePosition:
           (firstFrame?.duplicate_of?.frame_position as "first" | "last") ??
           null,
-        firstFrameSkipReason: firstFrame?.skip_reason ?? null,
 
         // Last frame data
         lastFrameImageUrl: lastFrameImageUrl || null,
@@ -156,7 +153,6 @@ export async function processSlidesFromManifest(
           lastFrame?.duplicate_of?.segment_id ?? null,
         lastFrameDuplicateOfFramePosition:
           (lastFrame?.duplicate_of?.frame_position as "first" | "last") ?? null,
-        lastFrameSkipReason: lastFrame?.skip_reason ?? null,
       };
 
       await db.insert(videoSlides).values(slideData).onConflictDoNothing();

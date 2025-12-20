@@ -38,14 +38,12 @@ export async function GET(
         videoSlides.firstFrameDuplicateOfSegmentId,
       firstFrameDuplicateOfFramePosition:
         videoSlides.firstFrameDuplicateOfFramePosition,
-      firstFrameSkipReason: videoSlides.firstFrameSkipReason,
       // Last frame data
       lastFrameImageUrl: videoSlides.lastFrameImageUrl,
       lastFrameIsDuplicate: videoSlides.lastFrameIsDuplicate,
       lastFrameDuplicateOfSegmentId: videoSlides.lastFrameDuplicateOfSegmentId,
       lastFrameDuplicateOfFramePosition:
         videoSlides.lastFrameDuplicateOfFramePosition,
-      lastFrameSkipReason: videoSlides.lastFrameSkipReason,
     })
     .from(videoSlides)
     .where(eq(videoSlides.videoId, videoId))
@@ -128,12 +126,10 @@ export async function GET(
       firstFrameIsDuplicate: s.firstFrameIsDuplicate,
       firstFrameDuplicateOfSegmentId: s.firstFrameDuplicateOfSegmentId,
       firstFrameDuplicateOfFramePosition: s.firstFrameDuplicateOfFramePosition,
-      firstFrameSkipReason: s.firstFrameSkipReason,
       lastFrameImageUrl: s.lastFrameImageUrl,
       lastFrameIsDuplicate: s.lastFrameIsDuplicate,
       lastFrameDuplicateOfSegmentId: s.lastFrameDuplicateOfSegmentId,
       lastFrameDuplicateOfFramePosition: s.lastFrameDuplicateOfFramePosition,
-      lastFrameSkipReason: s.lastFrameSkipReason,
     })),
   });
 }

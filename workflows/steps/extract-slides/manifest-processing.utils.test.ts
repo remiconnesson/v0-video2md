@@ -23,7 +23,6 @@ describe("manifest-processing utils", () => {
   const sampleFrame: FrameMetadata = {
     frame_id: "frame-123",
     duplicate_of: { segment_id: 2, frame_position: "last" },
-    skip_reason: "duplicate",
     url: "https://example.com/frame-123.webp",
   };
 
@@ -60,7 +59,6 @@ describe("manifest-processing utils", () => {
       isDuplicate: true,
       duplicateOfSegmentId: 2,
       duplicateOfFramePosition: "last",
-      skipReason: "duplicate",
     });
 
     const nonDuplicate = normalizeFrameMetadata(
@@ -77,7 +75,6 @@ describe("manifest-processing utils", () => {
       isDuplicate: false,
       duplicateOfSegmentId: null,
       duplicateOfFramePosition: null,
-      skipReason: null,
     });
   });
 

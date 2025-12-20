@@ -10,7 +10,6 @@ const FrameMetadataSchema = z.object({
       frame_position: z.string(),
     })
     .nullable(),
-  skip_reason: z.string().nullable(),
   url: z.string().nullable(),
 });
 

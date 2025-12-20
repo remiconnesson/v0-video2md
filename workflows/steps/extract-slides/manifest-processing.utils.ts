@@ -10,7 +10,6 @@ export interface ProcessedFrame {
   isDuplicate: boolean;
   duplicateOfSegmentId: number | null;
   duplicateOfFramePosition: string | null;
-  skipReason: string | null;
 }
 
 /**
@@ -44,7 +43,6 @@ export function normalizeFrameMetadata(
       isDuplicate: false,
       duplicateOfSegmentId: null,
       duplicateOfFramePosition: null,
-      skipReason: null,
     };
   }
 
@@ -53,7 +51,6 @@ export function normalizeFrameMetadata(
     isDuplicate: frame.duplicate_of !== null,
     duplicateOfSegmentId: frame.duplicate_of?.segment_id ?? null,
     duplicateOfFramePosition: frame.duplicate_of?.frame_position ?? null,
-    skipReason: frame.skip_reason,
   };
 }
 
