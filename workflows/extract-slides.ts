@@ -1,11 +1,11 @@
 import { FatalError } from "workflow";
 import { isValidYouTubeVideoId } from "@/lib/youtube-utils";
 import {
+  checkJobStatus,
   emitComplete,
   emitError,
   emitProgress,
   fetchManifest,
-  monitorJobProgress,
   processSlidesFromManifest,
   triggerExtraction,
   updateExtractionStatus,
@@ -32,7 +32,7 @@ export async function extractSlidesWorkflow(videoId: string) {
 
     currentStep = "monitoring job progress";
     await emitProgress("monitoring", 10, "Processing video on server...");
-    await monitorJobProgress(videoId);
+    await checkJobStatus(videoId);
 
     currentStep = "fetching manifest";
     await emitProgress("fetching", 80, "Fetching slide manifest...");

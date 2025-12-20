@@ -66,16 +66,14 @@ export async function triggerExtraction(
   }
 }
 
-// ============================================================================
-// Step: Check job status (single attempt)
-// ============================================================================
-
 export async function checkJobStatus(videoId: YouTubeVideoId): Promise<{
   manifestUri: string | null;
   jobFailed: boolean;
   failureReason: string;
 }> {
   "use step";
+
+  // TODO: clean this function
 
   const jobStatusUrl = `${CONFIG.SLIDES_EXTRACTOR_URL}/jobs/${videoId}/stream`;
   let manifestUri: string | null = null;
@@ -221,21 +219,3 @@ export async function checkJobStatus(videoId: YouTubeVideoId): Promise<{
 }
 
 checkJobStatus.maxRetries = 1;
-
-// ============================================================================
-// Workflow: Monitor job progress (Fast Failure with Detailed Info)
-// ============================================================================
-
-export async function monitorJobProgress(
-  videoId: YouTubeVideoId,
-): Promise<string> {
-  "use step";
-  const jobStatusResult = await checkJobStatus(videoId);
-  if (jobStatusResult.manifestUri) {
-    return jobStatusResult.manifestUri;
-  } else {
-    throw new FatalError(
-      `no manifest uri found: ${JSON.stringify(jobStatusResult, null, 2)}`,
-    );
-  }
-}
