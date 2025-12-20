@@ -12,7 +12,6 @@ const slideFeedbackSchema = createInsertSchema(slideFeedback).omit({
   id: true,
   videoId: true,
   createdAt: true,
-  updatedAt: true,
 });
 
 // ============================================================================

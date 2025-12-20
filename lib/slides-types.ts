@@ -75,7 +75,6 @@ export const SlideFeedbackDataSchema = createSelectSchema(slideFeedback).omit({
   id: true,
   videoId: true,
   createdAt: true,
-  updatedAt: true,
 });
 
 export type SlideFeedbackData = z.infer<typeof SlideFeedbackDataSchema>;

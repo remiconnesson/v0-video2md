@@ -62,7 +62,6 @@ export async function GET(
       .set({
         status: "completed",
         totalSlides: slides.length,
-        updatedAt: new Date(),
       })
       .where(eq(videoSlideExtractions.videoId, videoId));
     status = "completed";
@@ -81,7 +80,6 @@ export async function GET(
         status: "failed",
         errorMessage:
           "Extraction completed but no slides were saved. Please try again.",
-        updatedAt: new Date(),
       })
       .where(eq(videoSlideExtractions.videoId, videoId));
     status = "failed";
@@ -91,7 +89,7 @@ export async function GET(
   // mark as failed so user can retry
   if (extraction && status === "in_progress" && slides.length === 0) {
     const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
-    const lastUpdate = extraction.updatedAt ?? extraction.createdAt;
+    const lastUpdate = extraction.createdAt;
 
     if (lastUpdate < thirtyMinutesAgo) {
       console.log(
@@ -104,7 +102,6 @@ export async function GET(
           status: "failed",
           errorMessage:
             "Extraction timed out or workflow failed to start. Please try again.",
-          updatedAt: new Date(),
         })
         .where(eq(videoSlideExtractions.videoId, videoId));
       status = "failed";
@@ -190,7 +187,6 @@ export async function POST(
       set: {
         status: "in_progress",
         errorMessage: null,
-        updatedAt: new Date(),
       },
     });
 

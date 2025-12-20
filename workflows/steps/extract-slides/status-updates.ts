@@ -31,7 +31,6 @@ export async function updateExtractionStatus(
         status,
         totalSlides: totalSlides ?? null,
         errorMessage: errorMessage ?? null,
-        updatedAt: new Date(),
       })
       .where(eq(videoSlideExtractions.videoId, videoId));
 

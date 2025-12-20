@@ -143,7 +143,6 @@ export const videoSlideExtractions = pgTable(
     totalSlides: integer("total_slides"),
     errorMessage: text("error_message"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
-    updatedAt: timestamp("updated_at").defaultNow().notNull(),
   },
   (table) => [
     index("video_slide_extractions_video_idx").on(table.videoId),
@@ -232,7 +231,6 @@ export const slideFeedback = pgTable(
     isLastFramePicked: boolean("is_last_frame_picked").default(true).notNull(),
 
     createdAt: timestamp("created_at").defaultNow().notNull(),
-    updatedAt: timestamp("updated_at").defaultNow().notNull(),
   },
   (table) => [
     index("slide_feedback_video_idx").on(table.videoId),
