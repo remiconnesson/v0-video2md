@@ -1,4 +1,12 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  afterAll,
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
 import {
   extractYoutubeVideoId,
   fetchYoutubeVideoTitle,
@@ -6,6 +14,20 @@ import {
   resolveShortUrl,
   validateYoutubeVideoId,
 } from "./youtube-utils";
+
+const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+const consoleWarnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+afterAll(() => {
+  consoleErrorSpy.mockRestore();
+  consoleWarnSpy.mockRestore();
+});
+
+// Clear mocks between tests to prevent cross-test pollution
+beforeEach(() => {
+  consoleErrorSpy.mockClear();
+  consoleWarnSpy.mockClear();
+});
 
 describe("extractYoutubeVideoId", () => {
   it("should extract video ID from standard youtube.com watch URL", () => {
@@ -90,11 +112,9 @@ describe("extractYoutubeVideoId", () => {
 
 describe("resolveShortUrl", () => {
   beforeEach(() => {
-    vi.resetAllMocks();
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
+    vi.clearAllMocks();
+    consoleErrorSpy.mockClear();
+    consoleWarnSpy.mockClear();
   });
 
   it("should return video ID directly if it can be extracted without network call", async () => {
@@ -287,11 +307,18 @@ describe("validateYoutubeVideoId", () => {
   });
 
   it("should handle fetch errors gracefully", async () => {
+    // Suppress error stack traces for this specific test
+    const originalConsoleError = console.error;
+    console.error = () => {};
+
     const mockFetch = vi.fn().mockRejectedValueOnce(new Error("Network error"));
     global.fetch = mockFetch;
 
     const isValid = await validateYoutubeVideoId("dQw4w9WgXcQ");
     expect(isValid).toBe(false);
+
+    // Restore console.error
+    console.error = originalConsoleError;
   });
 });
 
@@ -343,11 +370,18 @@ describe("fetchYoutubeVideoTitle", () => {
   });
 
   it("should handle fetch errors gracefully", async () => {
+    // Suppress error stack traces for this specific test
+    const originalConsoleError = console.error;
+    console.error = () => {};
+
     const mockFetch = vi.fn().mockRejectedValueOnce(new Error("Network error"));
     global.fetch = mockFetch;
 
     const title = await fetchYoutubeVideoTitle("dQw4w9WgXcQ");
     expect(title).toBeNull();
+
+    // Restore console.error
+    console.error = originalConsoleError;
   });
 });
 
