@@ -170,7 +170,9 @@ export const videoSlides = pgTable(
 
     // First frame data
     firstFrameImageUrl: text("first_frame_image_url"),
-    firstFrameIsDuplicate: boolean("first_frame_is_duplicate").default(false),
+    firstFrameIsDuplicate: boolean("first_frame_is_duplicate")
+      .default(false)
+      .notNull(),
     firstFrameDuplicateOfSlideNumber: integer(
       "first_frame_duplicate_of_segment_id",
     ),
@@ -180,7 +182,9 @@ export const videoSlides = pgTable(
 
     // Last frame data
     lastFrameImageUrl: text("last_frame_image_url"),
-    lastFrameIsDuplicate: boolean("last_frame_is_duplicate").default(false),
+    lastFrameIsDuplicate: boolean("last_frame_is_duplicate")
+      .default(false)
+      .notNull(),
     lastFrameDuplicateOfSlideNumber: integer(
       "last_frame_duplicate_of_segment_id",
     ),
