@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { VideoSlide, SlideFeedback } from "@/db/schema";
 
 // ============================================================================
 // Manifest Schema (matches your S3 output)
@@ -71,31 +72,28 @@ export type SlideStreamEvent =
   | { type: "complete"; totalSlides: number }
   | { type: "error"; message: string };
 
-// TODO: this should be derived from DB schema
-export interface SlideData {
-  slideIndex: number;
-  frameId: string | null;
-  startTime: number;
-  endTime: number;
-  duration: number;
-
+export interface SlideData
+  extends Omit<
+    VideoSlide,
+    | "id"
+    | "videoId"
+    | "createdAt"
+    | "firstFrameIsDuplicate"
+    | "lastFrameIsDuplicate"
+    | "firstFrameDuplicateOfFramePosition"
+    | "lastFrameDuplicateOfFramePosition"
+  > {
   // First frame data
-  firstFrameImageUrl: string | null;
   firstFrameHasText: boolean;
   firstFrameTextConfidence: number;
   firstFrameIsDuplicate: boolean;
-  firstFrameDuplicateOfSegmentId: number | null;
-  firstFrameDuplicateOfFramePosition: string | null; // "first" | "last"
-  firstFrameSkipReason: string | null;
+  firstFrameDuplicateOfFramePosition: "first" | "last" | null;
 
   // Last frame data
-  lastFrameImageUrl: string | null;
   lastFrameHasText: boolean;
   lastFrameTextConfidence: number;
   lastFrameIsDuplicate: boolean;
-  lastFrameDuplicateOfSegmentId: number | null;
-  lastFrameDuplicateOfFramePosition: string | null; // "first" | "last"
-  lastFrameSkipReason: string | null;
+  lastFrameDuplicateOfFramePosition: "first" | "last" | null;
 
   imageProcessingError?: string | null;
   dbError?: string | null;
@@ -105,15 +103,14 @@ export interface SlideData {
 // Slide Feedback Types
 // ============================================================================
 
-export interface SlideFeedbackData {
-  slideIndex: number;
+export interface SlideFeedbackData
+  extends Omit<
+    SlideFeedback,
+    "id" | "videoId" | "createdAt" | "updatedAt" | "framesSameness"
+  > {
   firstFrameHasTextValidated: boolean | null;
-  firstFrameIsDuplicateValidated: boolean | null;
   lastFrameHasTextValidated: boolean | null;
-  lastFrameIsDuplicateValidated: boolean | null;
   framesSameness: "same" | "different" | null;
-  isFirstFramePicked: boolean | null;
-  isLastFramePicked: boolean | null;
 }
 
 // ============================================================================
