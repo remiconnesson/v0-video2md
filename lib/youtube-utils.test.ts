@@ -307,11 +307,18 @@ describe("validateYoutubeVideoId", () => {
   });
 
   it("should handle fetch errors gracefully", async () => {
+    // Suppress error stack traces for this specific test
+    const originalConsoleError = console.error;
+    console.error = () => {};
+
     const mockFetch = vi.fn().mockRejectedValueOnce(new Error("Network error"));
     global.fetch = mockFetch;
 
     const isValid = await validateYoutubeVideoId("dQw4w9WgXcQ");
     expect(isValid).toBe(false);
+
+    // Restore console.error
+    console.error = originalConsoleError;
   });
 });
 
@@ -363,11 +370,18 @@ describe("fetchYoutubeVideoTitle", () => {
   });
 
   it("should handle fetch errors gracefully", async () => {
+    // Suppress error stack traces for this specific test
+    const originalConsoleError = console.error;
+    console.error = () => {};
+
     const mockFetch = vi.fn().mockRejectedValueOnce(new Error("Network error"));
     global.fetch = mockFetch;
 
     const title = await fetchYoutubeVideoTitle("dQw4w9WgXcQ");
     expect(title).toBeNull();
+
+    // Restore console.error
+    console.error = originalConsoleError;
   });
 });
 
