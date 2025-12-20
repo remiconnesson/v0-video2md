@@ -38,6 +38,13 @@ export async function fetchManifest(
 
   const response = await fetch(manifestUrl);
 
+  if (!response.ok) {
+    console.error(
+      `💾 fetchManifest: Failed to fetch manifest for video ${videoId} HTTP ${response.status} ${response.statusText}`,
+    );
+    throw new Error(`Failed to fetch manifest for video ${videoId}`);
+  }
+
   const json = await response.json();
 
   const result = VideoManifestSchema.safeParse(json);
