@@ -17,7 +17,6 @@ describe("manifest-processing utils", () => {
     duration: 10,
     first_frame: undefined,
     last_frame: undefined,
-    url: null,
   };
 
   const sampleFrame: FrameMetadata = {
@@ -88,7 +87,10 @@ describe("manifest-processing utils", () => {
   });
 
   it("should filter static segments", () => {
-    const segments = [{ ...baseSegment }, { ...baseSegment, kind: "moving" }];
+    const segments: Segment[] = [
+      { ...baseSegment },
+      { ...baseSegment, kind: "moving" },
+    ];
     expect(filterStaticSegments(segments)).toEqual([{ ...baseSegment }]);
   });
 
