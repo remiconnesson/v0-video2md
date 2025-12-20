@@ -8,7 +8,7 @@ import type { FrameMetadata, Segment } from "@/lib/slides-types";
 export interface ProcessedFrame {
   imageUrl: string | null;
   isDuplicate: boolean;
-  duplicateOfSegmentId: number | null;
+  duplicateOfSlideNumber: number | null;
   duplicateOfFramePosition: string | null;
 }
 
@@ -41,7 +41,7 @@ export function normalizeFrameMetadata(
     return {
       imageUrl: null,
       isDuplicate: false,
-      duplicateOfSegmentId: null,
+      duplicateOfSlideNumber: null,
       duplicateOfFramePosition: null,
     };
   }
@@ -49,7 +49,7 @@ export function normalizeFrameMetadata(
   return {
     imageUrl,
     isDuplicate: frame.duplicate_of !== null,
-    duplicateOfSegmentId: frame.duplicate_of?.segment_id ?? null,
+    duplicateOfSlideNumber: frame.duplicate_of?.segment_id ?? null,
     duplicateOfFramePosition: frame.duplicate_of?.frame_position ?? null,
   };
 }
@@ -58,16 +58,16 @@ export function normalizeFrameMetadata(
  * Generates a blob storage path for a slide image.
  * @param videoId - YouTube video ID
  * @param frameId - Frame identifier
- * @param slideIndex - Index of the slide
+ * @param slideNumber - Number of the slide
  * @param framePosition - "first" or "last"
  */
 export function generateBlobPath(
   videoId: string,
   frameId: string | null,
-  slideIndex: number,
+  slideNumber: number,
   framePosition: "first" | "last",
 ): string {
-  const identifier = frameId || `${slideIndex}-${framePosition}`;
+  const identifier = frameId || `${slideNumber}-${framePosition}`;
   return `slides/${videoId}/${identifier}.webp`;
 }
 

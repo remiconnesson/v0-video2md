@@ -26,7 +26,7 @@ export async function GET(
   // Get existing slides
   const slides = await db
     .select({
-      slideIndex: videoSlides.slideIndex,
+      slideNumber: videoSlides.slideNumber,
       frameId: videoSlides.frameId,
       startTime: videoSlides.startTime,
       endTime: videoSlides.endTime,
@@ -34,20 +34,20 @@ export async function GET(
       // First frame data
       firstFrameImageUrl: videoSlides.firstFrameImageUrl,
       firstFrameIsDuplicate: videoSlides.firstFrameIsDuplicate,
-      firstFrameDuplicateOfSegmentId:
-        videoSlides.firstFrameDuplicateOfSegmentId,
+      firstFrameDuplicateOfSlideNumber:
+        videoSlides.firstFrameDuplicateOfSlideNumber,
       firstFrameDuplicateOfFramePosition:
         videoSlides.firstFrameDuplicateOfFramePosition,
       // Last frame data
       lastFrameImageUrl: videoSlides.lastFrameImageUrl,
       lastFrameIsDuplicate: videoSlides.lastFrameIsDuplicate,
-      lastFrameDuplicateOfSegmentId: videoSlides.lastFrameDuplicateOfSegmentId,
+      lastFrameDuplicateOfSlideNumber: videoSlides.lastFrameDuplicateOfSlideNumber,
       lastFrameDuplicateOfFramePosition:
         videoSlides.lastFrameDuplicateOfFramePosition,
     })
     .from(videoSlides)
     .where(eq(videoSlides.videoId, videoId))
-    .orderBy(asc(videoSlides.slideIndex));
+    .orderBy(asc(videoSlides.slideNumber));
 
   // If extraction status is "in_progress" but we have slides, fix the status
   // This handles the case where extraction completed but status wasn't updated
@@ -117,18 +117,18 @@ export async function GET(
     totalSlides: extraction?.totalSlides ?? slides.length,
     errorMessage: extraction?.errorMessage ?? null,
     slides: slides.map((s) => ({
-      slideIndex: s.slideIndex,
+      slideNumber: s.slideNumber,
       frameId: s.frameId,
       startTime: s.startTime,
       endTime: s.endTime,
       duration: s.duration,
       firstFrameImageUrl: s.firstFrameImageUrl,
       firstFrameIsDuplicate: s.firstFrameIsDuplicate,
-      firstFrameDuplicateOfSegmentId: s.firstFrameDuplicateOfSegmentId,
+      firstFrameDuplicateOfSlideNumber: s.firstFrameDuplicateOfSlideNumber,
       firstFrameDuplicateOfFramePosition: s.firstFrameDuplicateOfFramePosition,
       lastFrameImageUrl: s.lastFrameImageUrl,
       lastFrameIsDuplicate: s.lastFrameIsDuplicate,
-      lastFrameDuplicateOfSegmentId: s.lastFrameDuplicateOfSegmentId,
+      lastFrameDuplicateOfSlideNumber: s.lastFrameDuplicateOfSlideNumber,
       lastFrameDuplicateOfFramePosition: s.lastFrameDuplicateOfFramePosition,
     })),
   });

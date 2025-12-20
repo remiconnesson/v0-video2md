@@ -91,7 +91,7 @@ export async function POST(
       ...feedback,
     })
     .onConflictDoUpdate({
-      target: [slideFeedback.videoId, slideFeedback.slideIndex],
+      target: [slideFeedback.videoId, slideFeedback.slideNumber],
       set: {
         ...feedback,
       },

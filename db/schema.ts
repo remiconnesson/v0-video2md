@@ -160,7 +160,7 @@ export const videoSlides = pgTable(
     videoId: varchar("video_id", { length: 32 })
       .notNull()
       .references(() => videos.videoId, { onDelete: "cascade" }),
-    slideIndex: integer("slide_index").notNull(),
+    slideNumber: integer("slide_index").notNull(),
     frameId: varchar("frame_id", { length: 100 }),
 
     // Timing
@@ -171,7 +171,7 @@ export const videoSlides = pgTable(
     // First frame data
     firstFrameImageUrl: text("first_frame_image_url"),
     firstFrameIsDuplicate: boolean("first_frame_is_duplicate").default(false),
-    firstFrameDuplicateOfSegmentId: integer(
+    firstFrameDuplicateOfSlideNumber: integer(
       "first_frame_duplicate_of_segment_id",
     ),
     firstFrameDuplicateOfFramePosition: framePositionEnum(
@@ -181,7 +181,7 @@ export const videoSlides = pgTable(
     // Last frame data
     lastFrameImageUrl: text("last_frame_image_url"),
     lastFrameIsDuplicate: boolean("last_frame_is_duplicate").default(false),
-    lastFrameDuplicateOfSegmentId: integer(
+    lastFrameDuplicateOfSlideNumber: integer(
       "last_frame_duplicate_of_segment_id",
     ),
     lastFrameDuplicateOfFramePosition: framePositionEnum(
@@ -192,7 +192,7 @@ export const videoSlides = pgTable(
   },
   (table) => [
     index("video_slides_video_idx").on(table.videoId),
-    unique("video_slides_video_index").on(table.videoId, table.slideIndex),
+    unique("video_slides_video_index").on(table.videoId, table.slideNumber),
   ],
 );
 
@@ -209,7 +209,7 @@ export const slideFeedback = pgTable(
     videoId: varchar("video_id", { length: 32 })
       .notNull()
       .references(() => videos.videoId, { onDelete: "cascade" }),
-    slideIndex: integer("slide_index").notNull(),
+    slideNumber: integer("slide_index").notNull(),
 
     // First frame validation
     firstFrameIsDuplicateValidated: boolean(
@@ -233,7 +233,7 @@ export const slideFeedback = pgTable(
   },
   (table) => [
     index("slide_feedback_video_idx").on(table.videoId),
-    unique("slide_feedback_video_slide").on(table.videoId, table.slideIndex),
+    unique("slide_feedback_video_slide").on(table.videoId, table.slideNumber),
   ],
 );
 

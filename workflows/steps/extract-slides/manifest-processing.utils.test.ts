@@ -57,7 +57,7 @@ describe("manifest-processing utils", () => {
     expect(normalized).toEqual({
       imageUrl: "https://image",
       isDuplicate: true,
-      duplicateOfSegmentId: 2,
+      duplicateOfSlideNumber: 2,
       duplicateOfFramePosition: "last",
     });
 
@@ -66,20 +66,20 @@ describe("manifest-processing utils", () => {
       "https://image",
     );
     expect(nonDuplicate.isDuplicate).toBe(false);
-    expect(nonDuplicate.duplicateOfSegmentId).toBeNull();
+    expect(nonDuplicate.duplicateOfSlideNumber).toBeNull();
     expect(nonDuplicate.duplicateOfFramePosition).toBeNull();
 
     const missing = normalizeFrameMetadata(undefined, null);
     expect(missing).toEqual({
       imageUrl: null,
       isDuplicate: false,
-      duplicateOfSegmentId: null,
+      duplicateOfSlideNumber: null,
       duplicateOfFramePosition: null,
     });
   });
 
   it("should build blob paths using frame IDs when available", () => {
-    expect(generateBlobPath("video1", "frame-1", 0, "first")).toBe(
+    expect(generateBlobPath("video1", "frame-1", 1, "first")).toBe(
       "slides/video1/frame-1.webp",
     );
     expect(generateBlobPath("video1", null, 1, "last")).toBe(

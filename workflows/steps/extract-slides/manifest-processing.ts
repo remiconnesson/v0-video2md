@@ -8,7 +8,6 @@ import {
 import {
   extractSlideTimings,
   filterStaticSegments,
-  hasUsableFrames,
   normalizeFrameMetadata,
 } from "./manifest-processing.utils";
 
@@ -74,27 +73,13 @@ export async function processSlidesFromManifest(
     `💾 processSlidesFromManifest: Found ${staticSegments.length} static segments for video ${videoId}`,
   );
 
-  let slideIndex = 1; // ⚠️ Start at 1 since backend is using 1-based indexing for slides, TODO: unforce it by test
+  let slideNumber = 1;
   let successfulSlides = 0;
   let failedSlides = 0;
 
   for (const segment of staticSegments) {
     const firstFrame = segment.first_frame;
     const lastFrame = segment.last_frame;
-
-    // Skip if no frames available
-    if (!hasUsableFrames(segment)) {
-      console.warn(
-        `💾 processSlidesFromManifest: Skipping segment ${slideIndex} for video ${videoId}: missing frames`,
-        {
-          segment,
-          hasFirstFrame: !!firstFrame,
-          hasLastFrame: !!lastFrame,
-        },
-      );
-      slideIndex++;
-      continue;
-    }
 
     const firstFrameImageUrl = null;
     const lastFrameImageUrl = null;
@@ -108,17 +93,17 @@ export async function processSlidesFromManifest(
     const lastFrameData = normalizeFrameMetadata(lastFrame, lastFrameImageUrl);
 
     const slideData: SlideData = {
-      slideIndex,
+      slideNumber,
       frameId: firstFrame?.frame_id || lastFrame?.frame_id || null,
       ...timings,
       firstFrameImageUrl: firstFrameData.imageUrl,
       firstFrameIsDuplicate: firstFrameData.isDuplicate,
-      firstFrameDuplicateOfSegmentId: firstFrameData.duplicateOfSegmentId,
+      firstFrameDuplicateOfSlideNumber: firstFrameData.duplicateOfSlideNumber,
       firstFrameDuplicateOfFramePosition:
         firstFrameData.duplicateOfFramePosition as "first" | "last" | null,
       lastFrameImageUrl: lastFrameData.imageUrl,
       lastFrameIsDuplicate: lastFrameData.isDuplicate,
-      lastFrameDuplicateOfSegmentId: lastFrameData.duplicateOfSegmentId,
+      lastFrameDuplicateOfSlideNumber: lastFrameData.duplicateOfSlideNumber,
       lastFrameDuplicateOfFramePosition:
         lastFrameData.duplicateOfFramePosition as "first" | "last" | null,
       imageProcessingError,
@@ -127,11 +112,11 @@ export async function processSlidesFromManifest(
     // Save to database
     try {
       console.log(
-        `💾 processSlidesFromManifest: Saving slide ${slideIndex} to database`,
+        `💾 processSlidesFromManifest: Saving slide ${slideNumber} to database`,
       );
-      const slideData = {
+      const dbSlideData = {
         videoId,
-        slideIndex,
+        slideNumber,
         frameId: firstFrame?.frame_id || lastFrame?.frame_id || null,
         startTime: segment.start_time,
         endTime: segment.end_time,
@@ -140,7 +125,7 @@ export async function processSlidesFromManifest(
         // First frame data
         firstFrameImageUrl: firstFrameImageUrl || null,
         firstFrameIsDuplicate: firstFrame?.duplicate_of !== null,
-        firstFrameDuplicateOfSegmentId:
+        firstFrameDuplicateOfSlideNumber:
           firstFrame?.duplicate_of?.segment_id ?? null,
         firstFrameDuplicateOfFramePosition:
           (firstFrame?.duplicate_of?.frame_position as "first" | "last") ??
@@ -149,26 +134,26 @@ export async function processSlidesFromManifest(
         // Last frame data
         lastFrameImageUrl: lastFrameImageUrl || null,
         lastFrameIsDuplicate: lastFrame?.duplicate_of !== null,
-        lastFrameDuplicateOfSegmentId:
+        lastFrameDuplicateOfSlideNumber:
           lastFrame?.duplicate_of?.segment_id ?? null,
         lastFrameDuplicateOfFramePosition:
           (lastFrame?.duplicate_of?.frame_position as "first" | "last") ?? null,
       };
 
-      await db.insert(videoSlides).values(slideData).onConflictDoNothing();
+      await db.insert(videoSlides).values(dbSlideData).onConflictDoNothing();
 
       console.log(
-        `💾 processSlidesFromManifest: Successfully saved slide ${slideIndex} to database`,
+        `💾 processSlidesFromManifest: Successfully saved slide ${slideNumber} to database`,
       );
       successfulSlides++;
     } catch (dbError) {
       failedSlides++;
       const dbErrorMessage = `Database save failed: ${dbError instanceof Error ? dbError.message : "Unknown DB error"}`;
       console.error(
-        `💾 processSlidesFromManifest: Failed to save slide ${slideIndex} to database:`,
+        `💾 processSlidesFromManifest: Failed to save slide ${slideNumber} to database:`,
         {
           videoId,
-          slideIndex,
+          slideNumber,
           frameId: firstFrame?.frame_id || lastFrame?.frame_id || null,
           error:
             dbError instanceof Error
@@ -191,7 +176,7 @@ export async function processSlidesFromManifest(
     // Import emitSlide dynamically to avoid circular dependency
     const { emitSlide } = await import("./stream-emitters");
     await emitSlide(slideData);
-    slideIndex++;
+    slideNumber++;
   }
 
   console.log(
@@ -210,5 +195,5 @@ export async function processSlidesFromManifest(
     );
   }
 
-  return slideIndex;
+  return slideNumber;
 }

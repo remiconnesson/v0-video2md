@@ -35,7 +35,7 @@ interface FrameCardProps {
   label: "First" | "Last";
   imageUrl: string | null;
   isDuplicate: boolean;
-  duplicateOfSegmentId: number | null;
+  duplicateOfSlideNumber: number | null;
   duplicateOfFramePosition: string | null;
   allSlides: SlideData[];
   onZoom: () => void;
@@ -49,7 +49,7 @@ function FrameCard({
   label,
   imageUrl,
   isDuplicate,
-  duplicateOfSegmentId,
+  duplicateOfSlideNumber,
   duplicateOfFramePosition,
   allSlides,
   onZoom,
@@ -60,8 +60,8 @@ function FrameCard({
 }: FrameCardProps) {
   // Find duplicate slide if exists
   const duplicateSlide =
-    isDuplicate && duplicateOfSegmentId !== null
-      ? allSlides.find((s) => s.slideIndex === duplicateOfSegmentId)
+    isDuplicate && duplicateOfSlideNumber !== null
+      ? allSlides.find((s) => s.slideNumber === duplicateOfSlideNumber)
       : null;
 
   const duplicateImageUrl = duplicateSlide
@@ -122,14 +122,14 @@ function FrameCard({
             <div className="relative w-16 rounded overflow-hidden border">
               <Image
                 src={duplicateImageUrl || "/placeholder.svg"}
-                alt={`Duplicate of slide ${duplicateOfSegmentId}`}
+                alt={`Duplicate of slide ${duplicateOfSlideNumber}`}
                 width={64}
                 height={36}
                 className="w-full h-auto object-contain"
               />
             </div>
             <span className="text-xs text-muted-foreground">
-              #{duplicateOfSegmentId}
+              #{duplicateOfSlideNumber}
             </span>
           </div>
         )}
@@ -147,7 +147,7 @@ function FrameCard({
               )}
             >
               {isDuplicate
-                ? `Duplicate of #${duplicateOfSegmentId}-${duplicateOfFramePosition || "?"}`
+                ? `Duplicate of #${duplicateOfSlideNumber}-${duplicateOfFramePosition || "?"}`
                 : "Unique"}
             </span>
           </div>
@@ -259,7 +259,7 @@ export function SlideCard({
     }
 
     const feedback: SlideFeedbackData = {
-      slideIndex: slide.slideIndex,
+      slideNumber: slide.slideNumber,
       firstFrameIsDuplicateValidated:
         firstValidation.isDuplicateValidated ?? null,
       lastFrameIsDuplicateValidated:
@@ -286,7 +286,7 @@ export function SlideCard({
     samenessFeedback,
     isFirstFramePicked,
     isLastFramePicked,
-    slide.slideIndex,
+    slide.slideNumber,
     onSubmitFeedback,
   ]);
 
@@ -319,11 +319,11 @@ export function SlideCard({
   const zoomImages = [
     {
       url: slide.firstFrameImageUrl,
-      title: `Slide ${slide.slideIndex + 1} - First Frame`,
+      title: `Slide ${slide.slideNumber} - First Frame`,
     },
     {
       url: slide.lastFrameImageUrl,
-      title: `Slide ${slide.slideIndex + 1} - Last Frame`,
+      title: `Slide ${slide.slideNumber} - Last Frame`,
     },
   ];
 
@@ -332,7 +332,7 @@ export function SlideCard({
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-2 bg-muted/30 border-b">
         <div className="flex items-center gap-3">
-          <span className="font-semibold">Slide #{slide.slideIndex + 1}</span>
+          <span className="font-semibold">Slide #{slide.slideNumber}</span>
           <span className="text-sm text-muted-foreground">
             {formatTime(slide.startTime)} - {formatTime(slide.endTime)}
           </span>
@@ -347,7 +347,7 @@ export function SlideCard({
             label="First"
             imageUrl={slide.firstFrameImageUrl}
             isDuplicate={slide.firstFrameIsDuplicate}
-            duplicateOfSegmentId={slide.firstFrameDuplicateOfSegmentId}
+            duplicateOfSlideNumber={slide.firstFrameDuplicateOfSlideNumber}
             duplicateOfFramePosition={slide.firstFrameDuplicateOfFramePosition}
             allSlides={allSlides}
             onZoom={() => handleZoom("first")}
@@ -360,7 +360,7 @@ export function SlideCard({
             label="Last"
             imageUrl={slide.lastFrameImageUrl}
             isDuplicate={slide.lastFrameIsDuplicate}
-            duplicateOfSegmentId={slide.lastFrameDuplicateOfSegmentId}
+            duplicateOfSlideNumber={slide.lastFrameDuplicateOfSlideNumber}
             duplicateOfFramePosition={slide.lastFrameDuplicateOfFramePosition}
             allSlides={allSlides}
             onZoom={() => handleZoom("last")}
@@ -416,7 +416,7 @@ export function SlideCard({
             ? slide.firstFrameImageUrl
             : slide.lastFrameImageUrl
         }
-        title={`Slide ${slide.slideIndex + 1} - ${zoomFrame === "first" ? "First" : "Last"} Frame`}
+        title={`Slide ${slide.slideNumber} - ${zoomFrame === "first" ? "First" : "Last"} Frame`}
         allImages={zoomImages}
         currentIndex={zoomFrame === "first" ? 0 : 1}
       />
