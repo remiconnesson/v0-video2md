@@ -36,68 +36,12 @@ export async function fetchManifest(
     `💾 fetchManifest: Fetching manifest for video ${videoId} from ${manifestUrl}`,
   );
 
-  try {
-    const response = await fetch(manifestUrl);
+  const response = await fetch(manifestUrl);
 
-    if (!response.ok) {
-      if (response.status === 404) {
-        throw new Error(
-          `Manifest file not found for video ${videoId}. The slide extraction may not have completed yet or failed. URL: ${manifestUrl}`,
-        );
-      } else {
-        throw new Error(
-          `Failed to fetch manifest for video ${videoId}. HTTP ${response.status} ${response.statusText}. URL: ${manifestUrl}`,
-        );
-      }
-    }
+  const json = await response.json();
 
-    let json: unknown;
-    try {
-      json = await response.json();
-    } catch (parseError) {
-      throw new Error(
-        `Invalid JSON response from manifest for video ${videoId}. The manifest file may be corrupted or incomplete. URL: ${manifestUrl}. Parse error: ${parseError instanceof Error ? parseError.message : String(parseError)}`,
-      );
-    }
-
-    if (json === null || json === undefined) {
-      throw new Error(
-        `Manifest file for video ${videoId} contains null/undefined data. The slide extraction may have failed or is incomplete. URL: ${manifestUrl}`,
-      );
-    }
-
-    if (typeof json !== "object") {
-      throw new Error(
-        `Manifest file for video ${videoId} should contain an object, but received ${typeof json}: ${JSON.stringify(json).slice(0, 200)}.... URL: ${manifestUrl}`,
-      );
-    }
-
-    const manifest = VideoManifestSchema.parse(json);
-    return manifest;
-  } catch (error) {
-    // Re-throw Zod errors with more context
-    if (
-      error &&
-      typeof error === "object" &&
-      "name" in error &&
-      error.name === "ZodError"
-    ) {
-      const zodError = error as unknown as { errors: unknown[] };
-      throw new Error(
-        `Manifest validation failed for video ${videoId}. Schema validation errors: ${JSON.stringify(zodError.errors, null, 2)}. This suggests the manifest structure is incorrect. URL: ${manifestUrl}`,
-      );
-    }
-
-    // Re-throw our custom errors as-is
-    if (error instanceof Error) {
-      throw error;
-    }
-
-    // Wrap unknown errors
-    throw new Error(
-      `Unexpected error while fetching manifest for video ${videoId}: ${String(error)}. URL: ${manifestUrl}`,
-    );
-  }
+  const manifest = VideoManifestSchema.parse(json);
+  return manifest;
 }
 
 export async function processSlidesFromManifest(
