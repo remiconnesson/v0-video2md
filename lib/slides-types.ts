@@ -14,7 +14,6 @@ const FrameMetadataSchema = z.object({
   frame_id: z.string().nullable(),
   duplicate_of: DuplicateOfSchema.nullable(),
   skip_reason: z.string().nullable(),
-  url: z.string().nullable(),
 });
 
 const BaseSegmentSchema = z.object({
@@ -31,8 +30,6 @@ const StaticSegmentSchema = BaseSegmentSchema.extend({
   kind: z.literal("static"),
   first_frame: FrameMetadataSchema.optional(),
   last_frame: FrameMetadataSchema.optional(),
-  // TODO: find out why we have an URL here
-  url: z.string().nullable().optional(),
 });
 
 const SegmentSchema = z.discriminatedUnion("kind", [

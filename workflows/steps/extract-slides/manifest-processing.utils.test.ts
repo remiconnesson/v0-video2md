@@ -33,7 +33,6 @@ describe("manifest-processing utils", () => {
     s3_key: "path/to/frame.webp",
     s3_bucket: "bucket-name",
     s3_uri: "s3://bucket-name/path/to/frame.webp",
-    url: null,
   };
 
   it("should detect usable frames", () => {
