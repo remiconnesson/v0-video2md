@@ -12,10 +12,6 @@ import {
 } from "./manifest-processing.utils";
 import { emitSlide } from "./stream-emitters";
 
-// ============================================================================
-// Step: Fetch manifest (Restored Old URL Logic)
-// ============================================================================
-
 function getBlobStorageRootUrl(): string {
   const token = process.env.BLOB_READ_WRITE_TOKEN;
   if (!token) throw new Error("BLOB_READ_WRITE_TOKEN is not set");
@@ -39,10 +35,6 @@ export async function fetchManifest(videoId: string): Promise<VideoManifest> {
 
   return manifest;
 }
-
-// ============================================================================
-// Step: Process slides (Restored Manual Blob Upload)
-// ============================================================================
 
 export async function processSlidesFromManifest(
   videoId: string,

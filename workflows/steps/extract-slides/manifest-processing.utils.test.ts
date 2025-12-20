@@ -4,9 +4,7 @@ import type { FrameMetadata, Segment } from "@/lib/slides-types";
 import {
   extractSlideTimings,
   filterStaticSegments,
-  generateBlobPath,
-  hasUsableFrames,
-  normalizeFrameMetadata,
+  normalizeIsDuplicate,
 } from "./manifest-processing.utils";
 
 describe("manifest-processing utils", () => {
@@ -15,8 +13,16 @@ describe("manifest-processing utils", () => {
     start_time: 0,
     end_time: 10,
     duration: 10,
-    first_frame: undefined,
-    last_frame: undefined,
+    first_frame: {
+      frame_id: "frame-123",
+      duplicate_of: { segment_id: 2, frame_position: "last" },
+      url: "https://example.com/frame-123.webp",
+    },
+    last_frame: {
+      frame_id: "frame-123",
+      duplicate_of: { segment_id: 2, frame_position: "last" },
+      url: "https://example.com/frame-123.webp",
+    },
   };
 
   const sampleFrame: FrameMetadata = {
@@ -24,32 +30,6 @@ describe("manifest-processing utils", () => {
     duplicate_of: { segment_id: 2, frame_position: "last" },
     url: "https://example.com/frame-123.webp",
   };
-
-  it("should detect usable frames", () => {
-    expect(
-      hasUsableFrames({ ...baseSegment, first_frame: { ...sampleFrame } }),
-    ).toBe(true);
-    expect(
-      hasUsableFrames({ ...baseSegment, last_frame: { ...sampleFrame } }),
-    ).toBe(true);
-    expect(
-      hasUsableFrames({
-        ...baseSegment,
-        first_frame: { ...sampleFrame },
-        last_frame: { ...sampleFrame },
-      }),
-    ).toBe(true);
-    expect(
-      hasUsableFrames({
-        ...baseSegment,
-        first_frame: undefined,
-        last_frame: undefined,
-      }),
-    ).toBe(false);
-    expect(hasUsableFrames({ ...baseSegment, first_frame: undefined })).toBe(
-      false,
-    );
-  });
 
   it("should normalize frame metadata and handle missing frames", () => {
     const normalized = normalizeFrameMetadata(sampleFrame, "https://image");
@@ -60,30 +40,20 @@ describe("manifest-processing utils", () => {
       duplicateOfFramePosition: "last",
     });
 
-    const nonDuplicate = normalizeFrameMetadata(
-      { ...sampleFrame, duplicate_of: null },
-      "https://image",
-    );
+    const nonDuplicate = normalizeFrameMetadata({
+      ...sampleFrame,
+      duplicate_of: null,
+    });
     expect(nonDuplicate.isDuplicate).toBe(false);
     expect(nonDuplicate.duplicateOfSlideNumber).toBeNull();
     expect(nonDuplicate.duplicateOfFramePosition).toBeNull();
 
-    const missing = normalizeFrameMetadata(undefined, null);
+    const missing = normalizeFrameMetadata(undefined);
     expect(missing).toEqual({
-      imageUrl: null,
       isDuplicate: false,
       duplicateOfSlideNumber: null,
       duplicateOfFramePosition: null,
     });
-  });
-
-  it("should build blob paths using frame IDs when available", () => {
-    expect(generateBlobPath("video1", "frame-1", 1, "first")).toBe(
-      "slides/video1/frame-1.webp",
-    );
-    expect(generateBlobPath("video1", null, 1, "last")).toBe(
-      "slides/video1/1-last.webp",
-    );
   });
 
   it("should filter static segments", () => {
