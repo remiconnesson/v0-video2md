@@ -32,6 +32,9 @@ export async function fetchManifest(
   "use step";
 
   const manifestUrl = getManifestBlobUrl(videoId);
+  console.log(
+    `💾 fetchManifest: Fetching manifest for video ${videoId} from ${manifestUrl}`,
+  );
 
   try {
     const response = await fetch(manifestUrl);
