@@ -13,18 +13,32 @@ const FrameMetadataSchema = z.object({
   url: z.string(),
 });
 
-const SegmentSchema = z.object({
-  kind: z.enum(["static", "moving"]),
-  start_time: z.number(), // float in seconds
-  end_time: z.number(), // float in seconds
-  duration: z.number(), // float in seconds
+const StaticSegmentSchema = z.object({
+  kind: z.literal("static"),
+  start_time: z.number(),
+  end_time: z.number(),
+  duration: z.number(),
   first_frame: FrameMetadataSchema,
   last_frame: FrameMetadataSchema,
+  url: z.string().optional(), // Add this if you want to allow the extra url
 });
+
+const MovingSegmentSchema = z.object({
+  kind: z.literal("moving"),
+  start_time: z.number(),
+  end_time: z.number(),
+  duration: z.number(),
+  // No frame properties for moving segments
+});
+
+const SegmentSchema = z.discriminatedUnion("kind", [
+  StaticSegmentSchema,
+  MovingSegmentSchema,
+]);
 
 const ManifestDataSchema = z.object({
   segments: z.array(SegmentSchema),
-  updated_at: z.iso.datetime(), // ISO 8601 timestamp
+  updated_at: z.iso.datetime({ offset: true }), // ISO 8601 timestamp
 });
 
 export const VideoManifestSchema = z.record(z.string(), ManifestDataSchema); // video_id -> manifest data

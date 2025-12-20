@@ -40,9 +40,15 @@ export async function fetchManifest(
 
   const json = await response.json();
 
+  console.log(json);
+  const blabla = VideoManifestSchema.safeParse(json);
+  console.log(JSON.stringify(blabla, null, 2));
+
   const manifest = VideoManifestSchema.parse(json);
   return manifest;
 }
+
+fetchManifest.maxRetries = 1;
 
 export async function processSlidesFromManifest(
   videoId: YouTubeVideoId,
