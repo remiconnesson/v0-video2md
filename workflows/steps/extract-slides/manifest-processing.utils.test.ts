@@ -65,8 +65,6 @@ describe("manifest-processing utils", () => {
     const normalized = normalizeFrameMetadata(sampleFrame, "https://image");
     expect(normalized).toEqual({
       imageUrl: "https://image",
-      hasText: true,
-      textConfidence: 72,
       isDuplicate: true,
       duplicateOfSegmentId: 2,
       duplicateOfFramePosition: "last",
@@ -84,8 +82,6 @@ describe("manifest-processing utils", () => {
     const missing = normalizeFrameMetadata(undefined, null);
     expect(missing).toEqual({
       imageUrl: null,
-      hasText: false,
-      textConfidence: 0,
       isDuplicate: false,
       duplicateOfSegmentId: null,
       duplicateOfFramePosition: null,

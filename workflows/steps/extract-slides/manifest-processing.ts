@@ -310,19 +310,16 @@ export async function processSlidesFromManifest(
       frameId: firstFrame?.frame_id || lastFrame?.frame_id || null,
       ...timings,
       firstFrameImageUrl: firstFrameData.imageUrl,
-      firstFrameHasText: firstFrameData.hasText,
-      firstFrameTextConfidence: firstFrameData.textConfidence,
       firstFrameIsDuplicate: firstFrameData.isDuplicate,
       firstFrameDuplicateOfSegmentId: firstFrameData.duplicateOfSegmentId,
       firstFrameDuplicateOfFramePosition:
-        firstFrameData.duplicateOfFramePosition,
+        firstFrameData.duplicateOfFramePosition as "first" | "last" | null,
       firstFrameSkipReason: firstFrameData.skipReason,
       lastFrameImageUrl: lastFrameData.imageUrl,
-      lastFrameHasText: lastFrameData.hasText,
-      lastFrameTextConfidence: lastFrameData.textConfidence,
       lastFrameIsDuplicate: lastFrameData.isDuplicate,
       lastFrameDuplicateOfSegmentId: lastFrameData.duplicateOfSegmentId,
-      lastFrameDuplicateOfFramePosition: lastFrameData.duplicateOfFramePosition,
+      lastFrameDuplicateOfFramePosition:
+        lastFrameData.duplicateOfFramePosition as "first" | "last" | null,
       lastFrameSkipReason: lastFrameData.skipReason,
       imageProcessingError,
     };
@@ -343,15 +340,7 @@ export async function processSlidesFromManifest(
           duration: segment.duration,
 
           // First frame data
-          firstFrameS3Uri: firstFrame?.s3_uri || null,
-          firstFrameS3Bucket: firstFrame?.s3_bucket || null,
-          firstFrameS3Key: firstFrame?.s3_key || null,
           firstFrameImageUrl: firstFrameImageUrl || null,
-          firstFrameHasText: firstFrame?.has_text || false,
-          firstFrameTextConfidence: firstFrame
-            ? Math.round(firstFrame.text_confidence * 100)
-            : null,
-          firstFrameTextBoxCount: firstFrame?.text_box_count || null,
           firstFrameIsDuplicate: firstFrame?.duplicate_of !== null,
           firstFrameDuplicateOfSegmentId:
             firstFrame?.duplicate_of?.segment_id ?? null,
@@ -360,15 +349,7 @@ export async function processSlidesFromManifest(
           firstFrameSkipReason: firstFrame?.skip_reason ?? null,
 
           // Last frame data
-          lastFrameS3Uri: lastFrame?.s3_uri || null,
-          lastFrameS3Bucket: lastFrame?.s3_bucket || null,
-          lastFrameS3Key: lastFrame?.s3_key || null,
           lastFrameImageUrl: lastFrameImageUrl || null,
-          lastFrameHasText: lastFrame?.has_text || false,
-          lastFrameTextConfidence: lastFrame
-            ? Math.round(lastFrame.text_confidence * 100)
-            : null,
-          lastFrameTextBoxCount: lastFrame?.text_box_count || null,
           lastFrameIsDuplicate: lastFrame?.duplicate_of !== null,
           lastFrameDuplicateOfSegmentId:
             lastFrame?.duplicate_of?.segment_id ?? null,

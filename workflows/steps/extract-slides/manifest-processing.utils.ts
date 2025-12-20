@@ -7,8 +7,6 @@ import type { FrameMetadata, StaticSegment } from "@/lib/slides-types";
 
 export interface ProcessedFrame {
   imageUrl: string | null;
-  hasText: boolean;
-  textConfidence: number;
   isDuplicate: boolean;
   duplicateOfSegmentId: number | null;
   duplicateOfFramePosition: string | null;
@@ -38,8 +36,6 @@ export function normalizeFrameMetadata(
   if (!frame) {
     return {
       imageUrl: null,
-      hasText: false,
-      textConfidence: 0,
       isDuplicate: false,
       duplicateOfSegmentId: null,
       duplicateOfFramePosition: null,
@@ -49,8 +45,6 @@ export function normalizeFrameMetadata(
 
   return {
     imageUrl,
-    hasText: frame.has_text,
-    textConfidence: Math.round(frame.text_confidence * 100),
     isDuplicate: frame.duplicate_of !== null,
     duplicateOfSegmentId: frame.duplicate_of?.segment_id ?? null,
     duplicateOfFramePosition: frame.duplicate_of?.frame_position ?? null,
