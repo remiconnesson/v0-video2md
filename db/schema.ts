@@ -5,7 +5,6 @@ import {
   jsonb,
   pgEnum,
   pgTable,
-  primaryKey,
   real,
   serial,
   text,
@@ -35,6 +34,14 @@ export const analysisStatusEnum = pgEnum("analysis_status", [
 ]);
 
 export type AnalysisStatus = (typeof analysisStatusEnum.enumValues)[number];
+
+export const framePositionEnum = pgEnum("frame_position", ["first", "last"]);
+
+export type FramePosition = (typeof framePositionEnum.enumValues)[number];
+
+export const samenessEnum = pgEnum("sameness", ["same", "different"]);
+
+export type Sameness = (typeof samenessEnum.enumValues)[number];
 
 // ============================================================================
 // Core Video Tables
@@ -88,17 +95,14 @@ export const scrapTranscriptV1 = pgTable(
 export type ScrapedTranscript = typeof scrapTranscriptV1.$inferSelect;
 export type NewScrapedTranscript = typeof scrapTranscriptV1.$inferInsert;
 
-export const videoAnalysisRuns = pgTable(
-  "video_analysis_runs",
-  {
-    videoId: varchar("video_id", { length: 32 })
-      .notNull()
-      .references(() => videos.videoId, { onDelete: "cascade" }),
-    result: jsonb("result").$type<Record<string, unknown>>(),
-    createdAt: timestamp("created_at").defaultNow().notNull(),
-  },
-  (table) => [primaryKey({ columns: [table.videoId] })],
-);
+export const videoAnalysisRuns = pgTable("video_analysis_runs", {
+  videoId: varchar("video_id", { length: 32 })
+    .notNull()
+    .primaryKey()
+    .references(() => videos.videoId, { onDelete: "cascade" }),
+  result: jsonb("result").$type<Record<string, unknown>>(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
 
 export type VideoAnalysisRun = typeof videoAnalysisRuns.$inferSelect;
 export type NewVideoAnalysisRun = typeof videoAnalysisRuns.$inferInsert;
@@ -108,12 +112,12 @@ export const videoAnalysisWorkflowIds = pgTable(
   {
     videoId: varchar("video_id", { length: 32 })
       .notNull()
+      .primaryKey()
       .references(() => videos.videoId, { onDelete: "cascade" }),
     workflowId: varchar("workflow_id", { length: 100 }).notNull(),
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
   (table) => [
-    primaryKey({ columns: [table.videoId] }),
     index("video_analysis_workflow_ids_video_id_idx").on(table.workflowId),
   ],
 );
@@ -139,7 +143,6 @@ export const videoSlideExtractions = pgTable(
     totalSlides: integer("total_slides"),
     errorMessage: text("error_message"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
-    updatedAt: timestamp("updated_at").defaultNow().notNull(),
   },
   (table) => [
     index("video_slide_extractions_video_idx").on(table.videoId),
@@ -156,8 +159,7 @@ export const videoSlides = pgTable(
     videoId: varchar("video_id", { length: 32 })
       .notNull()
       .references(() => videos.videoId, { onDelete: "cascade" }),
-    slideIndex: integer("slide_index").notNull(),
-    frameId: varchar("frame_id", { length: 100 }),
+    slideNumber: integer("slide_index").notNull(),
 
     // Timing
     startTime: real("start_time").notNull(), // seconds with floating point precision
@@ -165,46 +167,34 @@ export const videoSlides = pgTable(
     duration: real("duration").notNull(),
 
     // First frame data
-    firstFrameS3Uri: text("first_frame_s3_uri"),
-    firstFrameS3Bucket: varchar("first_frame_s3_bucket", { length: 100 }),
-    firstFrameS3Key: text("first_frame_s3_key"),
     firstFrameImageUrl: text("first_frame_image_url"),
-    firstFrameHasText: boolean("first_frame_has_text").default(false),
-    firstFrameTextConfidence: integer("first_frame_text_confidence"), // 0-100
-    firstFrameTextBoxCount: integer("first_frame_text_box_count"),
-    firstFrameIsDuplicate: boolean("first_frame_is_duplicate").default(false),
-    firstFrameDuplicateOfSegmentId: integer(
+    firstFrameIsDuplicate: boolean("first_frame_is_duplicate")
+      .default(false)
+      .notNull(),
+    firstFrameDuplicateOfSlideNumber: integer(
       "first_frame_duplicate_of_segment_id",
     ),
-    firstFrameDuplicateOfFramePosition: varchar(
+    firstFrameDuplicateOfFramePosition: framePositionEnum(
       "first_frame_duplicate_of_frame_position",
-      { length: 16 },
-    ), // "first" | "last"
-    firstFrameSkipReason: text("first_frame_skip_reason"),
+    ),
 
     // Last frame data
-    lastFrameS3Uri: text("last_frame_s3_uri"),
-    lastFrameS3Bucket: varchar("last_frame_s3_bucket", { length: 100 }),
-    lastFrameS3Key: text("last_frame_s3_key"),
     lastFrameImageUrl: text("last_frame_image_url"),
-    lastFrameHasText: boolean("last_frame_has_text").default(false),
-    lastFrameTextConfidence: integer("last_frame_text_confidence"), // 0-100
-    lastFrameTextBoxCount: integer("last_frame_text_box_count"),
-    lastFrameIsDuplicate: boolean("last_frame_is_duplicate").default(false),
-    lastFrameDuplicateOfSegmentId: integer(
+    lastFrameIsDuplicate: boolean("last_frame_is_duplicate")
+      .default(false)
+      .notNull(),
+    lastFrameDuplicateOfSlideNumber: integer(
       "last_frame_duplicate_of_segment_id",
     ),
-    lastFrameDuplicateOfFramePosition: varchar(
+    lastFrameDuplicateOfFramePosition: framePositionEnum(
       "last_frame_duplicate_of_frame_position",
-      { length: 16 },
-    ), // "first" | "last"
-    lastFrameSkipReason: text("last_frame_skip_reason"),
+    ),
 
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
   (table) => [
     index("video_slides_video_idx").on(table.videoId),
-    unique("video_slides_video_index").on(table.videoId, table.slideIndex),
+    unique("video_slides_video_index").on(table.videoId, table.slideNumber),
   ],
 );
 
@@ -221,20 +211,18 @@ export const slideFeedback = pgTable(
     videoId: varchar("video_id", { length: 32 })
       .notNull()
       .references(() => videos.videoId, { onDelete: "cascade" }),
-    slideIndex: integer("slide_index").notNull(),
+    slideNumber: integer("slide_index").notNull(),
 
     // First frame validation
-    firstFrameHasTextValidated: boolean("first_frame_has_text_validated"),
     firstFrameIsDuplicateValidated: boolean(
       "first_frame_is_duplicate_validated",
     ),
 
     // Last frame validation
-    lastFrameHasTextValidated: boolean("last_frame_has_text_validated"),
     lastFrameIsDuplicateValidated: boolean("last_frame_is_duplicate_validated"),
 
     // Sameness feedback
-    framesSameness: varchar("frames_sameness", { length: 16 }), // "same" | "different"
+    framesSameness: samenessEnum("frames_sameness"),
 
     // Frame selection - whether individual frames are picked for export
     isFirstFramePicked: boolean("is_first_frame_picked")
@@ -243,11 +231,10 @@ export const slideFeedback = pgTable(
     isLastFramePicked: boolean("is_last_frame_picked").default(true).notNull(),
 
     createdAt: timestamp("created_at").defaultNow().notNull(),
-    updatedAt: timestamp("updated_at").defaultNow().notNull(),
   },
   (table) => [
     index("slide_feedback_video_idx").on(table.videoId),
-    unique("slide_feedback_video_slide").on(table.videoId, table.slideIndex),
+    unique("slide_feedback_video_slide").on(table.videoId, table.slideNumber),
   ],
 );
 

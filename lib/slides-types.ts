@@ -1,65 +1,53 @@
+import { createSelectSchema } from "drizzle-zod";
 import { z } from "zod";
-
-// ============================================================================
-// Manifest Schema (matches your S3 output)
-// ============================================================================
-
-const DuplicateOfSchema = z.object({
-  segment_id: z.number(),
-  frame_position: z.string(),
-});
+import { slideFeedback, videoSlides } from "@/db/schema";
 
 const FrameMetadataSchema = z.object({
-  frame_id: z.string().nullable(),
-  has_text: z.boolean(),
-  text_confidence: z.number(),
-  text_total_area_ratio: z.number(),
-  text_largest_area_ratio: z.number(),
-  text_box_count: z.number(),
-  duplicate_of: DuplicateOfSchema.nullable(),
-  skip_reason: z.string().nullable(),
-  s3_key: z.string().nullable(),
-  s3_bucket: z.string().nullable(),
-  s3_uri: z.string().nullable(),
-  url: z.string().nullable(),
+  frame_id: z.string(),
+  duplicate_of: z
+    .object({
+      segment_id: z.number(),
+      frame_position: z.enum(["first", "last"]),
+    })
+    .nullable(),
+  url: z.string(),
 });
 
-const BaseSegmentSchema = z.object({
+const StaticSegmentSchema = z.object({
+  kind: z.literal("static"),
   start_time: z.number(),
   end_time: z.number(),
   duration: z.number(),
+  first_frame: FrameMetadataSchema,
+  last_frame: FrameMetadataSchema,
+  url: z.string().optional(), // Add this if you want to allow the extra url
 });
 
-const MovingSegmentSchema = BaseSegmentSchema.extend({
+const MovingSegmentSchema = z.object({
   kind: z.literal("moving"),
-});
-
-const StaticSegmentSchema = BaseSegmentSchema.extend({
-  kind: z.literal("static"),
-  first_frame: FrameMetadataSchema.optional(),
-  last_frame: FrameMetadataSchema.optional(),
-  url: z.string().nullable().optional(),
-  has_text: z.boolean().optional(),
-  text_confidence: z.number().optional(),
+  start_time: z.number(),
+  end_time: z.number(),
+  duration: z.number(),
+  // No frame properties for moving segments
 });
 
 const SegmentSchema = z.discriminatedUnion("kind", [
-  MovingSegmentSchema,
   StaticSegmentSchema,
+  MovingSegmentSchema,
 ]);
 
-const VideoDataSchema = z.object({
+const ManifestDataSchema = z.object({
   segments: z.array(SegmentSchema),
-  // Allow datetime with offset (e.g., +00:00) or Z suffix, and local times without timezone
-  updated_at: z.string().datetime({ offset: true, local: true }),
+  updated_at: z.iso.datetime({ offset: true }), // ISO 8601 timestamp
 });
 
-export const VideoManifestSchema = z.record(z.string(), VideoDataSchema);
+export const VideoManifestSchema = z.record(z.string(), ManifestDataSchema); // video_id -> manifest data
 
-export type VideoManifest = z.infer<typeof VideoManifestSchema>;
-export type Segment = z.infer<typeof SegmentSchema>;
-export type StaticSegment = z.infer<typeof StaticSegmentSchema>;
 export type FrameMetadata = z.infer<typeof FrameMetadataSchema>;
+export type Segment = z.infer<typeof SegmentSchema>;
+export type StaticSegmentData = z.infer<typeof StaticSegmentSchema>;
+export type ManifestData = z.infer<typeof ManifestDataSchema>;
+export type VideoManifest = z.infer<typeof VideoManifestSchema>;
 
 // ============================================================================
 // Stream Event Types (workflow → frontend)
@@ -71,49 +59,25 @@ export type SlideStreamEvent =
   | { type: "complete"; totalSlides: number }
   | { type: "error"; message: string };
 
-export interface SlideData {
-  slideIndex: number;
-  frameId: string | null;
-  startTime: number;
-  endTime: number;
-  duration: number;
+export const SlideDataSchema = createSelectSchema(videoSlides).omit({
+  id: true,
+  videoId: true,
+  createdAt: true,
+});
 
-  // First frame data
-  firstFrameImageUrl: string | null;
-  firstFrameHasText: boolean;
-  firstFrameTextConfidence: number;
-  firstFrameIsDuplicate: boolean;
-  firstFrameDuplicateOfSegmentId: number | null;
-  firstFrameDuplicateOfFramePosition: string | null; // "first" | "last"
-  firstFrameSkipReason: string | null;
-
-  // Last frame data
-  lastFrameImageUrl: string | null;
-  lastFrameHasText: boolean;
-  lastFrameTextConfidence: number;
-  lastFrameIsDuplicate: boolean;
-  lastFrameDuplicateOfSegmentId: number | null;
-  lastFrameDuplicateOfFramePosition: string | null; // "first" | "last"
-  lastFrameSkipReason: string | null;
-
-  imageProcessingError?: string | null;
-  dbError?: string | null;
-}
+export type SlideData = z.infer<typeof SlideDataSchema>;
 
 // ============================================================================
 // Slide Feedback Types
 // ============================================================================
 
-export interface SlideFeedbackData {
-  slideIndex: number;
-  firstFrameHasTextValidated: boolean | null;
-  firstFrameIsDuplicateValidated: boolean | null;
-  lastFrameHasTextValidated: boolean | null;
-  lastFrameIsDuplicateValidated: boolean | null;
-  framesSameness: "same" | "different" | null;
-  isFirstFramePicked: boolean | null;
-  isLastFramePicked: boolean | null;
-}
+export const SlideFeedbackDataSchema = createSelectSchema(slideFeedback).omit({
+  id: true,
+  videoId: true,
+  createdAt: true,
+});
+
+export type SlideFeedbackData = z.infer<typeof SlideFeedbackDataSchema>;
 
 // ============================================================================
 // Job Status (from VPS)

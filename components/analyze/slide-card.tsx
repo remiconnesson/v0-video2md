@@ -22,7 +22,6 @@ import { ZoomDialog } from "./zoom-dialog";
 // ============================================================================
 
 interface FrameValidation {
-  hasTextValidated?: boolean | null;
   isDuplicateValidated?: boolean | null;
 }
 
@@ -35,16 +34,13 @@ type SamenessFeedback = "same" | "different" | null;
 interface FrameCardProps {
   label: "First" | "Last";
   imageUrl: string | null;
-  hasText: boolean;
-  textConfidence: number;
   isDuplicate: boolean;
-  duplicateOfSegmentId: number | null;
+  duplicateOfSlideNumber: number | null;
   duplicateOfFramePosition: string | null;
-  skipReason: string | null;
   allSlides: SlideData[];
   onZoom: () => void;
   validation: FrameValidation;
-  onValidate: (field: "hasText" | "isDuplicate", value: boolean | null) => void;
+  onValidate: (field: "isDuplicate", value: boolean | null) => void;
   isPicked: boolean;
   onPickedChange: (picked: boolean) => void;
 }
@@ -52,12 +48,9 @@ interface FrameCardProps {
 function FrameCard({
   label,
   imageUrl,
-  hasText,
-  textConfidence,
   isDuplicate,
-  duplicateOfSegmentId,
+  duplicateOfSlideNumber,
   duplicateOfFramePosition,
-  skipReason,
   allSlides,
   onZoom,
   validation,
@@ -67,8 +60,8 @@ function FrameCard({
 }: FrameCardProps) {
   // Find duplicate slide if exists
   const duplicateSlide =
-    isDuplicate && duplicateOfSegmentId !== null
-      ? allSlides.find((s) => s.slideIndex === duplicateOfSegmentId)
+    isDuplicate && duplicateOfSlideNumber !== null
+      ? allSlides.find((s) => s.slideNumber === duplicateOfSlideNumber)
       : null;
 
   const duplicateImageUrl = duplicateSlide
@@ -129,14 +122,14 @@ function FrameCard({
             <div className="relative w-16 rounded overflow-hidden border">
               <Image
                 src={duplicateImageUrl || "/placeholder.svg"}
-                alt={`Duplicate of slide ${duplicateOfSegmentId}`}
+                alt={`Duplicate of slide ${duplicateOfSlideNumber}`}
                 width={64}
                 height={36}
                 className="w-full h-auto object-contain"
               />
             </div>
             <span className="text-xs text-muted-foreground">
-              #{(duplicateOfSegmentId ?? 0) + 1}
+              #{duplicateOfSlideNumber}
             </span>
           </div>
         )}
@@ -144,52 +137,6 @@ function FrameCard({
 
       {/* Annotation panel below image */}
       <div className="w-full space-y-3 text-sm">
-        {/* Has Text annotation with validation */}
-        <div className="flex items-center justify-between gap-2 p-2 rounded-md bg-muted/50">
-          <div className="flex items-center gap-2">
-            <span
-              className={cn(
-                "font-medium",
-                hasText ? "text-green-600" : "text-muted-foreground",
-              )}
-            >
-              Has Text: {hasText ? `Yes (${textConfidence}%)` : "No"}
-            </span>
-          </div>
-          <div className="flex items-center gap-1">
-            <Button
-              variant={
-                validation.hasTextValidated === true ? "default" : "ghost"
-              }
-              size="icon"
-              className="h-6 w-6"
-              onClick={() =>
-                onValidate(
-                  "hasText",
-                  validation.hasTextValidated === true ? null : true,
-                )
-              }
-            >
-              <Check className="h-3 w-3" />
-            </Button>
-            <Button
-              variant={
-                validation.hasTextValidated === false ? "destructive" : "ghost"
-              }
-              size="icon"
-              className="h-6 w-6"
-              onClick={() =>
-                onValidate(
-                  "hasText",
-                  validation.hasTextValidated === false ? null : false,
-                )
-              }
-            >
-              <X className="h-3 w-3" />
-            </Button>
-          </div>
-        </div>
-
         {/* Duplicate annotation with validation */}
         <div className="flex items-center justify-between gap-2 p-2 rounded-md bg-muted/50">
           <div className="flex items-center gap-2">
@@ -200,7 +147,7 @@ function FrameCard({
               )}
             >
               {isDuplicate
-                ? `Duplicate of #${(duplicateOfSegmentId ?? 0) + 1}-${duplicateOfFramePosition || "?"}`
+                ? `Duplicate of #${duplicateOfSlideNumber}-${duplicateOfFramePosition || "?"}`
                 : "Unique"}
             </span>
           </div>
@@ -239,13 +186,6 @@ function FrameCard({
             </Button>
           </div>
         </div>
-
-        {/* Skip reason if present */}
-        {skipReason && (
-          <div className="p-2 rounded-md bg-yellow-50 dark:bg-yellow-950/30 text-yellow-700 dark:text-yellow-400 text-xs">
-            Skip: {skipReason}
-          </div>
-        )}
       </div>
     </div>
   );
@@ -272,12 +212,10 @@ export function SlideCard({
   const [zoomFrame, setZoomFrame] = useState<"first" | "last">("first");
 
   const [firstValidation, setFirstValidation] = useState<FrameValidation>({
-    hasTextValidated: initialFeedback?.firstFrameHasTextValidated ?? null,
     isDuplicateValidated:
       initialFeedback?.firstFrameIsDuplicateValidated ?? null,
   });
   const [lastValidation, setLastValidation] = useState<FrameValidation>({
-    hasTextValidated: initialFeedback?.lastFrameHasTextValidated ?? null,
     isDuplicateValidated:
       initialFeedback?.lastFrameIsDuplicateValidated ?? null,
   });
@@ -288,7 +226,7 @@ export function SlideCard({
     initialFeedback?.isFirstFramePicked ?? true,
   );
   const [isLastFramePicked, setIsLastFramePicked] = useState<boolean>(
-    initialFeedback?.isLastFramePicked ?? true,
+    initialFeedback?.isLastFramePicked ?? false,
   );
 
   // Track when we're syncing from external feedback to prevent submission loop
@@ -299,12 +237,10 @@ export function SlideCard({
     if (initialFeedback) {
       isSyncingFromFeedback.current = true;
       setFirstValidation({
-        hasTextValidated: initialFeedback.firstFrameHasTextValidated ?? null,
         isDuplicateValidated:
           initialFeedback.firstFrameIsDuplicateValidated ?? null,
       });
       setLastValidation({
-        hasTextValidated: initialFeedback.lastFrameHasTextValidated ?? null,
         isDuplicateValidated:
           initialFeedback.lastFrameIsDuplicateValidated ?? null,
       });
@@ -323,11 +259,9 @@ export function SlideCard({
     }
 
     const feedback: SlideFeedbackData = {
-      slideIndex: slide.slideIndex,
-      firstFrameHasTextValidated: firstValidation.hasTextValidated ?? null,
+      slideNumber: slide.slideNumber,
       firstFrameIsDuplicateValidated:
         firstValidation.isDuplicateValidated ?? null,
-      lastFrameHasTextValidated: lastValidation.hasTextValidated ?? null,
       lastFrameIsDuplicateValidated:
         lastValidation.isDuplicateValidated ?? null,
       framesSameness: samenessFeedback,
@@ -337,9 +271,7 @@ export function SlideCard({
 
     // Only submit if at least one field has a value
     const hasAnyValue =
-      feedback.firstFrameHasTextValidated !== null ||
       feedback.firstFrameIsDuplicateValidated !== null ||
-      feedback.lastFrameHasTextValidated !== null ||
       feedback.lastFrameIsDuplicateValidated !== null ||
       feedback.framesSameness !== null ||
       feedback.isFirstFramePicked !== null ||
@@ -354,7 +286,7 @@ export function SlideCard({
     samenessFeedback,
     isFirstFramePicked,
     isLastFramePicked,
-    slide.slideIndex,
+    slide.slideNumber,
     onSubmitFeedback,
   ]);
 
@@ -364,22 +296,20 @@ export function SlideCard({
   }, []);
 
   const handleFirstValidate = useCallback(
-    (field: "hasText" | "isDuplicate", value: boolean | null) => {
+    (_field: "isDuplicate", value: boolean | null) => {
       setFirstValidation((prev) => ({
         ...prev,
-        [field === "hasText" ? "hasTextValidated" : "isDuplicateValidated"]:
-          value,
+        isDuplicateValidated: value,
       }));
     },
     [],
   );
 
   const handleLastValidate = useCallback(
-    (field: "hasText" | "isDuplicate", value: boolean | null) => {
+    (_field: "isDuplicate", value: boolean | null) => {
       setLastValidation((prev) => ({
         ...prev,
-        [field === "hasText" ? "hasTextValidated" : "isDuplicateValidated"]:
-          value,
+        isDuplicateValidated: value,
       }));
     },
     [],
@@ -389,11 +319,11 @@ export function SlideCard({
   const zoomImages = [
     {
       url: slide.firstFrameImageUrl,
-      title: `Slide ${slide.slideIndex + 1} - First Frame`,
+      title: `Slide ${slide.slideNumber} - First Frame`,
     },
     {
       url: slide.lastFrameImageUrl,
-      title: `Slide ${slide.slideIndex + 1} - Last Frame`,
+      title: `Slide ${slide.slideNumber} - Last Frame`,
     },
   ];
 
@@ -402,7 +332,7 @@ export function SlideCard({
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-2 bg-muted/30 border-b">
         <div className="flex items-center gap-3">
-          <span className="font-semibold">Slide #{slide.slideIndex + 1}</span>
+          <span className="font-semibold">Slide #{slide.slideNumber}</span>
           <span className="text-sm text-muted-foreground">
             {formatTime(slide.startTime)} - {formatTime(slide.endTime)}
           </span>
@@ -416,12 +346,9 @@ export function SlideCard({
           <FrameCard
             label="First"
             imageUrl={slide.firstFrameImageUrl}
-            hasText={slide.firstFrameHasText}
-            textConfidence={slide.firstFrameTextConfidence}
             isDuplicate={slide.firstFrameIsDuplicate}
-            duplicateOfSegmentId={slide.firstFrameDuplicateOfSegmentId}
+            duplicateOfSlideNumber={slide.firstFrameDuplicateOfSlideNumber}
             duplicateOfFramePosition={slide.firstFrameDuplicateOfFramePosition}
-            skipReason={slide.firstFrameSkipReason}
             allSlides={allSlides}
             onZoom={() => handleZoom("first")}
             validation={firstValidation}
@@ -432,12 +359,9 @@ export function SlideCard({
           <FrameCard
             label="Last"
             imageUrl={slide.lastFrameImageUrl}
-            hasText={slide.lastFrameHasText}
-            textConfidence={slide.lastFrameTextConfidence}
             isDuplicate={slide.lastFrameIsDuplicate}
-            duplicateOfSegmentId={slide.lastFrameDuplicateOfSegmentId}
+            duplicateOfSlideNumber={slide.lastFrameDuplicateOfSlideNumber}
             duplicateOfFramePosition={slide.lastFrameDuplicateOfFramePosition}
-            skipReason={slide.lastFrameSkipReason}
             allSlides={allSlides}
             onZoom={() => handleZoom("last")}
             validation={lastValidation}
@@ -492,7 +416,7 @@ export function SlideCard({
             ? slide.firstFrameImageUrl
             : slide.lastFrameImageUrl
         }
-        title={`Slide ${slide.slideIndex + 1} - ${zoomFrame === "first" ? "First" : "Last"} Frame`}
+        title={`Slide ${slide.slideNumber} - ${zoomFrame === "first" ? "First" : "Last"} Frame`}
         allImages={zoomImages}
         currentIndex={zoomFrame === "first" ? 0 : 1}
       />

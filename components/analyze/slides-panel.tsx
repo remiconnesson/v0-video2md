@@ -117,7 +117,7 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
       const newMap = new Map<number, SlideFeedbackData>();
 
       data.feedback.forEach((fb: SlideFeedbackData) => {
-        newMap.set(fb.slideIndex, fb);
+        newMap.set(fb.slideNumber, fb);
       });
 
       setFeedbackMap(newMap);
@@ -132,7 +132,7 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
         // Optimistically update local state
         setFeedbackMap((prev) => {
           const next = new Map(prev);
-          next.set(feedback.slideIndex, feedback);
+          next.set(feedback.slideNumber, feedback);
           return next;
         });
 
@@ -487,7 +487,7 @@ function SlideGrid({
                 <SlideCard
                   slide={slide}
                   allSlides={allSlides}
-                  initialFeedback={feedbackMap.get(slide.slideIndex)}
+                  initialFeedback={feedbackMap.get(slide.slideNumber)}
                   onSubmitFeedback={onSubmitFeedback}
                 />
               </div>

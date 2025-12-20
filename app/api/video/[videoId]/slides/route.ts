@@ -26,34 +26,28 @@ export async function GET(
   // Get existing slides
   const slides = await db
     .select({
-      slideIndex: videoSlides.slideIndex,
-      frameId: videoSlides.frameId,
+      slideNumber: videoSlides.slideNumber,
       startTime: videoSlides.startTime,
       endTime: videoSlides.endTime,
       duration: videoSlides.duration,
       // First frame data
       firstFrameImageUrl: videoSlides.firstFrameImageUrl,
-      firstFrameHasText: videoSlides.firstFrameHasText,
-      firstFrameTextConfidence: videoSlides.firstFrameTextConfidence,
       firstFrameIsDuplicate: videoSlides.firstFrameIsDuplicate,
-      firstFrameDuplicateOfSegmentId:
-        videoSlides.firstFrameDuplicateOfSegmentId,
+      firstFrameDuplicateOfSlideNumber:
+        videoSlides.firstFrameDuplicateOfSlideNumber,
       firstFrameDuplicateOfFramePosition:
         videoSlides.firstFrameDuplicateOfFramePosition,
-      firstFrameSkipReason: videoSlides.firstFrameSkipReason,
       // Last frame data
       lastFrameImageUrl: videoSlides.lastFrameImageUrl,
-      lastFrameHasText: videoSlides.lastFrameHasText,
-      lastFrameTextConfidence: videoSlides.lastFrameTextConfidence,
       lastFrameIsDuplicate: videoSlides.lastFrameIsDuplicate,
-      lastFrameDuplicateOfSegmentId: videoSlides.lastFrameDuplicateOfSegmentId,
+      lastFrameDuplicateOfSlideNumber:
+        videoSlides.lastFrameDuplicateOfSlideNumber,
       lastFrameDuplicateOfFramePosition:
         videoSlides.lastFrameDuplicateOfFramePosition,
-      lastFrameSkipReason: videoSlides.lastFrameSkipReason,
     })
     .from(videoSlides)
     .where(eq(videoSlides.videoId, videoId))
-    .orderBy(asc(videoSlides.slideIndex));
+    .orderBy(asc(videoSlides.slideNumber));
 
   // If extraction status is "in_progress" but we have slides, fix the status
   // This handles the case where extraction completed but status wasn't updated
@@ -68,7 +62,6 @@ export async function GET(
       .set({
         status: "completed",
         totalSlides: slides.length,
-        updatedAt: new Date(),
       })
       .where(eq(videoSlideExtractions.videoId, videoId));
     status = "completed";
@@ -87,7 +80,6 @@ export async function GET(
         status: "failed",
         errorMessage:
           "Extraction completed but no slides were saved. Please try again.",
-        updatedAt: new Date(),
       })
       .where(eq(videoSlideExtractions.videoId, videoId));
     status = "failed";
@@ -97,7 +89,7 @@ export async function GET(
   // mark as failed so user can retry
   if (extraction && status === "in_progress" && slides.length === 0) {
     const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
-    const lastUpdate = extraction.updatedAt ?? extraction.createdAt;
+    const lastUpdate = extraction.createdAt;
 
     if (lastUpdate < thirtyMinutesAgo) {
       console.log(
@@ -110,7 +102,6 @@ export async function GET(
           status: "failed",
           errorMessage:
             "Extraction timed out or workflow failed to start. Please try again.",
-          updatedAt: new Date(),
         })
         .where(eq(videoSlideExtractions.videoId, videoId));
       status = "failed";
@@ -123,25 +114,18 @@ export async function GET(
     totalSlides: extraction?.totalSlides ?? slides.length,
     errorMessage: extraction?.errorMessage ?? null,
     slides: slides.map((s) => ({
-      slideIndex: s.slideIndex,
-      frameId: s.frameId,
+      slideNumber: s.slideNumber,
       startTime: s.startTime,
       endTime: s.endTime,
       duration: s.duration,
       firstFrameImageUrl: s.firstFrameImageUrl,
-      firstFrameHasText: s.firstFrameHasText,
-      firstFrameTextConfidence: s.firstFrameTextConfidence,
       firstFrameIsDuplicate: s.firstFrameIsDuplicate,
-      firstFrameDuplicateOfSegmentId: s.firstFrameDuplicateOfSegmentId,
+      firstFrameDuplicateOfSlideNumber: s.firstFrameDuplicateOfSlideNumber,
       firstFrameDuplicateOfFramePosition: s.firstFrameDuplicateOfFramePosition,
-      firstFrameSkipReason: s.firstFrameSkipReason,
       lastFrameImageUrl: s.lastFrameImageUrl,
-      lastFrameHasText: s.lastFrameHasText,
-      lastFrameTextConfidence: s.lastFrameTextConfidence,
       lastFrameIsDuplicate: s.lastFrameIsDuplicate,
-      lastFrameDuplicateOfSegmentId: s.lastFrameDuplicateOfSegmentId,
+      lastFrameDuplicateOfSlideNumber: s.lastFrameDuplicateOfSlideNumber,
       lastFrameDuplicateOfFramePosition: s.lastFrameDuplicateOfFramePosition,
-      lastFrameSkipReason: s.lastFrameSkipReason,
     })),
   });
 }
@@ -203,7 +187,6 @@ export async function POST(
       set: {
         status: "in_progress",
         errorMessage: null,
-        updatedAt: new Date(),
       },
     });
 

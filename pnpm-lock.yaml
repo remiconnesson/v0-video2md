@@ -134,9 +134,6 @@ importers:
       apify-client:
         specifier: ^2.21.0
         version: 2.21.0
-      aws4fetch:
-        specifier: ^1.0.20
-        version: 1.0.20
       class-variance-authority:
         specifier: ^0.7.1
         version: 0.7.1
@@ -152,6 +149,9 @@ importers:
       drizzle-orm:
         specifier: latest
         version: 0.45.1(7ffa84614e40291a84da32625578efab)
+      drizzle-zod:
+        specifier: ^0.8.3
+        version: 0.8.3(drizzle-orm@0.45.1(7ffa84614e40291a84da32625578efab))(zod@4.2.0)
       effect:
         specifier: ^3.19.12
         version: 3.19.12
@@ -4258,9 +4258,6 @@ packages:
     resolution: {integrity: sha512-NZKeq9AfyQvEeNlN0zSYAaWrmBffJh3IELMZfRpJVWgrpEbtEpnjvzqBPf+mxoI287JohRDoa+/nsfqqiZmF6g==}
     engines: {node: '>= 6.0.0'}
 
-  aws4fetch@1.0.20:
-    resolution: {integrity: sha512-/djoAN709iY65ETD6LKCtyyEI04XIBP5xVvfmNxsEP0uJB5tyaGBztSryRr4HqMStr9R06PisQE7m9zDTXKu6g==}
-
   axios@1.13.2:
     resolution: {integrity: sha512-VPk9ebNqPcy5lRGuSlKx752IlDatOjT9paPlm8A7yOuW2Fbvp4X3JznJtT4f0GzGLLiWE9W8onz51SqLYwzGaA==}
 
@@ -5311,6 +5308,12 @@ packages:
         optional: true
       sqlite3:
         optional: true
+
+  drizzle-zod@0.8.3:
+    resolution: {integrity: sha512-66yVOuvGhKJnTdiqj1/Xaaz9/qzOdRJADpDa68enqS6g3t0kpNkwNYjUuaeXgZfO/UWuIM9HIhSlJ6C5ZraMww==}
+    peerDependencies:
+      drizzle-orm: '>=0.36.0'
+      zod: ^3.25.0 || ^4.0.0
 
   dunder-proto@1.0.1:
     resolution: {integrity: sha512-KIN/nDJBQRcXw0MLVhZE9iQHmG68qAVIBg9CqmUYjmQIhgij9U5MFvrqkUL5FbtyyzZuOeOt0zdeRe4UY7ct+A==}
@@ -14555,8 +14558,6 @@ snapshots:
   aws-ssl-profiles@1.1.2:
     optional: true
 
-  aws4fetch@1.0.20: {}
-
   axios@1.13.2:
     dependencies:
       follow-redirects: 1.15.11
@@ -15694,6 +15695,11 @@ snapshots:
       postgres: 3.4.7
       sql.js: 1.13.0
       sqlite3: 5.1.7
+
+  drizzle-zod@0.8.3(drizzle-orm@0.45.1(7ffa84614e40291a84da32625578efab))(zod@4.2.0):
+    dependencies:
+      drizzle-orm: 0.45.1(7ffa84614e40291a84da32625578efab)
+      zod: 4.2.0
 
   dunder-proto@1.0.1:
     dependencies:

@@ -1,9 +1,11 @@
+import { FatalError } from "workflow";
+import { isValidYouTubeVideoId } from "@/lib/youtube-utils";
 import {
+  checkJobStatus,
   emitComplete,
   emitError,
   emitProgress,
   fetchManifest,
-  monitorJobProgress,
   processSlidesFromManifest,
   triggerExtraction,
   updateExtractionStatus,
@@ -18,6 +20,11 @@ export async function extractSlidesWorkflow(videoId: string) {
 
   let currentStep = "initialization";
 
+  const isValid = isValidYouTubeVideoId(videoId);
+  if (!isValid) {
+    throw new FatalError(`Invalid YouTube video ID: ${videoId}`);
+  }
+
   try {
     currentStep = "triggering extraction";
     await emitProgress("starting", 0, "Starting slide extraction...");
@@ -25,11 +32,11 @@ export async function extractSlidesWorkflow(videoId: string) {
 
     currentStep = "monitoring job progress";
     await emitProgress("monitoring", 10, "Processing video on server...");
-    const manifestUri = await monitorJobProgress(videoId);
+    await checkJobStatus(videoId);
 
     currentStep = "fetching manifest";
     await emitProgress("fetching", 80, "Fetching slide manifest...");
-    const manifest = await fetchManifest(manifestUri);
+    const manifest = await fetchManifest(videoId);
 
     currentStep = "processing slides";
     await emitProgress("saving", 90, "Saving slides to database...");

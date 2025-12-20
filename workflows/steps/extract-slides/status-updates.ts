@@ -1,13 +1,10 @@
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { videoSlideExtractions } from "@/db/schema";
-
-// ============================================================================
-// Status Helper
-// ============================================================================
+import type { YouTubeVideoId } from "@/lib/youtube-utils";
 
 export async function updateExtractionStatus(
-  videoId: string,
+  videoId: YouTubeVideoId,
   status: "completed" | "failed",
   totalSlides?: number,
   errorMessage?: string,
@@ -30,7 +27,6 @@ export async function updateExtractionStatus(
         status,
         totalSlides: totalSlides ?? null,
         errorMessage: errorMessage ?? null,
-        updatedAt: new Date(),
       })
       .where(eq(videoSlideExtractions.videoId, videoId));
 
