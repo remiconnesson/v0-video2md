@@ -245,7 +245,6 @@ function ProcessedVideosTable({ videos }: { videos: VideoData[] }) {
             <TableHead className="w-[110px]">Thumbnail</TableHead>
             <TableHead>Title</TableHead>
             <TableHead>Channel</TableHead>
-            <TableHead>Description</TableHead>
             <TableHead className="w-[120px]">Slides</TableHead>
             <TableHead className="w-[120px]">Analysis</TableHead>
           </TableRow>
@@ -269,11 +268,6 @@ function ProcessedVideosTable({ videos }: { videos: VideoData[] }) {
               </TableCell>
               <TableCell className="text-muted-foreground">
                 {video.videoData?.channelName || "Unknown Channel"}
-              </TableCell>
-              <TableCell className="text-muted-foreground">
-                <span className="line-clamp-2">
-                  {video.videoData?.description || "No description available."}
-                </span>
               </TableCell>
               <TableCell>
                 <StatusBadge value={video.hasSlides} />
