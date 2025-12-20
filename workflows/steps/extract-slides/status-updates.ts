@@ -3,10 +3,6 @@ import { db } from "@/db";
 import { videoSlideExtractions } from "@/db/schema";
 import type { YouTubeVideoId } from "@/lib/youtube-utils";
 
-// ============================================================================
-// Status Helper
-// ============================================================================
-
 export async function updateExtractionStatus(
   videoId: YouTubeVideoId,
   status: "completed" | "failed",
