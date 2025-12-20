@@ -5,7 +5,6 @@ import {
   jsonb,
   pgEnum,
   pgTable,
-  primaryKey,
   real,
   serial,
   text,
@@ -88,17 +87,14 @@ export const scrapTranscriptV1 = pgTable(
 export type ScrapedTranscript = typeof scrapTranscriptV1.$inferSelect;
 export type NewScrapedTranscript = typeof scrapTranscriptV1.$inferInsert;
 
-export const videoAnalysisRuns = pgTable(
-  "video_analysis_runs",
-  {
-    videoId: varchar("video_id", { length: 32 })
-      .notNull()
-      .primaryKey()
-      .references(() => videos.videoId, { onDelete: "cascade" }),
-    result: jsonb("result").$type<Record<string, unknown>>(),
-    createdAt: timestamp("created_at").defaultNow().notNull(),
-  },
-);
+export const videoAnalysisRuns = pgTable("video_analysis_runs", {
+  videoId: varchar("video_id", { length: 32 })
+    .notNull()
+    .primaryKey()
+    .references(() => videos.videoId, { onDelete: "cascade" }),
+  result: jsonb("result").$type<Record<string, unknown>>(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
 
 export type VideoAnalysisRun = typeof videoAnalysisRuns.$inferSelect;
 export type NewVideoAnalysisRun = typeof videoAnalysisRuns.$inferInsert;
