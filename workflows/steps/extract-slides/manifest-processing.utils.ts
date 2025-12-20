@@ -53,45 +53,6 @@ export function normalizeFrameMetadata(
 }
 
 /**
- * Parses an S3 URI into bucket and key components.
- * @param s3Uri - S3 URI in format "s3://bucket/path/to/key"
- * @returns Object with bucket and key, or null if invalid
- */
-export function parseS3Uri(
-  s3Uri: string,
-): { bucket: string; key: string } | null {
-  if (!s3Uri || !s3Uri.startsWith("s3://")) {
-    return null;
-  }
-
-  const urlPathParts = s3Uri.replace("s3://", "").split("/");
-  const bucket = urlPathParts.shift();
-  const objectKey = urlPathParts.join("/");
-
-  if (!bucket || !objectKey) {
-    return null;
-  }
-
-  return { bucket, key: objectKey };
-}
-
-/**
- * Builds a public URL for an S3 object.
- * @param s3BaseUrl - Base URL of the S3-compatible service
- * @param bucket - S3 bucket name
- * @param key - Object key within the bucket
- */
-export function buildS3HttpUrl(
-  s3BaseUrl: string,
-  bucket: string,
-  key: string,
-): string {
-  // Remove trailing slash from base URL if present
-  const baseUrl = s3BaseUrl.replace(/\/$/, "");
-  return `${baseUrl}/${bucket}/${key}`;
-}
-
-/**
  * Generates a blob storage path for a slide image.
  * @param videoId - YouTube video ID
  * @param frameId - Frame identifier
