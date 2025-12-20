@@ -301,15 +301,11 @@ describe("validateYoutubeVideoId", () => {
   });
 
   it("should handle fetch errors gracefully", async () => {
-    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-
     const mockFetch = vi.fn().mockRejectedValueOnce(new Error("Network error"));
     global.fetch = mockFetch;
 
     const isValid = await validateYoutubeVideoId("dQw4w9WgXcQ");
     expect(isValid).toBe(false);
-
-    errorSpy.mockRestore();
   });
 });
 
