@@ -5,6 +5,7 @@ import {
   type VideoManifest,
   VideoManifestSchema,
 } from "@/lib/slides-types";
+import type { YouTubeVideoId } from "@/lib/youtube-utils";
 import {
   extractSlideTimings,
   filterStaticSegments,
@@ -25,7 +26,9 @@ function getManifestBlobUrl(videoId: string): string {
   return `${storageRootUrl}/manifests/${videoId}.json`;
 }
 
-export async function fetchManifest(videoId: string): Promise<VideoManifest> {
+export async function fetchManifest(
+  videoId: YouTubeVideoId,
+): Promise<VideoManifest> {
   "use step";
   const json = await fetch(getManifestBlobUrl(videoId)).then((res) =>
     res.json(),
@@ -37,7 +40,7 @@ export async function fetchManifest(videoId: string): Promise<VideoManifest> {
 }
 
 export async function processSlidesFromManifest(
-  videoId: string,
+  videoId: YouTubeVideoId,
   manifest: VideoManifest,
 ): Promise<number> {
   "use step";

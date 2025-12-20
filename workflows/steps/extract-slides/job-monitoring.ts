@@ -1,13 +1,16 @@
 import { createParser } from "eventsource-parser";
 import { FatalError, fetch } from "workflow";
 import { JobStatus, type JobUpdate } from "@/lib/slides-types";
+import type { YouTubeVideoId } from "@/lib/youtube-utils";
 import { CONFIG } from "./config";
 
 // ============================================================================
 // Step: Trigger extraction
 // ============================================================================
 
-export async function triggerExtraction(videoId: string): Promise<void> {
+export async function triggerExtraction(
+  videoId: YouTubeVideoId,
+): Promise<void> {
   "use step";
 
   const extractionUrl = `${CONFIG.SLIDES_EXTRACTOR_URL}/process/youtube/${videoId}`;
@@ -67,7 +70,7 @@ export async function triggerExtraction(videoId: string): Promise<void> {
 // Step: Check job status (single attempt)
 // ============================================================================
 
-export async function checkJobStatus(videoId: string): Promise<{
+export async function checkJobStatus(videoId: YouTubeVideoId): Promise<{
   manifestUri: string | null;
   jobFailed: boolean;
   failureReason: string;
@@ -223,7 +226,9 @@ checkJobStatus.maxRetries = 1;
 // Workflow: Monitor job progress (Fast Failure with Detailed Info)
 // ============================================================================
 
-export async function monitorJobProgress(videoId: string): Promise<string> {
+export async function monitorJobProgress(
+  videoId: YouTubeVideoId,
+): Promise<string> {
   "use step";
   const jobStatusResult = await checkJobStatus(videoId);
   if (jobStatusResult.manifestUri) {

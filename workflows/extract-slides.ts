@@ -1,3 +1,6 @@
+import { FatalError } from "workflow";
+import type { YouTubeVideoId } from "@/lib/youtube-utils";
+import { isValidYouTubeVideoId } from "@/lib/youtube-utils";
 import {
   emitComplete,
   emitError,
@@ -13,10 +16,19 @@ import {
 // Main Workflow
 // ============================================================================
 
+function stepIsValidYouTubeVideoId(videoId: string): videoId is YouTubeVideoId {
+  "use step";
+  return isValidYouTubeVideoId(videoId);
+}
+
 export async function extractSlidesWorkflow(videoId: string) {
   "use workflow";
 
   let currentStep = "initialization";
+
+  if (!stepIsValidYouTubeVideoId(videoId)) {
+    throw new FatalError(`Invalid YouTube video ID: ${videoId}`);
+  }
 
   try {
     currentStep = "triggering extraction";
