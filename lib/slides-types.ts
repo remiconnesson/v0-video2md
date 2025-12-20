@@ -14,7 +14,11 @@ const FrameMetadataSchema = z.object({
 });
 
 const SegmentSchema = z.object({
-  kind: z.string(), // 'static' or 'moving'
+  kind: z.enum(["static", "moving"]),
+  start_time: z.number(), // float in seconds
+  end_time: z.number(), // float in seconds
+  duration: z.number(), // float in seconds
+});
   start_time: z.number(), // float in seconds
   end_time: z.number(), // float in seconds
   duration: z.number(), // float in seconds
