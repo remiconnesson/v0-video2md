@@ -305,7 +305,7 @@ export function SlideCard({
   }, []);
 
   const handleFirstValidate = useCallback(
-    (field: "isDuplicate", value: boolean | null) => {
+    (_field: "isDuplicate", value: boolean | null) => {
       setFirstValidation((prev) => ({
         ...prev,
         isDuplicateValidated: value,
@@ -315,7 +315,7 @@ export function SlideCard({
   );
 
   const handleLastValidate = useCallback(
-    (field: "isDuplicate", value: boolean | null) => {
+    (_field: "isDuplicate", value: boolean | null) => {
       setLastValidation((prev) => ({
         ...prev,
         isDuplicateValidated: value,

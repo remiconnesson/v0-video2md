@@ -23,16 +23,8 @@ describe("manifest-processing utils", () => {
 
   const sampleFrame: FrameMetadata = {
     frame_id: "frame-123",
-    has_text: true,
-    text_confidence: 0.7231,
-    text_total_area_ratio: 0.1,
-    text_largest_area_ratio: 0.05,
-    text_box_count: 3,
     duplicate_of: { segment_id: 2, frame_position: "last" },
     skip_reason: "duplicate",
-    s3_key: "path/to/frame.webp",
-    s3_bucket: "bucket-name",
-    s3_uri: "s3://bucket-name/path/to/frame.webp",
   };
 
   it("should detect usable frames", () => {
@@ -52,8 +44,8 @@ describe("manifest-processing utils", () => {
     expect(
       hasUsableFrames({
         ...baseSegment,
-        first_frame: { ...sampleFrame, s3_uri: null },
-        last_frame: { ...sampleFrame, s3_uri: null },
+        first_frame: null,
+        last_frame: null,
       }),
     ).toBe(false);
     expect(hasUsableFrames({ ...baseSegment, first_frame: undefined })).toBe(

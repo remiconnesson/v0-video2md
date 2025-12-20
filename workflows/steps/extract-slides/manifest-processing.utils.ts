@@ -15,13 +15,13 @@ export interface ProcessedFrame {
 
 /**
  * Determines if a static segment has any usable frames.
- * A segment is usable if it has at least one frame with an S3 URI.
+ * A segment is usable if it has at least one frame.
  */
 export function hasUsableFrames(segment: StaticSegment): boolean {
   const firstFrame = segment.first_frame;
   const lastFrame = segment.last_frame;
 
-  return Boolean(firstFrame?.s3_uri || lastFrame?.s3_uri);
+  return Boolean(firstFrame || lastFrame);
 }
 
 /**

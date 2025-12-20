@@ -1,20 +1,15 @@
 import { db } from "@/db";
 import { videoSlides } from "@/db/schema";
 import {
-  type FrameMetadata,
   type SlideData,
   type VideoManifest,
   VideoManifestSchema,
 } from "@/lib/slides-types";
-import { CONFIG, makeAwsClient } from "./config";
 import {
-  buildS3HttpUrl,
   extractSlideTimings,
   filterStaticSegments,
-  generateBlobPath,
   hasUsableFrames,
   normalizeFrameMetadata,
-  parseS3Uri,
 } from "./manifest-processing.utils";
 
 // ============================================================================
@@ -155,7 +150,6 @@ export async function processSlidesFromManifest(
   let slideIndex = 0;
   let successfulSlides = 0;
   let failedSlides = 0;
-  const client = makeAwsClient();
 
   for (const segment of staticSegments) {
     const firstFrame = segment.first_frame;
@@ -164,146 +158,27 @@ export async function processSlidesFromManifest(
     // Skip if no frames available
     if (!hasUsableFrames(segment)) {
       console.warn(
-        `💾 processSlidesFromManifest: Skipping segment ${slideIndex} for video ${videoId}: missing frames or S3 URIs`,
+        `💾 processSlidesFromManifest: Skipping segment ${slideIndex} for video ${videoId}: missing frames`,
         {
           segment,
           hasFirstFrame: !!firstFrame,
-          hasFirstS3Uri: firstFrame ? !!firstFrame.s3_uri : false,
           hasLastFrame: !!lastFrame,
-          hasLastS3Uri: lastFrame ? !!lastFrame.s3_uri : false,
         },
       );
       slideIndex++;
       continue;
     }
 
-    let firstFrameImageUrl = "";
-    let lastFrameImageUrl = "";
-    let imageProcessingError: string | null = null;
-
-    // Helper function to process a single frame
-    async function processFrame(
-      frame: FrameMetadata,
-      frameType: "first" | "last",
-    ): Promise<string> {
-      try {
-        console.log(
-          `💾 processSlidesFromManifest: Processing ${frameType} frame for slide ${slideIndex} (frame: ${frame.frame_id})`,
-        );
-
-        // 1. Download from Private S3 (Custom Endpoint)
-        if (!frame.s3_uri) {
-          throw new Error(`${frameType} frame missing S3 URI`);
-        }
-        const parsedS3Uri = parseS3Uri(frame.s3_uri);
-
-        if (!parsedS3Uri) {
-          throw new Error(`${frameType} frame has invalid S3 URI format`);
-        }
-
-        const s3Url = buildS3HttpUrl(
-          CONFIG.S3_BASE_URL,
-          parsedS3Uri.bucket,
-          parsedS3Uri.key,
-        );
-
-        console.log(
-          `💾 processSlidesFromManifest: Downloading ${frameType} frame image from S3: ${s3Url}`,
-        );
-
-        const imageResponse = await client.fetch(s3Url);
-
-        if (!imageResponse.ok) {
-          const errorText = await imageResponse.text();
-          throw new Error(
-            `S3 download failed: HTTP ${imageResponse.status} ${imageResponse.statusText} - ${errorText}`,
-          );
-        }
-
-        const imageBuffer = await imageResponse.arrayBuffer();
-        console.log(
-          `💾 processSlidesFromManifest: Downloaded ${frameType} frame image (${imageBuffer.byteLength} bytes), uploading to Vercel Blob`,
-        );
-
-        // 2. Upload to Vercel Blob (MANUAL FETCH - RESTORED)
-        const blobPath = generateBlobPath(
-          videoId,
-          frame.frame_id,
-          slideIndex,
-          frameType,
-        );
-        const blobUrl = `https://blob.vercel-storage.com/${blobPath}`;
-
-        const blobResponse = await fetch(blobUrl, {
-          method: "PUT",
-          headers: {
-            Authorization: `Bearer ${CONFIG.BLOB_READ_WRITE_TOKEN}`,
-            "Content-Type": "image/webp",
-            "x-api-version": "7",
-          },
-          body: imageBuffer,
-        });
-
-        if (!blobResponse.ok) {
-          const blobErrorText = await blobResponse.text();
-          throw new Error(
-            `Blob upload failed: HTTP ${blobResponse.status} ${blobResponse.statusText} - ${blobErrorText}`,
-          );
-        }
-
-        const blobResult = (await blobResponse.json()) as { url: string };
-        const publicImageUrl = blobResult.url;
-        console.log(
-          `💾 processSlidesFromManifest: Successfully uploaded ${frameType} frame image to blob: ${publicImageUrl}`,
-        );
-
-        return publicImageUrl;
-      } catch (e) {
-        throw new Error(
-          `${frameType} frame processing failed: ${e instanceof Error ? e.message : "Unknown error"}`,
-        );
-      }
-    }
-
-    // Process first frame
-    if (firstFrame?.s3_uri) {
-      try {
-        firstFrameImageUrl = await processFrame(firstFrame, "first");
-      } catch (e) {
-        console.error(
-          `💾 processSlidesFromManifest: Failed to process first frame for slide ${slideIndex}:`,
-          e,
-        );
-        imageProcessingError =
-          (imageProcessingError ? `${imageProcessingError}; ` : "") +
-          (e instanceof Error ? e.message : "Unknown error");
-      }
-    }
-
-    // Process last frame
-    if (lastFrame?.s3_uri) {
-      try {
-        lastFrameImageUrl = await processFrame(lastFrame, "last");
-      } catch (e) {
-        console.error(
-          `💾 processSlidesFromManifest: Failed to process last frame for slide ${slideIndex}:`,
-          e,
-        );
-        imageProcessingError =
-          (imageProcessingError ? `${imageProcessingError}; ` : "") +
-          (e instanceof Error ? e.message : "Unknown error");
-      }
-    }
+    const firstFrameImageUrl = null;
+    const lastFrameImageUrl = null;
+    const imageProcessingError: string | null = null;
 
     const timings = extractSlideTimings(segment);
     const firstFrameData = normalizeFrameMetadata(
       firstFrame,
-      firstFrameImageUrl || null,
+      firstFrameImageUrl,
     );
-    const lastFrameData = normalizeFrameMetadata(
-      lastFrame,
-      lastFrameImageUrl || null,
-    );
+    const lastFrameData = normalizeFrameMetadata(lastFrame, lastFrameImageUrl);
 
     const slideData: SlideData = {
       slideIndex,

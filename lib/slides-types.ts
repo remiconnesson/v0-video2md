@@ -64,6 +64,8 @@ export type SlideStreamEvent =
 export const SlideDataSchema = createSelectSchema(videoSlides, {
   firstFrameDuplicateOfFramePosition: z.enum(["first", "last"]).nullable(),
   lastFrameDuplicateOfFramePosition: z.enum(["first", "last"]).nullable(),
+  firstFrameIsDuplicate: z.boolean(),
+  lastFrameIsDuplicate: z.boolean(),
 })
   .omit({
     id: true,
