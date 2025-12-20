@@ -45,6 +45,7 @@ export const VideoManifestSchema = z.record(z.string(), ManifestDataSchema); // 
 
 export type FrameMetadata = z.infer<typeof FrameMetadataSchema>;
 export type Segment = z.infer<typeof SegmentSchema>;
+export type StaticSegmentData = z.infer<typeof StaticSegmentSchema>;
 export type ManifestData = z.infer<typeof ManifestDataSchema>;
 export type VideoManifest = z.infer<typeof VideoManifestSchema>;
 

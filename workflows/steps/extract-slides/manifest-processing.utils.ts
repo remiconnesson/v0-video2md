@@ -3,7 +3,11 @@
  * Extracted from workflow steps for testability and reuse.
  */
 
-import type { FrameMetadata, Segment } from "@/lib/slides-types";
+import type {
+  FrameMetadata,
+  Segment,
+  StaticSegmentData,
+} from "@/lib/slides-types";
 
 type FrameSide = "firstFrame" | "lastFrame";
 
@@ -65,7 +69,7 @@ export function generateBlobPath(
  * @param segments - Mixed array of segments
  * @returns Only static segments
  */
-export function filterStaticSegments(segments: Segment[]): Segment[] {
+export function filterStaticSegments(segments: Segment[]): StaticSegmentData[] {
   return segments.filter((s) => s.kind === "static");
 }
 

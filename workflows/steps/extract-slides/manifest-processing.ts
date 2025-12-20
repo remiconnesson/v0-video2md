@@ -53,7 +53,7 @@ fetchManifest.maxRetries = 1;
 export async function processSlidesFromManifest(
   videoId: YouTubeVideoId,
   manifest: VideoManifest,
-): Promise<number> {
+): Promise<void> {
   "use step";
 
   console.log(
@@ -82,6 +82,8 @@ export async function processSlidesFromManifest(
 
   let slideNumber = 1;
 
+  console.log("💾 processSlidesFromManifest: Saving slides to database");
+
   for (const segment of staticSegments) {
     const firstFrame = segment.first_frame;
     const lastFrame = segment.last_frame;
@@ -99,9 +101,6 @@ export async function processSlidesFromManifest(
       ...normalizeIsDuplicate(lastFrame, "lastFrame"),
     };
 
-    console.log(
-      `💾 processSlidesFromManifest: Saving slide ${slideNumber} to database`,
-    );
     await db
       .insert(videoSlides)
       .values({
@@ -109,10 +108,6 @@ export async function processSlidesFromManifest(
         ...slideData,
       })
       .onConflictDoNothing();
-
-    console.log(
-      `💾 processSlidesFromManifest: Successfully saved slide ${slideNumber} to database`,
-    );
 
     await emitSlide(slideData);
     slideNumber++;
@@ -124,7 +119,4 @@ export async function processSlidesFromManifest(
       totalSegments: staticSegments.length,
     },
   );
-
-  const totalSlides = slideNumber - 1;
-  return totalSlides;
 }
