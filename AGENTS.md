@@ -60,9 +60,10 @@ pnpm test:watch  # Run tests in watch mode
 
 ## Testing Philosophy
 
-- **DO**: Write tests for business logic, utilities, and components you write
+- **DO**: Write tests for business logic, utilities, and components we wrote in this codebase
 - **DON'T**: Write tests that just verify frameworks/libraries work
 - **DON'T**: Write tests that duplicate TypeScript's type checking guarantees
+- **DON'T**: Use `any` in test files
 
 ## Key Features
 
