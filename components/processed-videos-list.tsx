@@ -1,14 +1,27 @@
 "use client";
 
-import type { VirtualItem } from "@tanstack/react-virtual";
-import { useVirtualizer } from "@tanstack/react-virtual";
-import { CheckCircle2, Clock, FileVideo, Search } from "lucide-react";
+import { FileVideo, Search } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 interface VideoData {
   videoId: string;
@@ -19,15 +32,19 @@ interface VideoData {
     thumbnail: string;
     channelName: string;
   };
-  extractSlides: boolean;
+  hasSlides: boolean;
+  hasAnalysis: boolean;
   completedAt?: string;
 }
+
+type FilterOption = "all" | "yes" | "no";
 
 export function ProcessedVideosList() {
   const [videos, setVideos] = useState<VideoData[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
-  const parentRef = useRef<HTMLDivElement>(null);
+  const [slidesFilter, setSlidesFilter] = useState<FilterOption>("all");
+  const [analysisFilter, setAnalysisFilter] = useState<FilterOption>("all");
 
   useEffect(() => {
     async function fetchVideos() {
@@ -50,31 +67,25 @@ export function ProcessedVideosList() {
 
   // Filter videos based on search query
   const filteredVideos = useMemo(() => {
-    if (!searchQuery.trim()) {
-      return videos;
-    }
+    const query = searchQuery.trim().toLowerCase();
 
-    const query = searchQuery.toLowerCase();
     return videos.filter((video) => {
       const title = video.videoData?.title?.toLowerCase() || "";
       const channelName = video.videoData?.channelName?.toLowerCase() || "";
       const description = video.videoData?.description?.toLowerCase() || "";
 
-      return (
+      const matchesSearch =
+        !query ||
         title.includes(query) ||
         channelName.includes(query) ||
-        description.includes(query)
-      );
-    });
-  }, [videos, searchQuery]);
+        description.includes(query);
 
-  // Setup virtualizer
-  const virtualizer = useVirtualizer({
-    count: filteredVideos.length,
-    getScrollElement: () => parentRef.current,
-    estimateSize: () => 150, // Estimated height of each video card
-    overscan: 3, // Number of items to render outside of the visible area
-  });
+      const matchesSlides = matchesFilter(video.hasSlides, slidesFilter);
+      const matchesAnalysis = matchesFilter(video.hasAnalysis, analysisFilter);
+
+      return matchesSearch && matchesSlides && matchesAnalysis;
+    });
+  }, [videos, searchQuery, slidesFilter, analysisFilter]);
 
   if (loading) {
     return (
@@ -119,18 +130,14 @@ export function ProcessedVideosList() {
           <FileVideo className="h-5 w-5" />
           Processed Videos ({filteredVideos.length})
         </CardTitle>
-        <div className="mt-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              type="text"
-              placeholder="Search by title, channel, or description..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9"
-            />
-          </div>
-        </div>
+        <ProcessedVideosFilters
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          slidesFilter={slidesFilter}
+          onSlidesFilterChange={setSlidesFilter}
+          analysisFilter={analysisFilter}
+          onAnalysisFilterChange={setAnalysisFilter}
+        />
       </CardHeader>
       <CardContent>
         {filteredVideos.length === 0 ? (
@@ -138,33 +145,7 @@ export function ProcessedVideosList() {
             No videos found matching your search
           </p>
         ) : (
-          <div
-            ref={parentRef}
-            className="h-[600px] overflow-auto"
-            style={{
-              contain: "strict",
-            }}
-          >
-            <div
-              style={{
-                height: `${virtualizer.getTotalSize()}px`,
-                width: "100%",
-                position: "relative",
-              }}
-            >
-              {virtualizer.getVirtualItems().map((virtualItem) => {
-                const video = filteredVideos[virtualItem.index];
-                return (
-                  <VirtualizedVideoCard
-                    key={virtualItem.key}
-                    virtualItem={virtualItem}
-                    video={video}
-                    measureElement={virtualizer.measureElement}
-                  />
-                );
-              })}
-            </div>
-          </div>
+          <ProcessedVideosTable videos={filteredVideos} />
         )}
       </CardContent>
     </Card>
@@ -175,125 +156,160 @@ export function ProcessedVideosList() {
 // Sub-components for better readability
 // ============================================================================
 
-interface VirtualizedVideoCardProps {
-  virtualItem: VirtualItem;
-  video: VideoData;
-  measureElement: (node: Element | null) => void;
+function matchesFilter(value: boolean, filter: FilterOption) {
+  if (filter === "all") {
+    return true;
+  }
+
+  return filter === "yes" ? value : !value;
 }
 
-function VirtualizedVideoCard({
-  virtualItem,
-  video,
-  measureElement,
-}: VirtualizedVideoCardProps) {
+interface ProcessedVideosFiltersProps {
+  searchQuery: string;
+  onSearchChange: (value: string) => void;
+  slidesFilter: FilterOption;
+  onSlidesFilterChange: (value: FilterOption) => void;
+  analysisFilter: FilterOption;
+  onAnalysisFilterChange: (value: FilterOption) => void;
+}
+
+function ProcessedVideosFilters({
+  searchQuery,
+  onSearchChange,
+  slidesFilter,
+  onSlidesFilterChange,
+  analysisFilter,
+  onAnalysisFilterChange,
+}: ProcessedVideosFiltersProps) {
   return (
-    <div
-      data-index={virtualItem.index}
-      ref={measureElement}
-      style={{
-        position: "absolute",
-        top: 0,
-        left: 0,
-        width: "100%",
-        transform: `translateY(${virtualItem.start}px)`,
-      }}
-    >
-      <div className="pb-4">
-        <VideoCard video={video} />
+    <div className="mt-4 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+      <div className="relative w-full lg:max-w-md">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input
+          type="text"
+          placeholder="Search by title, channel, or description..."
+          value={searchQuery}
+          onChange={(e) => onSearchChange(e.target.value)}
+          className="pl-9"
+        />
+      </div>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
+        <FilterSelect
+          label="Slides"
+          value={slidesFilter}
+          onValueChange={onSlidesFilterChange}
+        />
+        <FilterSelect
+          label="Analysis"
+          value={analysisFilter}
+          onValueChange={onAnalysisFilterChange}
+        />
       </div>
     </div>
   );
 }
 
-function VideoCard({ video }: { video: VideoData }) {
-  const thumbnailUrl =
-    video.videoData?.thumbnail || "/placeholder.svg?height=90&width=160";
-  const title = video.videoData?.title || "Untitled Video";
-  const channelName = video.videoData?.channelName || "Unknown Channel";
-  const description =
-    video.videoData?.description || "No description available";
-  const duration = video.videoData?.duration || "N/A";
+interface FilterSelectProps {
+  label: string;
+  value: FilterOption;
+  onValueChange: (value: FilterOption) => void;
+}
 
+function FilterSelect({ label, value, onValueChange }: FilterSelectProps) {
   return (
-    <Link href={`/video/youtube/${video.videoId}`} className="block group">
-      <div className="flex gap-4 p-4 rounded-lg border hover:bg-accent transition-colors">
-        <VideoThumbnail src={thumbnailUrl} alt={title} />
-        <VideoDetails
-          title={title}
-          channelName={channelName}
-          description={description}
-          duration={duration}
-          hasSlides={video.extractSlides}
-        />
-      </div>
-    </Link>
+    <div className="flex items-center gap-2">
+      <span className="text-sm text-muted-foreground">{label}</span>
+      <Select
+        value={value}
+        onValueChange={(nextValue) => onValueChange(nextValue as FilterOption)}
+      >
+        <SelectTrigger className="h-9 w-[140px]">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="all">All</SelectItem>
+          <SelectItem value="yes">Yes</SelectItem>
+          <SelectItem value="no">No</SelectItem>
+        </SelectContent>
+      </Select>
+    </div>
   );
 }
 
-function VideoThumbnail({ src, alt }: { src: string; alt: string }) {
+function ProcessedVideosTable({ videos }: { videos: VideoData[] }) {
   return (
-    <div className="flex-shrink-0">
+    <div className="rounded-lg border">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead className="w-[110px]">Thumbnail</TableHead>
+            <TableHead>Title</TableHead>
+            <TableHead>Channel</TableHead>
+            <TableHead>Description</TableHead>
+            <TableHead className="w-[120px]">Slides</TableHead>
+            <TableHead className="w-[120px]">Analysis</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {videos.map((video) => (
+            <TableRow key={video.videoId}>
+              <TableCell>
+                <ThumbnailCell
+                  src={video.videoData?.thumbnail}
+                  alt={video.videoData?.title}
+                />
+              </TableCell>
+              <TableCell className="font-medium">
+                <Link
+                  href={`/video/youtube/${video.videoId}`}
+                  className="line-clamp-2 hover:text-primary"
+                >
+                  {video.videoData?.title || "Untitled Video"}
+                </Link>
+              </TableCell>
+              <TableCell className="text-muted-foreground">
+                {video.videoData?.channelName || "Unknown Channel"}
+              </TableCell>
+              <TableCell className="text-muted-foreground">
+                <span className="line-clamp-2">
+                  {video.videoData?.description || "No description available."}
+                </span>
+              </TableCell>
+              <TableCell>
+                <StatusBadge value={video.hasSlides} />
+              </TableCell>
+              <TableCell>
+                <StatusBadge value={video.hasAnalysis} />
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
+  );
+}
+
+function ThumbnailCell({ src, alt }: { src?: string; alt?: string }) {
+  const thumbnailUrl = src || "/placeholder.svg?height=90&width=160";
+  const altText = alt || "Video thumbnail";
+
+  return (
+    <div className="h-[54px] w-[96px] overflow-hidden rounded-md border bg-muted/20">
       <Image
-        src={src}
-        alt={alt}
-        width={160}
-        height={90}
-        className="w-40 h-24 object-cover rounded"
+        src={thumbnailUrl}
+        alt={altText}
+        width={96}
+        height={54}
+        className="h-full w-full object-cover"
       />
     </div>
   );
 }
 
-function VideoDetails({
-  title,
-  channelName,
-  description,
-  duration,
-  hasSlides,
-}: {
-  title: string;
-  channelName: string;
-  description: string;
-  duration: string;
-  hasSlides: boolean;
-}) {
-  return (
-    <div className="flex-1 min-w-0">
-      <h3 className="font-semibold text-lg mb-1 truncate group-hover:text-primary transition-colors">
-        {title}
-      </h3>
-
-      <p className="text-sm text-muted-foreground mb-2">{channelName}</p>
-
-      <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
-        {description}
-      </p>
-
-      <VideoMetadata duration={duration} hasSlides={hasSlides} />
-    </div>
-  );
-}
-
-function VideoMetadata({
-  duration,
-  hasSlides,
-}: {
-  duration: string;
-  hasSlides: boolean;
-}) {
-  return (
-    <div className="flex items-center gap-3 text-sm">
-      <div className="flex items-center gap-1 text-muted-foreground">
-        <Clock className="h-4 w-4" />
-        <span>{duration}</span>
-      </div>
-
-      <Badge variant="secondary" className="flex items-center gap-1">
-        <CheckCircle2 className="h-3 w-3" />
-        Completed
-      </Badge>
-
-      {hasSlides && <Badge variant="outline">With Slides</Badge>}
-    </div>
+function StatusBadge({ value }: { value: boolean }) {
+  return value ? (
+    <Badge variant="secondary">Yes</Badge>
+  ) : (
+    <Badge variant="outline">No</Badge>
   );
 }

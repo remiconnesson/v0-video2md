@@ -1,7 +1,13 @@
-import { desc, eq, isNotNull } from "drizzle-orm";
+import { and, desc, eq, inArray, isNotNull } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { db } from "@/db";
-import { channels, scrapTranscriptV1, videos } from "@/db/schema";
+import {
+  channels,
+  scrapTranscriptV1,
+  videoAnalysisRuns,
+  videoSlides,
+  videos,
+} from "@/db/schema";
 import { formatDuration } from "@/lib/time-utils";
 
 // ============================================================================
@@ -27,6 +33,31 @@ export async function GET() {
     .orderBy(desc(scrapTranscriptV1.createdAt))
     .limit(50);
 
+  const videoIds = results.map((row) => row.videoId);
+
+  const [slidesRows, analysisRows] = await Promise.all([
+    videoIds.length
+      ? db
+          .select({ videoId: videoSlides.videoId })
+          .from(videoSlides)
+          .where(inArray(videoSlides.videoId, videoIds))
+      : Promise.resolve([]),
+    videoIds.length
+      ? db
+          .select({ videoId: videoAnalysisRuns.videoId })
+          .from(videoAnalysisRuns)
+          .where(
+            and(
+              inArray(videoAnalysisRuns.videoId, videoIds),
+              isNotNull(videoAnalysisRuns.result),
+            ),
+          )
+      : Promise.resolve([]),
+  ]);
+
+  const videosWithSlides = new Set(slidesRows.map((row) => row.videoId));
+  const videosWithAnalysis = new Set(analysisRows.map((row) => row.videoId));
+
   // Transform to match the ProcessedVideosList expected format
   const processedVideos = results.map((row) => ({
     videoId: row.videoId,
@@ -39,7 +70,8 @@ export async function GET() {
       thumbnail: row.thumbnail ?? "",
       channelName: row.channelName,
     },
-    extractSlides: false,
+    hasSlides: videosWithSlides.has(row.videoId),
+    hasAnalysis: videosWithAnalysis.has(row.videoId),
     completedAt: row.createdAt?.toISOString(),
   }));
 
