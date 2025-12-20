@@ -9,7 +9,7 @@ export interface ProcessedFrame {
   imageUrl: string | null;
   isDuplicate: boolean;
   duplicateOfSlideNumber: number | null;
-  duplicateOfFramePosition: string | null;
+  duplicateOfFramePosition: "first" | "last" | null;
 }
 
 /**
@@ -46,11 +46,20 @@ export function normalizeFrameMetadata(
     };
   }
 
+  if (frame.duplicate_of === null) {
+    return {
+      imageUrl,
+      isDuplicate: false,
+      duplicateOfSlideNumber: null,
+      duplicateOfFramePosition: null,
+    };
+  }
+
   return {
     imageUrl,
-    isDuplicate: frame.duplicate_of !== null,
-    duplicateOfSlideNumber: frame.duplicate_of?.segment_id ?? null,
-    duplicateOfFramePosition: frame.duplicate_of?.frame_position ?? null,
+    isDuplicate: true,
+    duplicateOfSlideNumber: frame.duplicate_of.segment_id,
+    duplicateOfFramePosition: frame.duplicate_of.frame_position,
   };
 }
 

@@ -7,7 +7,7 @@ const FrameMetadataSchema = z.object({
   duplicate_of: z
     .object({
       segment_id: z.number(),
-      frame_position: z.string(),
+      frame_position: z.enum(["first", "last"]),
     })
     .nullable(),
   url: z.string().nullable(),
@@ -24,7 +24,7 @@ const SegmentSchema = z.object({
 
 const ManifestDataSchema = z.object({
   segments: z.array(SegmentSchema),
-  updated_at: z.iso.datetime(),
+  updated_at: z.iso.datetime(), // ISO 8601 timestamp
 });
 
 export const VideoManifestSchema = z.record(z.string(), ManifestDataSchema); // video_id -> manifest data

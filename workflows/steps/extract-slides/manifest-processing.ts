@@ -100,12 +100,12 @@ export async function processSlidesFromManifest(
       firstFrameIsDuplicate: firstFrameData.isDuplicate,
       firstFrameDuplicateOfSlideNumber: firstFrameData.duplicateOfSlideNumber,
       firstFrameDuplicateOfFramePosition:
-        firstFrameData.duplicateOfFramePosition as "first" | "last" | null,
+        firstFrameData.duplicateOfFramePosition,
+
       lastFrameImageUrl: lastFrameData.imageUrl,
       lastFrameIsDuplicate: lastFrameData.isDuplicate,
       lastFrameDuplicateOfSlideNumber: lastFrameData.duplicateOfSlideNumber,
-      lastFrameDuplicateOfFramePosition:
-        lastFrameData.duplicateOfFramePosition as "first" | "last" | null,
+      lastFrameDuplicateOfFramePosition: lastFrameData.duplicateOfFramePosition,
       imageProcessingError,
     };
 
