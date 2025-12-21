@@ -4,6 +4,7 @@ import {
   analysisToMarkdown,
   contentToMarkdown,
   formatSectionTitle,
+  sectionToMarkdown,
 } from "./analysis-format";
 
 describe("formatSectionTitle", () => {
@@ -143,5 +144,40 @@ describe("analysisToMarkdown", () => {
     expect(result).toContain("- item 1");
     expect(result).toContain("## Details");
     expect(result).toContain("**key**: value");
+  });
+});
+
+describe("sectionToMarkdown", () => {
+  it("should convert a section with string content to markdown", () => {
+    const result = sectionToMarkdown("tldr", "This is a summary");
+    expect(result).toBe("## Tldr\n\nThis is a summary");
+  });
+
+  it("should convert a section with array content to markdown", () => {
+    const result = sectionToMarkdown("key_takeaways", ["Point 1", "Point 2"]);
+    expect(result).toContain("## Key Takeaways");
+    expect(result).toContain("- Point 1");
+    expect(result).toContain("- Point 2");
+  });
+
+  it("should convert a section with object content to markdown", () => {
+    const result = sectionToMarkdown("metadata", {
+      title: "Test",
+      duration: "10:00",
+    });
+    expect(result).toContain("## Metadata");
+    expect(result).toContain("**title**: Test");
+    expect(result).toContain("**duration**: 10:00");
+  });
+
+  it("should handle empty content", () => {
+    const result = sectionToMarkdown("empty_section", null);
+    expect(result).toContain("## Empty Section");
+    expect(result).toContain("_No content_");
+  });
+
+  it("should format section title correctly", () => {
+    const result = sectionToMarkdown("my_custom_section", "content");
+    expect(result).toContain("## My Custom Section");
   });
 });
