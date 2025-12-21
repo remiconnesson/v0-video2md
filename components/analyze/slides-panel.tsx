@@ -168,7 +168,7 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
     }));
 
     try {
-      const response = await fetch(`/api/video/${videoId}/slides?force=true`, {
+      const response = await fetch(`/api/video/${videoId}/slides`, {
         method: "POST",
       });
 
@@ -285,15 +285,6 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
       slides={slidesState.slides}
       feedbackMap={feedbackMap}
       onSubmitFeedback={submitFeedback}
-      onReExtract={() => {
-        setSlidesState((prev) => ({
-          ...prev,
-          slides: [],
-          progress: 0,
-          message: "",
-        }));
-        startExtraction();
-      }}
     />
   );
 }
@@ -414,13 +405,11 @@ function CompletedState({
   slides,
   feedbackMap,
   onSubmitFeedback,
-  onReExtract,
 }: {
   slidesCount: number;
   slides: SlideData[];
   feedbackMap: Map<number, SlideFeedbackData>;
   onSubmitFeedback: (feedback: SlideFeedbackData) => Promise<void>;
-  onReExtract: () => void;
 }) {
   return (
     <Card>
@@ -430,10 +419,6 @@ function CompletedState({
             <ImageIcon className="h-5 w-5" />
             Slides ({slidesCount})
           </span>
-
-          <Button variant="outline" size="sm" onClick={onReExtract}>
-            Re-extract
-          </Button>
         </CardTitle>
       </CardHeader>
 

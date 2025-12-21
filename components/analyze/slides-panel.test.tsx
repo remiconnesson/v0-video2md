@@ -66,7 +66,7 @@ describe("SlidesPanel Auto-Trigger Extraction", () => {
     const calls = mockFetch.mock.calls;
     const postCall = calls.find((call) => call[1]?.method === "POST");
     expect(postCall).toBeDefined();
-    expect(postCall?.[0]).toBe(`/api/video/${mockVideoId}/slides?force=true`);
+    expect(postCall?.[0]).toBe(`/api/video/${mockVideoId}/slides`);
     expect(postCall?.[1]?.method).toBe("POST");
   });
 
