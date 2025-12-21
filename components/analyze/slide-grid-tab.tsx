@@ -174,7 +174,7 @@ function PickedSlidesGrid({ slides }: { slides: PickedSlide[] }) {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <ImageIcon className="h-5 w-5" />
-            Picked Slides ({slides.length})
+            Picked Frames ({slides.length})
           </CardTitle>
         </CardHeader>
         <CardContent>

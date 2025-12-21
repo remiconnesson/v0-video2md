@@ -220,15 +220,18 @@ export function SlidesPanel({ videoId, view = "curation" }: SlidesPanelProps) {
     [feedbackMap, slidesState.slides],
   );
 
-  const pickedSlidesCount = useMemo(
+  const pickedFramesCount = useMemo(
     () =>
-      slidesState.slides.filter((slide) => {
+      slidesState.slides.reduce((acc, slide) => {
         const feedback = feedbackMap.get(slide.slideNumber);
         const isFirstPicked = feedback?.isFirstFramePicked ?? true;
         const isLastPicked = feedback?.isLastFramePicked ?? false;
 
-        return isFirstPicked || isLastPicked;
-      }).length,
+        let count = 0;
+        if (isFirstPicked) count++;
+        if (isLastPicked) count++;
+        return acc + count;
+      }, 0),
     [feedbackMap, slidesState.slides],
   );
 
@@ -363,8 +366,8 @@ export function SlidesPanel({ videoId, view = "curation" }: SlidesPanelProps) {
   // Completed state - show slides
   return (
     <CompletedState
-      slidesCount={slidesState.slides.length}
-      pickedSlidesCount={pickedSlidesCount}
+      totalFramesCount={slidesState.slides.length * 2}
+      pickedFramesCount={pickedFramesCount}
       slides={slidesState.slides}
       feedbackMap={feedbackMap}
       onSubmitFeedback={submitFeedback}
@@ -425,7 +428,7 @@ function ExtractingState({
         {hasSlidesFound && (
           <div className="mt-6">
             <p className="text-sm font-medium mb-3">
-              {slides.length} slides found so far
+              {slides.length * 2} frames found so far
             </p>
             <SlideGrid
               slides={slides}
@@ -461,8 +464,8 @@ function ErrorState({
 }
 
 function CompletedState({
-  slidesCount,
-  pickedSlidesCount,
+  totalFramesCount,
+  pickedFramesCount,
   slides,
   feedbackMap,
   onSubmitFeedback,
@@ -471,8 +474,8 @@ function CompletedState({
   isUnpickingAll,
   hasPickedFrames,
 }: {
-  slidesCount: number;
-  pickedSlidesCount: number;
+  totalFramesCount: number;
+  pickedFramesCount: number;
   slides: SlideData[];
   feedbackMap: Map<number, SlideFeedbackData>;
   onSubmitFeedback: (feedback: SlideFeedbackData) => Promise<void>;
@@ -484,8 +487,8 @@ function CompletedState({
   const [showTutorial, setShowTutorial] = useState(false);
   const slidesLabel =
     view === "curation"
-      ? `Slides (${pickedSlidesCount}/${slidesCount})`
-      : `Slides (${slidesCount})`;
+      ? `Frames (${pickedFramesCount}/${totalFramesCount})`
+      : `Picked Frames (${pickedFramesCount})`;
 
   return (
     <Card>
