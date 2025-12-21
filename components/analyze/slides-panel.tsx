@@ -219,6 +219,18 @@ export function SlidesPanel({ videoId, view = "curation" }: SlidesPanelProps) {
     [feedbackMap, slidesState.slides],
   );
 
+  const pickedSlidesCount = useMemo(
+    () =>
+      slidesState.slides.filter((slide) => {
+        const feedback = feedbackMap.get(slide.slideNumber);
+        const isFirstPicked = feedback?.isFirstFramePicked ?? true;
+        const isLastPicked = feedback?.isLastFramePicked ?? false;
+
+        return isFirstPicked || isLastPicked;
+      }).length,
+    [feedbackMap, slidesState.slides],
+  );
+
   const startExtraction = useCallback(async () => {
     // Set state to extracting
     setSlidesState((prev) => ({
@@ -351,6 +363,7 @@ export function SlidesPanel({ videoId, view = "curation" }: SlidesPanelProps) {
   return (
     <CompletedState
       slidesCount={slidesState.slides.length}
+      pickedSlidesCount={pickedSlidesCount}
       slides={slidesState.slides}
       feedbackMap={feedbackMap}
       onSubmitFeedback={submitFeedback}
@@ -448,6 +461,7 @@ function ErrorState({
 
 function CompletedState({
   slidesCount,
+  pickedSlidesCount,
   slides,
   feedbackMap,
   onSubmitFeedback,
@@ -457,6 +471,7 @@ function CompletedState({
   hasPickedFrames,
 }: {
   slidesCount: number;
+  pickedSlidesCount: number;
   slides: SlideData[];
   feedbackMap: Map<number, SlideFeedbackData>;
   onSubmitFeedback: (feedback: SlideFeedbackData) => Promise<void>;
@@ -465,13 +480,18 @@ function CompletedState({
   isUnpickingAll: boolean;
   hasPickedFrames: boolean;
 }) {
+  const slidesLabel =
+    view === "curation"
+      ? `Slides (${pickedSlidesCount}/${slidesCount})`
+      : `Slides (${slidesCount})`;
+
   return (
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center justify-between">
           <span className="flex items-center gap-2">
             <ImageIcon className="h-5 w-5" />
-            Slides ({slidesCount})
+            {slidesLabel}
           </span>
           {view === "curation" && (
             <Button

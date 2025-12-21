@@ -117,7 +117,7 @@ describe("SlidesPanel Auto-Trigger Extraction", () => {
 
     // Should show completed state, not trigger extraction
     await waitFor(() => {
-      expect(screen.getByText("Slides (1)")).toBeInTheDocument();
+      expect(screen.getByText("Slides (1/1)")).toBeInTheDocument();
     });
 
     // Verify that no POST request was made
