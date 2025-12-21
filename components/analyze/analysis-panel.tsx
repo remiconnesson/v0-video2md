@@ -375,7 +375,9 @@ function SectionHeader({
         variant="ghost"
         size="sm"
         onClick={onCopy}
-        aria-label={copied ? `Copied ${title} section` : `Copy ${title} section`}
+        aria-label={
+          copied ? `Copied ${title} section` : `Copy ${title} section`
+        }
         className="gap-2 shrink-0 text-muted-foreground hover:text-foreground"
       >
         {copied ? (
