@@ -1,5 +1,5 @@
 import { and, asc, desc, eq, inArray, isNotNull } from "drizzle-orm";
-import type { SlideData, SlideFeedbackData } from "@/lib/slides-types";
+import type { SlideData } from "@/lib/slides-types";
 import type { TranscriptSegment } from "@/lib/transcript-format";
 import { db } from "./index";
 import {
@@ -45,9 +45,12 @@ export async function getVideoWithTranscript(videoId: string) {
       })
       .from(videos)
       .innerJoin(channels, eq(videos.channelId, channels.channelId))
-      .innerJoin(scrapTranscriptV1, eq(videos.videoId, scrapTranscriptV1.videoId))
+      .innerJoin(
+        scrapTranscriptV1,
+        eq(videos.videoId, scrapTranscriptV1.videoId),
+      )
       .where(eq(videos.videoId, videoId))
-      .limit(1)
+      .limit(1),
   );
 }
 
@@ -67,9 +70,12 @@ export async function getVideoStatus(videoId: string) {
       })
       .from(videos)
       .leftJoin(channels, eq(videos.channelId, channels.channelId))
-      .leftJoin(scrapTranscriptV1, eq(videos.videoId, scrapTranscriptV1.videoId))
+      .leftJoin(
+        scrapTranscriptV1,
+        eq(videos.videoId, scrapTranscriptV1.videoId),
+      )
       .where(eq(videos.videoId, videoId))
-      .limit(1)
+      .limit(1),
   );
 }
 
@@ -138,7 +144,7 @@ export async function getSlideExtractionStatus(videoId: string) {
       .select()
       .from(videoSlideExtractions)
       .where(eq(videoSlideExtractions.videoId, videoId))
-      .limit(1)
+      .limit(1),
   );
 }
 
@@ -271,7 +277,7 @@ export async function getCompletedAnalysis(videoId: string) {
         createdAt: videoAnalysisRuns.createdAt,
       })
       .from(videoAnalysisRuns)
-      .where(eq(videoAnalysisRuns.videoId, videoId))
+      .where(eq(videoAnalysisRuns.videoId, videoId)),
   );
 }
 
@@ -283,7 +289,7 @@ export async function getWorkflowRecord(videoId: string) {
     db
       .select()
       .from(videoAnalysisWorkflowIds)
-      .where(eq(videoAnalysisWorkflowIds.videoId, videoId))
+      .where(eq(videoAnalysisWorkflowIds.videoId, videoId)),
   );
 }
 
@@ -359,7 +365,14 @@ export async function getSlideFeedback(videoId: string) {
  */
 export async function upsertSlideFeedback(
   videoId: string,
-  feedback: Omit<SlideFeedbackData, "id" | "videoId" | "createdAt">,
+  feedback: {
+    slideNumber: number;
+    firstFrameIsDuplicateValidated?: boolean | null;
+    lastFrameIsDuplicateValidated?: boolean | null;
+    framesSameness?: "same" | "different" | null;
+    isFirstFramePicked?: boolean;
+    isLastFramePicked?: boolean;
+  },
 ) {
   await db
     .insert(slideFeedback)
