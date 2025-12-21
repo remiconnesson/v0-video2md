@@ -367,7 +367,8 @@ export async function upsertSlideFeedback(
   videoId: string,
   feedback: {
     slideNumber: number;
-    hasUsefulContent?: boolean | null;
+    firstFrameHasUsefulContent?: boolean | null;
+    lastFrameHasUsefulContent?: boolean | null;
     framesSameness?: "same" | "different" | null;
     isFirstFramePicked?: boolean;
     isLastFramePicked?: boolean;

@@ -204,8 +204,9 @@ export const slideFeedback = pgTable(
     videoId: videoIdColumn(),
     slideNumber: integer("slide_index").notNull(),
 
-    // Slide-level content assessment
-    hasUsefulContent: boolean("has_useful_content"),
+    // Frame-level content assessment
+    firstFrameHasUsefulContent: boolean("first_frame_has_useful_content"),
+    lastFrameHasUsefulContent: boolean("last_frame_has_useful_content"),
 
     // Sameness feedback
     framesSameness: samenessEnum("frames_sameness"),

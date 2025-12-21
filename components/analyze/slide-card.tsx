@@ -22,6 +22,8 @@ interface FrameCardProps {
   onZoom: () => void;
   isPicked: boolean;
   onPickedChange: (picked: boolean) => void;
+  hasUsefulContent: boolean | null;
+  onUsefulContentChange: (value: boolean | null) => void;
 }
 
 function FrameCard({
@@ -34,6 +36,8 @@ function FrameCard({
   onZoom,
   isPicked,
   onPickedChange,
+  hasUsefulContent,
+  onUsefulContentChange,
 }: FrameCardProps) {
   // Find duplicate slide if exists
   const duplicateSlide =
@@ -112,6 +116,34 @@ function FrameCard({
           </div>
         )}
       </div>
+
+      <div className="flex items-center justify-between gap-2 rounded-md border bg-muted/30 p-3">
+        <span className="text-sm font-medium">
+          Does this frame have useful content?
+        </span>
+        <div className="flex items-center gap-2">
+          <Button
+            variant={hasUsefulContent === true ? "default" : "outline"}
+            size="sm"
+            onClick={() =>
+              onUsefulContentChange(hasUsefulContent === true ? null : true)
+            }
+          >
+            <ThumbsUp className="mr-1 h-3 w-3" />
+            Yes
+          </Button>
+          <Button
+            variant={hasUsefulContent === false ? "destructive" : "outline"}
+            size="sm"
+            onClick={() =>
+              onUsefulContentChange(hasUsefulContent === false ? null : false)
+            }
+          >
+            <ThumbsDown className="mr-1 h-3 w-3" />
+            No
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -143,7 +175,8 @@ export function SlideCard({
   const feedback = useMemo(
     (): SlideFeedbackData => ({
       slideNumber: slide.slideNumber,
-      hasUsefulContent: null,
+      firstFrameHasUsefulContent: null,
+      lastFrameHasUsefulContent: null,
       framesSameness: null,
       isFirstFramePicked: true,
       isLastFramePicked: false,
@@ -216,6 +249,10 @@ export function SlideCard({
             onPickedChange={(picked) =>
               updateField("isFirstFramePicked", picked)
             }
+            hasUsefulContent={feedback.firstFrameHasUsefulContent}
+            onUsefulContentChange={(value) =>
+              updateField("firstFrameHasUsefulContent", value)
+            }
           />
           <FrameCard
             label="Last"
@@ -229,51 +266,15 @@ export function SlideCard({
             onPickedChange={(picked) =>
               updateField("isLastFramePicked", picked)
             }
+            hasUsefulContent={feedback.lastFrameHasUsefulContent}
+            onUsefulContentChange={(value) =>
+              updateField("lastFrameHasUsefulContent", value)
+            }
           />
         </div>
 
         {/* Slide-level annotations */}
         <div className="space-y-3">
-          <div className="flex items-center justify-between p-3 rounded-md bg-muted/30 border">
-            <span className="text-sm font-medium">
-              Does this slide have useful content?
-            </span>
-            <div className="flex items-center gap-2">
-              <Button
-                variant={
-                  feedback.hasUsefulContent === true ? "default" : "outline"
-                }
-                size="sm"
-                onClick={() =>
-                  updateField(
-                    "hasUsefulContent",
-                    feedback.hasUsefulContent === true ? null : true,
-                  )
-                }
-              >
-                <ThumbsUp className="h-3 w-3 mr-1" />
-                Yes
-              </Button>
-              <Button
-                variant={
-                  feedback.hasUsefulContent === false
-                    ? "destructive"
-                    : "outline"
-                }
-                size="sm"
-                onClick={() =>
-                  updateField(
-                    "hasUsefulContent",
-                    feedback.hasUsefulContent === false ? null : false,
-                  )
-                }
-              >
-                <ThumbsDown className="h-3 w-3 mr-1" />
-                No
-              </Button>
-            </div>
-          </div>
-
           <div className="flex items-center justify-between p-3 rounded-md bg-muted/30 border">
             <span className="text-sm font-medium">
               Do first and last frames show similar content?
