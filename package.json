@@ -67,6 +67,7 @@
     "effect": "^3.19.12",
     "embla-carousel-react": "latest",
     "eventsource-parser": "^3.0.6",
+    "geist": "^1.5.1",
     "happy-dom": "latest",
     "input-otp": "latest",
     "lucide-react": "^0.454.0",
