@@ -3,6 +3,8 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
 import type React from "react";
+import { ThemeProvider } from "@/components/theme-provider";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { stackClientApp } from "../stack/client";
 import "./globals.css";
 
@@ -29,15 +31,22 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <NuqsAdapter>
-          <StackProvider app={stackClientApp}>
-            <StackTheme>{children}</StackTheme>
-          </StackProvider>
-        </NuqsAdapter>
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+          <NuqsAdapter>
+            <StackProvider app={stackClientApp}>
+              <StackTheme>
+                <div className="fixed right-4 top-4 z-50">
+                  <ThemeToggle />
+                </div>
+                {children}
+              </StackTheme>
+            </StackProvider>
+          </NuqsAdapter>
+        </ThemeProvider>
       </body>
     </html>
   );

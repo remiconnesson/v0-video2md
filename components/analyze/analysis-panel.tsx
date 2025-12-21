@@ -282,7 +282,7 @@ function SectionHeader({ title }: { title: string }) {
 
 export function ObjectSection({ data }: { data: Record<string, unknown> }) {
   return (
-    <dl className="divide-y divide-gray-100">
+    <dl className="divide-y divide-border/60">
       {Object.entries(data).map(([key, value]) => {
         const markdown =
           typeof value === "string"
@@ -296,8 +296,8 @@ export function ObjectSection({ data }: { data: Record<string, unknown> }) {
             key={key}
             className="px-4 py-6 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0"
           >
-            <dt className="text-sm/6 font-medium text-gray-900">{key}</dt>
-            <dd className="mt-1 text-sm/6 text-gray-700 sm:col-span-2 sm:mt-0">
+            <dt className="text-sm/6 font-medium text-foreground">{key}</dt>
+            <dd className="mt-1 text-sm/6 text-muted-foreground sm:col-span-2 sm:mt-0">
               <Streamdown>{markdown}</Streamdown>
             </dd>
           </div>
