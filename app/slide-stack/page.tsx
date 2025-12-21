@@ -129,30 +129,26 @@ export default function SlideStackShowcase() {
         const sourceGroup = { ...newGroups[sourceGroupIndex], slides: [...newGroups[sourceGroupIndex].slides] }
         const targetGroup = { ...newGroups[targetGroupIndex], slides: [...newGroups[targetGroupIndex].slides] }
 
-        // Find and remove dragged slide from source
-        const draggedSlideData = sourceGroup.slides.find((s) => s.slideNumber === draggedSlide)
-        if (!draggedSlideData) return prevGroups
+        if (sourceGroup.slides.length === 1 || sourceGroup.slides.some((s) => s.slideNumber === draggedSlide)) {
+          // Add all slides from source to target
+          targetGroup.slides.push(...sourceGroup.slides)
 
-        sourceGroup.slides = sourceGroup.slides.filter((s) => s.slideNumber !== draggedSlide)
+          console.log("[v0] Target group after merge:", {
+            id: targetGroup.id,
+            slideCount: targetGroup.slides.length,
+            slideNumbers: targetGroup.slides.map((s) => s.slideNumber),
+          })
 
-        targetGroup.slides.push(draggedSlideData)
+          // Update the groups array
+          newGroups[targetGroupIndex] = targetGroup
 
-        console.log("[v0] Target group after merge:", {
-          id: targetGroup.id,
-          slideCount: targetGroup.slides.length,
-          slideNumbers: targetGroup.slides.map((s) => s.slideNumber),
-        })
-
-        // Update the groups array
-        newGroups[targetGroupIndex] = targetGroup
-
-        if (sourceGroup.slides.length === 0) {
+          // Remove source group entirely
           newGroups.splice(sourceGroupIndex, 1)
-        } else {
-          newGroups[sourceGroupIndex] = sourceGroup
+
+          return newGroups
         }
 
-        return newGroups
+        return prevGroups
       })
 
       handleDragEnd()
@@ -252,13 +248,40 @@ export default function SlideStackShowcase() {
               <div key={group.id} className="relative">
                 {isStack ? (
                   // Stacked slides display
-                  <Card className="p-4">
-                    <SlideStack
-                      slides={group.slides}
-                      onUnstack={handleUnstack}
-                      onSelectSlide={setSelectedSlide}
-                      selectedSlideNumber={selectedSlide}
-                    />
+                  <Card
+                    className={cn(
+                      "overflow-hidden transition-all",
+                      isDragging && draggedSlide === primarySlide.slideNumber && "opacity-50",
+                      dragOverSlide === primarySlide.slideNumber && "ring-2 ring-primary ring-offset-2",
+                    )}
+                    draggable
+                    onDragStart={() => handleDragStart(primarySlide.slideNumber)}
+                    onDragOver={(e) => {
+                      e.preventDefault()
+                      handleDragOver(primarySlide.slideNumber)
+                    }}
+                    onDragLeave={clearDragOver}
+                    onDrop={(e) => {
+                      e.preventDefault()
+                      handleDrop(primarySlide.slideNumber)
+                    }}
+                  >
+                    {/* Drag handle for stacks */}
+                    <div className="flex cursor-grab items-center gap-2 border-b bg-muted/30 px-3 py-2 active:cursor-grabbing">
+                      <GripVertical className="h-4 w-4 text-muted-foreground" />
+                      <Layers className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                      <span className="text-sm font-medium text-blue-600 dark:text-blue-400">
+                        {group.slides.length} slides stacked
+                      </span>
+                    </div>
+                    <div className="p-4">
+                      <SlideStack
+                        slides={group.slides}
+                        onUnstack={handleUnstack}
+                        onSelectSlide={setSelectedSlide}
+                        selectedSlideNumber={selectedSlide}
+                      />
+                    </div>
                   </Card>
                 ) : (
                   // Single slide card with drag handle
@@ -283,54 +306,59 @@ export default function SlideStackShowcase() {
                     {/* Drag handle */}
                     <div className="flex cursor-grab items-center gap-2 border-b bg-muted/30 px-3 py-2 active:cursor-grabbing">
                       <GripVertical className="h-4 w-4 text-muted-foreground" />
-                      <span className="font-semibold">Slide #{primarySlide.slideNumber}</span>
+                      <Badge variant="outline" className="text-xs">
+                        #{primarySlide.slideNumber}
+                      </Badge>
                     </div>
 
-                    {/* Slide content */}
-                    <div className="p-4 space-y-3">
-                      {/* First frame */}
-                      <div className="space-y-1.5">
-                        <p className="text-xs font-medium text-muted-foreground">First Frame (.F)</p>
-                        <div className="relative aspect-video w-full overflow-hidden rounded-md border bg-muted">
-                          {primarySlide.firstFrameImageUrl ? (
-                            <Image
-                              src={primarySlide.firstFrameImageUrl || "/placeholder.svg"}
-                              alt={`Slide ${primarySlide.slideNumber} first frame`}
-                              fill
-                              className="object-cover"
-                            />
-                          ) : (
-                            <div className="flex h-full items-center justify-center">
-                              <span className="text-sm text-muted-foreground">No image</span>
-                            </div>
-                          )}
+                    <div className="p-3">
+                      <div className="grid grid-cols-2 gap-2">
+                        {/* First frame */}
+                        <div className="space-y-1">
+                          <div className="relative aspect-video w-full overflow-hidden rounded-md border bg-muted">
+                            {primarySlide.firstFrameImageUrl ? (
+                              <Image
+                                src={primarySlide.firstFrameImageUrl || "/placeholder.svg"}
+                                alt={`Slide ${primarySlide.slideNumber} first frame`}
+                                fill
+                                className="object-cover"
+                              />
+                            ) : (
+                              <div className="flex h-full items-center justify-center">
+                                <span className="text-xs text-muted-foreground">No image</span>
+                              </div>
+                            )}
+                            <Badge className="absolute bottom-1 right-1 h-4 px-1.5 text-[10px]">
+                              #{primarySlide.slideNumber}.F
+                            </Badge>
+                          </div>
                         </div>
-                      </div>
 
-                      {/* Last frame */}
-                      <div className="space-y-1.5">
-                        <p className="text-xs font-medium text-muted-foreground">Last Frame (.L)</p>
-                        <div className="relative aspect-video w-full overflow-hidden rounded-md border bg-muted">
-                          {primarySlide.lastFrameImageUrl ? (
-                            <Image
-                              src={primarySlide.lastFrameImageUrl || "/placeholder.svg"}
-                              alt={`Slide ${primarySlide.slideNumber} last frame`}
-                              fill
-                              className="object-cover"
-                            />
-                          ) : (
-                            <div className="flex h-full items-center justify-center">
-                              <span className="text-sm text-muted-foreground">No image</span>
-                            </div>
-                          )}
+                        {/* Last frame */}
+                        <div className="space-y-1">
+                          <div className="relative aspect-video w-full overflow-hidden rounded-md border bg-muted">
+                            {primarySlide.lastFrameImageUrl ? (
+                              <Image
+                                src={primarySlide.lastFrameImageUrl || "/placeholder.svg"}
+                                alt={`Slide ${primarySlide.slideNumber} last frame`}
+                                fill
+                                className="object-cover"
+                              />
+                            ) : (
+                              <div className="flex h-full items-center justify-center">
+                                <span className="text-xs text-muted-foreground">No image</span>
+                              </div>
+                            )}
+                            <Badge className="absolute bottom-1 right-1 h-4 px-1.5 text-[10px]">
+                              #{primarySlide.slideNumber}.L
+                            </Badge>
+                          </div>
                         </div>
                       </div>
 
                       {/* Metadata */}
-                      <div className="flex items-center gap-2 pt-2 text-xs text-muted-foreground">
-                        <span>
-                          {primarySlide.startTime}s - {primarySlide.endTime}s
-                        </span>
+                      <div className="mt-2 text-xs text-muted-foreground text-center">
+                        {primarySlide.startTime}s - {primarySlide.endTime}s
                       </div>
                     </div>
                   </Card>

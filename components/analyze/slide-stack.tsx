@@ -1,6 +1,6 @@
 "use client"
 
-import { Layers, X } from "lucide-react"
+import { X } from "lucide-react"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -21,13 +21,6 @@ export function SlideStack({ slides, onUnstack, onSelectSlide, selectedSlideNumb
 
   return (
     <div className="space-y-2">
-      {/* Stack indicator badge */}
-      <div className="flex items-center gap-2 px-2 py-1 bg-blue-100 dark:bg-blue-900/30 rounded-md w-fit">
-        <Layers className="h-3 w-3 text-blue-600 dark:text-blue-400" />
-        <span className="text-xs font-medium text-blue-600 dark:text-blue-400">{slides.length} stacked slides</span>
-      </div>
-
-      {/* Stacked slide thumbnails */}
       <div className="space-y-1.5">
         {slides.map((slide, index) => (
           <div
@@ -45,9 +38,9 @@ export function SlideStack({ slides, onUnstack, onSelectSlide, selectedSlideNumb
               {index + 1}
             </div>
 
-            <div className="flex gap-1.5 flex-shrink-0">
+            <div className="flex gap-1.5 flex-1">
               {/* First frame */}
-              <div className="relative w-14 h-8 rounded overflow-hidden border">
+              <div className="relative flex-1 aspect-video rounded overflow-hidden border">
                 {slide.firstFrameImageUrl ? (
                   <Image
                     src={slide.firstFrameImageUrl || "/placeholder.svg"}
@@ -65,7 +58,7 @@ export function SlideStack({ slides, onUnstack, onSelectSlide, selectedSlideNumb
               </div>
 
               {/* Last frame */}
-              <div className="relative w-14 h-8 rounded overflow-hidden border">
+              <div className="relative flex-1 aspect-video rounded overflow-hidden border">
                 {slide.lastFrameImageUrl ? (
                   <Image
                     src={slide.lastFrameImageUrl || "/placeholder.svg"}
@@ -82,8 +75,6 @@ export function SlideStack({ slides, onUnstack, onSelectSlide, selectedSlideNumb
                 </Badge>
               </div>
             </div>
-
-            <div className="flex-1" />
 
             {/* Unstack button */}
             <Button
