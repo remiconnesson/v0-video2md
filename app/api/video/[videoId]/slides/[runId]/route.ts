@@ -3,9 +3,9 @@ import { createSSEResponse } from "@/lib/api-utils";
 
 export async function GET(
   request: Request,
-  { params }: { params: Promise<{ videoId: string; runId: string }> },
+  ctx: RouteContext<"/api/video/[videoId]/slides/[runId]">,
 ) {
-  const { runId } = await params;
+  const { runId } = await ctx.params;
   const url = new URL(request.url);
   const startIndex = url.searchParams.get("startIndex");
 

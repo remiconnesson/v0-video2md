@@ -112,8 +112,26 @@ pnpm test:watch  # Run tests in watch mode
 2. **File Structure**: Use `@/*` path alias for imports
 3. **TypeScript**: Always use strict mode, avoid `any` types
 4. **API Routes**: Use Server-Sent Events for streaming responses
-5. **Security**: Validate all user inputs, sanitize data before rendering
-6. **Styling**: Use Tailwind CSS utility classes exclusively
+5. **Route Context Types**: Use the `RouteContext` helper for all route parameters instead of inline types. The `RouteContext` helper is globally available after type generation and provides strongly typed params from route literals.
+   ```typescript
+   // ✅ Correct - Use RouteContext helper
+   export async function GET(
+     request: Request,
+     ctx: RouteContext<'/api/video/[videoId]'>,
+   ) {
+     const { videoId } = await ctx.params;
+   }
+
+   // ❌ Avoid - Inline type annotations
+   export async function GET(
+     request: Request,
+     { params }: { params: Promise<{ videoId: string }> },
+   ) {
+     const { videoId } = await params;
+   }
+   ```
+6. **Security**: Validate all user inputs, sanitize data before rendering
+7. **Styling**: Use Tailwind CSS utility classes exclusively
 
 ## Database Schema
 

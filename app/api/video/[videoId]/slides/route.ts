@@ -12,9 +12,9 @@ import { extractSlidesWorkflow } from "@/workflows/extract-slides";
 
 export async function GET(
   _request: Request,
-  { params }: { params: Promise<{ videoId: string }> },
+  ctx: RouteContext<"/api/video/[videoId]/slides">,
 ) {
-  const { videoId } = await params;
+  const { videoId } = await ctx.params;
 
   // Get extraction status
   const [extraction] = await db
@@ -136,9 +136,9 @@ export async function GET(
 
 export async function POST(
   _request: Request,
-  { params }: { params: Promise<{ videoId: string }> },
+  ctx: RouteContext<"/api/video/[videoId]/slides">,
 ) {
-  const { videoId } = await params;
+  const { videoId } = await ctx.params;
 
   // Check for existing extraction
   const [existing] = await db

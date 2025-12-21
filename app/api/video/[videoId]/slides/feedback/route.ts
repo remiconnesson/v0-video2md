@@ -20,9 +20,9 @@ const slideFeedbackSchema = createInsertSchema(slideFeedback).omit({
 
 export async function GET(
   _request: Request,
-  { params }: { params: Promise<{ videoId: string }> },
+  ctx: RouteContext<"/api/video/[videoId]/slides/feedback">,
 ) {
-  const { videoId } = await params;
+  const { videoId } = await ctx.params;
 
   // Verify video exists
   const [video] = await db
@@ -49,9 +49,9 @@ export async function GET(
 
 export async function POST(
   request: Request,
-  { params }: { params: Promise<{ videoId: string }> },
+  ctx: RouteContext<"/api/video/[videoId]/slides/feedback">,
 ) {
-  const { videoId } = await params;
+  const { videoId } = await ctx.params;
 
   // Verify video exists
   const [video] = await db

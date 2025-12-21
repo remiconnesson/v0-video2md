@@ -14,9 +14,9 @@ import { validateYouTubeVideoId } from "@/lib/api-utils";
 
 export async function GET(
   _request: Request,
-  { params }: { params: Promise<{ videoId: string }> },
+  ctx: RouteContext<"/api/video/[videoId]">,
 ) {
-  const { videoId } = await params;
+  const { videoId } = await ctx.params;
 
   // Validate videoId format
   const validationError = validateYouTubeVideoId(videoId);
