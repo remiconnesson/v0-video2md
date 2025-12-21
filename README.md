@@ -117,7 +117,3 @@ pnpm tsc --noEmit # Type check
    ```
 
 3. Follow the coding guidelines in [.github/copilot-instructions.md](.github/copilot-instructions.md)
-
-## License
-
-MIT
