@@ -289,37 +289,6 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
   );
 }
 
-// ============================================================================
-// State-specific Components
-// ============================================================================
-
-// IdleState component is no longer used since extraction is auto-triggered
-// Keeping it commented out in case we need to revert the auto-trigger behavior
-/*
-function _IdleState({ onExtract }: { onExtract: () => void }) {
-  return (
-    <Card>
-      <CardContent className="py-12">
-        <div className="text-center space-y-4">
-          <div className="mx-auto w-16 h-16 rounded-full bg-muted flex items-center justify-center">
-            <ImageIcon className="h-8 w-8 text-muted-foreground" />
-          </div>
-
-          <div>
-            <h3 className="text-lg font-semibold">Extract Slides</h3>
-            <p className="text-sm text-muted-foreground mt-1">
-              Analyze the video to extract presentation slides
-            </p>
-          </div>
-
-          <Button onClick={onExtract}>Extract Slides</Button>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-*/
-
 function LoadingState() {
   return (
     <Card>
