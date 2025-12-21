@@ -1,7 +1,8 @@
 "use client";
 
 import { Check, Copy } from "lucide-react";
-import { useEffect, useState } from "react";
+import { createParser, useQueryState } from "nuqs";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Streamdown } from "streamdown";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,7 +15,16 @@ interface AnalysisPanelProps {
   videoId: string;
 }
 
+const parseAsSectionId = createParser<string>({
+  parse: (value) => (value ? value : null),
+  serialize: (value) => value ?? "",
+});
+
 export function AnalysisPanel({ videoId }: AnalysisPanelProps) {
+  const [activeSection, setActiveSection] = useQueryState(
+    "section",
+    parseAsSectionId,
+  );
   const [copied, setCopied] = useState(false);
   const [analysis, setAnalysis] = useState<Record<string, unknown>>({});
   const [status, setStatus] = useState<
@@ -139,6 +149,35 @@ export function AnalysisPanel({ videoId }: AnalysisPanelProps) {
   };
 
   const hasContent = Object.keys(analysis).length > 0;
+  const sections = useMemo(
+    () =>
+      Object.keys(analysis).map((key) => ({
+        key,
+        id: toSectionId(key),
+        title: formatSectionTitle(key) || key,
+      })),
+    [analysis],
+  );
+
+  const scrollToSection = useCallback((sectionId: string) => {
+    const sectionElement = document.getElementById(sectionId);
+    if (!sectionElement) return;
+
+    sectionElement.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, []);
+
+  const handleSectionClick = (sectionId: string) => {
+    void setActiveSection(sectionId);
+    scrollToSection(sectionId);
+  };
+
+  useEffect(() => {
+    if (!activeSection) return;
+    const hasSection = sections.some((section) => section.id === activeSection);
+    if (!hasSection) return;
+
+    scrollToSection(activeSection);
+  }, [activeSection, scrollToSection, sections]);
 
   return (
     <div className="space-y-4">
@@ -160,13 +199,25 @@ export function AnalysisPanel({ videoId }: AnalysisPanelProps) {
         <p className="text-sm text-muted-foreground">Loading analysis...</p>
       ) : null}
 
-      {hasContent ? (
-        Object.entries(analysis).map(([key, value]) => (
-          <Section key={key} title={key} content={value} />
-        ))
-      ) : status === "ready" && !errorMessage ? (
-        <p className="text-muted-foreground italic">No analysis available.</p>
-      ) : null}
+      <div className="grid gap-6 lg:grid-cols-[220px_minmax(0,1fr)]">
+        <AnalysisSidebar
+          sections={sections}
+          activeSection={activeSection ?? undefined}
+          onSectionClick={handleSectionClick}
+        />
+
+        <div className="space-y-4">
+          {hasContent ? (
+            Object.entries(analysis).map(([key, value]) => (
+              <Section key={key} title={key} content={value} />
+            ))
+          ) : status === "ready" && !errorMessage ? (
+            <p className="text-muted-foreground italic">
+              No analysis available.
+            </p>
+          ) : null}
+        </div>
+      </div>
     </div>
   );
 }
@@ -255,18 +306,21 @@ function SectionContent({ content }: { content: unknown }): React.ReactNode {
 
 function Section({ title, content }: { title: string; content: unknown }) {
   const key = title;
+  const sectionId = toSectionId(title);
   const formattedTitle = formatSectionTitle(title) || title;
 
   return (
-    <Card key={key}>
-      <CardHeader>
-        <SectionHeader title={formattedTitle} />
-      </CardHeader>
+    <section id={sectionId} className="scroll-mt-24">
+      <Card key={key}>
+        <CardHeader>
+          <SectionHeader title={formattedTitle} />
+        </CardHeader>
 
-      <CardContent>
-        <SectionContent content={content} />
-      </CardContent>
-    </Card>
+        <CardContent>
+          <SectionContent content={content} />
+        </CardContent>
+      </Card>
+    </section>
   );
 }
 
@@ -305,4 +359,56 @@ export function ObjectSection({ data }: { data: Record<string, unknown> }) {
       })}
     </dl>
   );
+}
+
+function AnalysisSidebar({
+  sections,
+  activeSection,
+  onSectionClick,
+}: {
+  sections: Array<{ id: string; title: string }>;
+  activeSection?: string;
+  onSectionClick: (sectionId: string) => void;
+}) {
+  return (
+    <aside className="hidden lg:block">
+      <div className="sticky top-24 space-y-3">
+        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          Sections
+        </p>
+        {sections.length === 0 ? (
+          <p className="text-sm text-muted-foreground">Waiting for sections…</p>
+        ) : (
+          <nav className="space-y-1">
+            {sections.map((section) => {
+              const isActive = section.id === activeSection;
+
+              return (
+                <button
+                  key={section.id}
+                  type="button"
+                  onClick={() => onSectionClick(section.id)}
+                  className={`w-full rounded-md px-2 py-1 text-left text-sm transition hover:bg-muted ${
+                    isActive
+                      ? "bg-muted text-foreground"
+                      : "text-muted-foreground"
+                  }`}
+                >
+                  {section.title}
+                </button>
+              );
+            })}
+          </nav>
+        )}
+      </div>
+    </aside>
+  );
+}
+
+function toSectionId(title: string) {
+  return `analysis-${title
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "")}`;
 }
