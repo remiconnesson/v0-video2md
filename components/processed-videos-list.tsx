@@ -1,9 +1,18 @@
 "use client";
 
+import {
+  type ColumnDef,
+  type ColumnFiltersState,
+  flexRender,
+  getCoreRowModel,
+  getFilteredRowModel,
+  getPaginationRowModel,
+  useReactTable,
+} from "@tanstack/react-table";
 import { FileVideo, Search } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,7 +33,69 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-interface VideoData {
+export function ProcessedVideosList() {
+  const [videos, setVideos] = useState<VideoData[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchVideos() {
+      try {
+        const response = await fetch("/api/videos");
+        if (!response.ok) throw new Error("Failed to fetch videos");
+        setVideos(await response.json());
+      } catch (error) {
+        console.error("Error fetching videos:", error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchVideos();
+  }, []);
+
+  if (loading) {
+    return <SimpleCardLayout>Loading videos...</SimpleCardLayout>;
+  }
+
+  if (videos.length === 0) {
+    return <SimpleCardLayout>No processed videos yet</SimpleCardLayout>;
+  }
+
+  return (
+    <SimpleCardLayout descriptionOnly={false}>
+      <VideosDataTable data={videos} />
+    </SimpleCardLayout>
+  );
+}
+
+function SimpleCardLayout({
+  children,
+  title = "Processed Videos",
+  descriptionOnly = true,
+}: {
+  children: React.ReactNode;
+  title?: string;
+  descriptionOnly?: boolean;
+}) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <FileVideo className="h-5 w-5" />
+          {title}
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        {descriptionOnly ? (
+          <p className="text-muted-foreground text-center py-8">{children}</p>
+        ) : (
+          children
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+export interface VideoData {
   videoId: string;
   videoData?: {
     title: string;
@@ -38,391 +109,12 @@ interface VideoData {
   completedAt?: string;
 }
 
-type FilterOption = "all" | "yes" | "no";
-
-export function ProcessedVideosList() {
-  const [videos, setVideos] = useState<VideoData[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [slidesFilter, setSlidesFilter] = useState<FilterOption>("all");
-  const [analysisFilter, setAnalysisFilter] = useState<FilterOption>("all");
-  const [pageIndex, setPageIndex] = useState(0);
-  const [pageSize, setPageSize] = useState(10);
-
-  useEffect(() => {
-    async function fetchVideos() {
-      try {
-        const response = await fetch("/api/videos");
-        if (!response.ok) {
-          throw new Error("Failed to fetch videos");
-        }
-        const data = await response.json();
-        setVideos(data);
-      } catch (error) {
-        console.error("Error fetching videos:", error);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    fetchVideos();
-  }, []);
-
-  // Filter videos based on search query
-  const filteredVideos = useMemo(() => {
-    const query = searchQuery.trim().toLowerCase();
-
-    return videos.filter((video) => {
-      const title = video.videoData?.title?.toLowerCase() || "";
-      const channelName = video.videoData?.channelName?.toLowerCase() || "";
-      const description = video.videoData?.description?.toLowerCase() || "";
-
-      const matchesSearch =
-        !query ||
-        title.includes(query) ||
-        channelName.includes(query) ||
-        description.includes(query);
-
-      const matchesSlides = matchesFilter(video.hasSlides, slidesFilter);
-      const matchesAnalysis = matchesFilter(video.hasAnalysis, analysisFilter);
-
-      return matchesSearch && matchesSlides && matchesAnalysis;
-    });
-  }, [videos, searchQuery, slidesFilter, analysisFilter]);
-
-  const totalPages = Math.max(1, Math.ceil(filteredVideos.length / pageSize));
-  const currentPageIndex = Math.min(pageIndex, totalPages - 1);
-
-  useEffect(() => {
-    if (pageIndex !== currentPageIndex) {
-      setPageIndex(currentPageIndex);
-    }
-  }, [currentPageIndex, pageIndex]);
-
-  const paginatedVideos = useMemo(() => {
-    const start = currentPageIndex * pageSize;
-    const end = start + pageSize;
-    return filteredVideos.slice(start, end);
-  }, [currentPageIndex, filteredVideos, pageSize]);
-
-  if (loading) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <FileVideo className="h-5 w-5" />
-            Processed Videos
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-muted-foreground text-center py-8">
-            Loading videos...
-          </p>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  if (videos.length === 0) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <FileVideo className="h-5 w-5" />
-            Processed Videos
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-muted-foreground text-center py-8">
-            No processed videos yet
-          </p>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <FileVideo className="h-5 w-5" />
-          Processed Videos ({filteredVideos.length})
-        </CardTitle>
-        <ProcessedVideosFilters
-          searchQuery={searchQuery}
-          onSearchChange={(value) => {
-            setSearchQuery(value);
-            setPageIndex(0);
-          }}
-          slidesFilter={slidesFilter}
-          onSlidesFilterChange={(value) => {
-            setSlidesFilter(value);
-            setPageIndex(0);
-          }}
-          analysisFilter={analysisFilter}
-          onAnalysisFilterChange={(value) => {
-            setAnalysisFilter(value);
-            setPageIndex(0);
-          }}
-        />
-      </CardHeader>
-      <CardContent>
-        {filteredVideos.length === 0 ? (
-          <p className="text-muted-foreground text-center py-8">
-            No videos found matching your search
-          </p>
-        ) : (
-          <div className="space-y-4">
-            <ProcessedVideosTable videos={paginatedVideos} />
-            <ProcessedVideosPagination
-              totalItems={filteredVideos.length}
-              pageIndex={currentPageIndex}
-              pageSize={pageSize}
-              totalPages={totalPages}
-              onPageChange={setPageIndex}
-              onPageSizeChange={(nextSize) => {
-                setPageSize(nextSize);
-                setPageIndex(0);
-              }}
-            />
-          </div>
-        )}
-      </CardContent>
-    </Card>
-  );
-}
-
-// ============================================================================
-// Sub-components for better readability
-// ============================================================================
-
-function matchesFilter(value: boolean, filter: FilterOption) {
-  if (filter === "all") {
-    return true;
-  }
-
-  return filter === "yes" ? value : !value;
-}
-
-interface ProcessedVideosFiltersProps {
-  searchQuery: string;
-  onSearchChange: (value: string) => void;
-  slidesFilter: FilterOption;
-  onSlidesFilterChange: (value: FilterOption) => void;
-  analysisFilter: FilterOption;
-  onAnalysisFilterChange: (value: FilterOption) => void;
-}
-
-function ProcessedVideosFilters({
-  searchQuery,
-  onSearchChange,
-  slidesFilter,
-  onSlidesFilterChange,
-  analysisFilter,
-  onAnalysisFilterChange,
-}: ProcessedVideosFiltersProps) {
-  return (
-    <div className="mt-4 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-      <div className="relative w-full lg:max-w-md">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
-          type="text"
-          placeholder="Search by title, channel, or description..."
-          value={searchQuery}
-          onChange={(e) => onSearchChange(e.target.value)}
-          className="pl-9"
-        />
-      </div>
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
-        <FilterSelect
-          label="Slides"
-          value={slidesFilter}
-          onValueChange={onSlidesFilterChange}
-        />
-        <FilterSelect
-          label="Analysis"
-          value={analysisFilter}
-          onValueChange={onAnalysisFilterChange}
-        />
-      </div>
-    </div>
-  );
-}
-
-interface FilterSelectProps {
-  label: string;
-  value: FilterOption;
-  onValueChange: (value: FilterOption) => void;
-}
-
-function FilterSelect({ label, value, onValueChange }: FilterSelectProps) {
-  return (
-    <div className="flex items-center gap-2">
-      <span className="text-sm text-muted-foreground">{label}</span>
-      <Select
-        value={value}
-        onValueChange={(nextValue) => onValueChange(nextValue as FilterOption)}
-      >
-        <SelectTrigger className="h-9 w-[140px]">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="all">All</SelectItem>
-          <SelectItem value="yes">Yes</SelectItem>
-          <SelectItem value="no">No</SelectItem>
-        </SelectContent>
-      </Select>
-    </div>
-  );
-}
-
-function ProcessedVideosTable({ videos }: { videos: VideoData[] }) {
-  return (
-    <div className="rounded-lg border">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead className="w-[110px]">Thumbnail</TableHead>
-            <TableHead>Title</TableHead>
-            <TableHead>Channel</TableHead>
-            <TableHead className="w-[120px]">Slides</TableHead>
-            <TableHead className="w-[120px]">Analysis</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {videos.map((video) => (
-            <TableRow key={video.videoId}>
-              <TableCell>
-                <ThumbnailCell
-                  src={video.videoData?.thumbnail}
-                  alt={video.videoData?.title}
-                />
-              </TableCell>
-              <TableCell className="font-medium">
-                <Link
-                  href={`/video/youtube/${video.videoId}`}
-                  className="line-clamp-2 hover:text-primary"
-                >
-                  {video.videoData?.title || "Untitled Video"}
-                </Link>
-              </TableCell>
-              <TableCell className="text-muted-foreground">
-                {video.videoData?.channelName || "Unknown Channel"}
-              </TableCell>
-              <TableCell>
-                <StatusBadge value={video.hasSlides} />
-              </TableCell>
-              <TableCell>
-                <StatusBadge value={video.hasAnalysis} />
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </div>
-  );
-}
-
-interface ProcessedVideosPaginationProps {
-  totalItems: number;
-  pageIndex: number;
-  pageSize: number;
-  totalPages: number;
-  onPageChange: (page: number) => void;
-  onPageSizeChange: (size: number) => void;
-}
-
-function ProcessedVideosPagination({
-  totalItems,
-  pageIndex,
-  pageSize,
-  totalPages,
-  onPageChange,
-  onPageSizeChange,
-}: ProcessedVideosPaginationProps) {
-  const start = totalItems === 0 ? 0 : pageIndex * pageSize + 1;
-  const end = Math.min(totalItems, (pageIndex + 1) * pageSize);
-
-  return (
-    <div className="flex flex-col gap-3 border-t pt-4 sm:flex-row sm:items-center sm:justify-between">
-      <div className="text-sm text-muted-foreground">
-        Showing {start}-{end} of {totalItems}
-      </div>
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-muted-foreground">Rows per page</span>
-          <Select
-            value={pageSize.toString()}
-            onValueChange={(value) => onPageSizeChange(Number(value))}
-          >
-            <SelectTrigger className="h-9 w-[120px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="10">10</SelectItem>
-              <SelectItem value="25">25</SelectItem>
-              <SelectItem value="50">50</SelectItem>
-              <SelectItem value="100">100</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => onPageChange(0)}
-            disabled={pageIndex === 0}
-          >
-            First
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => onPageChange(Math.max(0, pageIndex - 1))}
-            disabled={pageIndex === 0}
-          >
-            Previous
-          </Button>
-          <span className="text-sm text-muted-foreground">
-            Page {pageIndex + 1} of {totalPages}
-          </span>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() =>
-              onPageChange(Math.min(totalPages - 1, pageIndex + 1))
-            }
-            disabled={pageIndex >= totalPages - 1}
-          >
-            Next
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => onPageChange(totalPages - 1)}
-            disabled={pageIndex >= totalPages - 1}
-          >
-            Last
-          </Button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 function ThumbnailCell({ src, alt }: { src?: string; alt?: string }) {
-  const thumbnailUrl = src || "/placeholder.svg?height=90&width=160";
-  const altText = alt || "Video thumbnail";
-
   return (
     <div className="h-[54px] w-[96px] overflow-hidden rounded-md border bg-muted/20">
       <Image
-        src={thumbnailUrl}
-        alt={altText}
+        src={src || "/placeholder.svg?height=90&width=160"}
+        alt={alt || "Video thumbnail"}
         width={96}
         height={54}
         className="h-full w-full object-cover"
@@ -436,5 +128,269 @@ function StatusBadge({ value }: { value: boolean }) {
     <Badge variant="secondary">Yes</Badge>
   ) : (
     <Badge variant="outline">No</Badge>
+  );
+}
+
+export const columns: ColumnDef<VideoData>[] = [
+  {
+    id: "thumbnail",
+    header: "Thumbnail",
+    size: 110,
+    cell: ({ row }) => (
+      <ThumbnailCell
+        src={row.original.videoData?.thumbnail}
+        alt={row.original.videoData?.title}
+      />
+    ),
+  },
+  {
+    accessorKey: "videoData.title",
+    header: "Title",
+    cell: ({ row }) => (
+      <Link
+        href={`/video/youtube/${row.original.videoId}`}
+        className="line-clamp-2 hover:text-primary font-medium"
+      >
+        {row.original.videoData?.title || "Untitled Video"}
+      </Link>
+    ),
+    filterFn: (row, _columnId, filterValue: string) => {
+      if (!filterValue) return true;
+      const query = filterValue.toLowerCase();
+      const title = row.original.videoData?.title?.toLowerCase() || "";
+      const channel = row.original.videoData?.channelName?.toLowerCase() || "";
+      const description =
+        row.original.videoData?.description?.toLowerCase() || "";
+      return (
+        title.includes(query) ||
+        channel.includes(query) ||
+        description.includes(query)
+      );
+    },
+  },
+  {
+    accessorKey: "videoData.channelName",
+    header: "Channel",
+    cell: ({ row }) => (
+      <span className="text-muted-foreground">
+        {row.original.videoData?.channelName || "Unknown Channel"}
+      </span>
+    ),
+  },
+  {
+    accessorKey: "hasSlides",
+    header: "Slides",
+    size: 120,
+    cell: ({ row }) => <StatusBadge value={row.original.hasSlides} />,
+    filterFn: (row, _columnId, filterValue: string) => {
+      if (filterValue === "all") return true;
+      return filterValue === "yes"
+        ? row.original.hasSlides
+        : !row.original.hasSlides;
+    },
+  },
+  {
+    accessorKey: "hasAnalysis",
+    header: "Analysis",
+    size: 120,
+    cell: ({ row }) => <StatusBadge value={row.original.hasAnalysis} />,
+    filterFn: (row, _columnId, filterValue: string) => {
+      if (filterValue === "all") return true;
+      return filterValue === "yes"
+        ? row.original.hasAnalysis
+        : !row.original.hasAnalysis;
+    },
+  },
+];
+
+interface VideosDataTableProps {
+  data: VideoData[];
+}
+
+export function VideosDataTable({ data }: VideosDataTableProps) {
+  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+
+  const table = useReactTable({
+    data,
+    columns,
+    getCoreRowModel: getCoreRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+    onColumnFiltersChange: setColumnFilters,
+    state: { columnFilters },
+    initialState: { pagination: { pageSize: 10 } },
+  });
+
+  const getFilter = (id: string) =>
+    (table.getColumn(id)?.getFilterValue() as string) ?? "";
+  const setFilter = (id: string, value: string) =>
+    table.getColumn(id)?.setFilterValue(value || undefined);
+
+  const { pageIndex, pageSize } = table.getState().pagination;
+  const totalRows = table.getFilteredRowModel().rows.length;
+  const start = totalRows === 0 ? 0 : pageIndex * pageSize + 1;
+  const end = Math.min(totalRows, (pageIndex + 1) * pageSize);
+
+  return (
+    <div className="space-y-4">
+      {/* Filters */}
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div className="relative w-full lg:max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search by title, channel, or description..."
+            value={getFilter("videoData.title")}
+            onChange={(e) => setFilter("videoData.title", e.target.value)}
+            className="pl-9"
+          />
+        </div>
+        <div className="flex gap-3 sm:items-center">
+          <FilterSelect
+            label="Slides"
+            value={getFilter("hasSlides") || "all"}
+            onValueChange={(v) => setFilter("hasSlides", v === "all" ? "" : v)}
+          />
+          <FilterSelect
+            label="Analysis"
+            value={getFilter("hasAnalysis") || "all"}
+            onValueChange={(v) =>
+              setFilter("hasAnalysis", v === "all" ? "" : v)
+            }
+          />
+        </div>
+      </div>
+
+      {/* Table */}
+      <div className="rounded-lg border">
+        <Table>
+          <TableHeader>
+            {table.getHeaderGroups().map((hg) => (
+              <TableRow key={hg.id}>
+                {hg.headers.map((h) => (
+                  <TableHead key={h.id} style={{ width: h.getSize() }}>
+                    {flexRender(h.column.columnDef.header, h.getContext())}
+                  </TableHead>
+                ))}
+              </TableRow>
+            ))}
+          </TableHeader>
+          <TableBody>
+            {table.getRowModel().rows.length ? (
+              table.getRowModel().rows.map((row) => (
+                <TableRow key={row.id}>
+                  {row.getVisibleCells().map((cell) => (
+                    <TableCell key={cell.id}>
+                      {flexRender(
+                        cell.column.columnDef.cell,
+                        cell.getContext(),
+                      )}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell
+                  colSpan={columns.length}
+                  className="h-24 text-center text-muted-foreground"
+                >
+                  No videos found matching your search
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </div>
+
+      {/* Pagination */}
+      <div className="flex flex-col gap-3 border-t pt-4 sm:flex-row sm:items-center sm:justify-between">
+        <span className="text-sm text-muted-foreground">
+          Showing {start}-{end} of {totalRows}
+        </span>
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">Rows</span>
+            <Select
+              value={pageSize.toString()}
+              onValueChange={(v) => table.setPageSize(Number(v))}
+            >
+              <SelectTrigger className="h-9 w-20">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {[10, 25, 50, 100].map((n) => (
+                  <SelectItem key={n} value={n.toString()}>
+                    {n}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex items-center gap-1">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => table.setPageIndex(0)}
+              disabled={!table.getCanPreviousPage()}
+            >
+              First
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => table.previousPage()}
+              disabled={!table.getCanPreviousPage()}
+            >
+              Prev
+            </Button>
+            <span className="px-2 text-sm text-muted-foreground">
+              {pageIndex + 1} / {table.getPageCount() || 1}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => table.nextPage()}
+              disabled={!table.getCanNextPage()}
+            >
+              Next
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => table.setPageIndex(table.getPageCount() - 1)}
+              disabled={!table.getCanNextPage()}
+            >
+              Last
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function FilterSelect({
+  label,
+  value,
+  onValueChange,
+}: {
+  label: string;
+  value: string;
+  onValueChange: (v: string) => void;
+}) {
+  return (
+    <div className="flex items-center gap-2">
+      <span className="text-sm text-muted-foreground">{label}</span>
+      <Select value={value} onValueChange={onValueChange}>
+        <SelectTrigger className="h-9 w-28">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="all">All</SelectItem>
+          <SelectItem value="yes">Yes</SelectItem>
+          <SelectItem value="no">No</SelectItem>
+        </SelectContent>
+      </Select>
+    </div>
   );
 }
