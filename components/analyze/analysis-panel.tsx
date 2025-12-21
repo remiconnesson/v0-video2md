@@ -391,7 +391,7 @@ function SectionHeader({
   return (
     <div className="flex items-start justify-between gap-4">
       <div>
-        <CardTitle className="text-base">{title}</CardTitle>
+        <CardTitle className="text-lg">{title}</CardTitle>
       </div>
       <Button
         variant="ghost"
