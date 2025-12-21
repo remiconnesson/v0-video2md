@@ -23,7 +23,6 @@ import { ZoomDialog } from "./zoom-dialog";
 // ============================================================================
 
 interface SlideGridTabProps {
-  videoId: string;
   slides: SlideData[];
   feedbackMap: Map<number, SlideFeedbackData>;
 }
@@ -32,11 +31,7 @@ interface SlideGridTabProps {
 // Main Component
 // ============================================================================
 
-export function SlideGridTab({
-  videoId: _videoId,
-  slides,
-  feedbackMap,
-}: SlideGridTabProps) {
+export function SlideGridTab({ slides, feedbackMap }: SlideGridTabProps) {
   const [slidesConfirmed, setSlidesConfirmed] = useState(false);
 
   // Compute picked slides from the slides and feedback
