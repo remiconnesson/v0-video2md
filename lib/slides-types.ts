@@ -1,11 +1,6 @@
 import { createSelectSchema } from "drizzle-zod";
 import { z } from "zod";
-import {
-  slideFeedback,
-  slideMarkdown,
-  slideMarkdownFeedback,
-  videoSlides,
-} from "@/db/schema";
+import { slideFeedback, videoSlides } from "@/db/schema";
 
 const FrameMetadataSchema = z.object({
   frame_id: z.string(),
@@ -129,26 +124,6 @@ export interface SlidesState {
 // ============================================================================
 // Slide Markdown Analysis Types
 // ============================================================================
-
-export const SlideMarkdownDataSchema = createSelectSchema(slideMarkdown).omit({
-  id: true,
-  videoId: true,
-  createdAt: true,
-});
-
-export type SlideMarkdownData = z.infer<typeof SlideMarkdownDataSchema>;
-
-export const SlideMarkdownFeedbackDataSchema = createSelectSchema(
-  slideMarkdownFeedback,
-).omit({
-  id: true,
-  videoId: true,
-  createdAt: true,
-});
-
-export type SlideMarkdownFeedbackData = z.infer<
-  typeof SlideMarkdownFeedbackDataSchema
->;
 
 export type SlideAnalysisStreamEvent =
   | {
