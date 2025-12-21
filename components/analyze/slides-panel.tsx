@@ -1,7 +1,8 @@
 "use client";
 
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { ImageIcon, Loader2 } from "lucide-react";
+import { useLocalStorage } from "@uidotdev/usehooks";
+import { HelpCircle, ImageIcon, Loader2, X } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -484,7 +485,10 @@ function CompletedState({
   isUnpickingAll: boolean;
   hasPickedFrames: boolean;
 }) {
-  const [showTutorial, setShowTutorial] = useState(false);
+  const [showTutorial, setShowTutorial] = useLocalStorage(
+    "video2md-slides-tutorial",
+    true,
+  );
   const slidesLabel =
     view === "curation"
       ? `Frames (${pickedFramesCount}/${totalFramesCount})`
@@ -500,13 +504,17 @@ function CompletedState({
           </span>
           {view === "curation" && (
             <div className="flex flex-wrap items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowTutorial((prev) => !prev)}
-              >
-                {showTutorial ? "Hide tutorial" : "Show tutorial"}
-              </Button>
+              {!showTutorial && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                  onClick={() => setShowTutorial(true)}
+                  title="Show tutorial"
+                >
+                  <HelpCircle className="h-4 w-4" />
+                </Button>
+              )}
               <Button
                 variant="outline"
                 size="sm"
@@ -522,14 +530,27 @@ function CompletedState({
 
       <CardContent>
         {view === "curation" && showTutorial && (
-          <Card className="mb-6">
-            <CardHeader>
-              <CardTitle className="text-base">How this page works</CardTitle>
+          <Card className="mb-6 bg-primary/[0.02] border-primary/20 shadow-none relative overflow-hidden">
+            <div className="absolute top-2 right-2">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 text-muted-foreground hover:text-foreground hover:bg-primary/10"
+                onClick={() => setShowTutorial(false)}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2 text-primary">
+                <HelpCircle className="h-4 w-4" />
+                How this page works
+              </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4 text-sm text-muted-foreground">
               <p>
-                In this page you can select which slides you'd like to keep for
-                this video. Interactions immediately save the choice in the
+                In this page you can select which slides you&apos;d like to keep
+                for this video. Interactions immediately save the choice in the
                 database (there&apos;s no save button).
               </p>
               <p>
@@ -564,6 +585,16 @@ function CompletedState({
                     manual selection.
                   </li>
                 </ol>
+              </div>
+              <div className="pt-2 flex justify-end">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setShowTutorial(false)}
+                  className="text-xs h-8"
+                >
+                  Hide tutorial
+                </Button>
               </div>
             </CardContent>
           </Card>

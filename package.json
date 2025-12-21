@@ -51,6 +51,7 @@
     "@tanstack/react-virtual": "^3.13.13",
     "@testing-library/dom": "latest",
     "@types/debug": "latest",
+    "@uidotdev/usehooks": "^2.4.1",
     "@vercel/blob": "^2.0.0",
     "@vitest/browser-playwright": "latest",
     "@vitest/browser-preview": "latest",
