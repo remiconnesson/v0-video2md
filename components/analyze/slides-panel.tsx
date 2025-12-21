@@ -2,6 +2,7 @@
 
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { ImageIcon, Loader2 } from "lucide-react";
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -480,6 +481,7 @@ function CompletedState({
   isUnpickingAll: boolean;
   hasPickedFrames: boolean;
 }) {
+  const [showTutorial, setShowTutorial] = useState(false);
   const slidesLabel =
     view === "curation"
       ? `Slides (${pickedSlidesCount}/${slidesCount})`
@@ -494,19 +496,75 @@ function CompletedState({
             {slidesLabel}
           </span>
           {view === "curation" && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onUnpickAll}
-              disabled={!hasPickedFrames || isUnpickingAll}
-            >
-              {isUnpickingAll ? "Unpicking..." : "Unpick all frames"}
-            </Button>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowTutorial((prev) => !prev)}
+              >
+                {showTutorial ? "Hide tutorial" : "Show tutorial"}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onUnpickAll}
+                disabled={!hasPickedFrames || isUnpickingAll}
+              >
+                {isUnpickingAll ? "Unpicking..." : "Unpick all frames"}
+              </Button>
+            </div>
           )}
         </CardTitle>
       </CardHeader>
 
       <CardContent>
+        {view === "curation" && showTutorial && (
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle className="text-base">How this page works</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4 text-sm text-muted-foreground">
+              <p>
+                In this page you can select which slides you'd like to keep for
+                this video. Interactions immediately save the choice in the
+                database (there&apos;s no save button).
+              </p>
+              <p>
+                You can also help build a dataset to improve the service. If a
+                frame doesn&apos;t have useful content you can mark it as such
+                (or the opposite) to label images for training and dev purposes.
+              </p>
+              <p>
+                We&apos;re improving the slide detection algorithm, so we show
+                the first and last frame of each segment. If the algorithm were
+                perfect, the first and last frame would be identical in terms of
+                useful content. By indicating whether they contain useful
+                content and how similar they are, you help us close that gap.
+              </p>
+              <p>You don&apos;t need to annotate everything—10% is enough.</p>
+              <div className="space-y-2">
+                <p className="font-medium text-foreground">Order of priority</p>
+                <ol className="list-decimal space-y-2 pl-5">
+                  <li>
+                    Pick the best slides (shown in the{" "}
+                    <Link
+                      href="?slides"
+                      className="text-primary underline underline-offset-4"
+                    >
+                      Slide Curation tab
+                    </Link>
+                    ) that will be used for AI slide-to-markdown extraction.
+                  </li>
+                  <li>
+                    Annotate some slides so we can build a dataset to improve
+                    slide detection quality and eventually remove the need for
+                    manual selection.
+                  </li>
+                </ol>
+              </div>
+            </CardContent>
+          </Card>
+        )}
         {view === "curation" ? (
           <SlideGrid
             slides={slides}
