@@ -59,7 +59,13 @@ export type VideoManifest = z.infer<typeof VideoManifestSchema>;
 // ============================================================================
 
 export type SlideStreamEvent =
-  | { type: "progress"; status: string; progress: number; message: string }
+  | {
+      type: "progress";
+      status: string;
+      step: number;
+      totalSteps: number;
+      message: string;
+    }
   | { type: "slide"; slide: SlideData }
   | { type: "complete"; totalSlides: number }
   | { type: "error"; message: string };
@@ -113,7 +119,8 @@ export interface JobUpdate {
 
 export interface SlidesState {
   status: "idle" | "loading" | "extracting" | "completed" | "error";
-  progress: number;
+  step: number;
+  totalSteps: number;
   message: string;
   error: string | null;
   slides: SlideData[];

@@ -6,8 +6,8 @@ import { parseAsStringLiteral, useQueryState } from "nuqs";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { StepIndicator } from "@/components/ui/step-indicator";
 import type {
   SlideData,
   SlideFeedbackData,
@@ -25,7 +25,8 @@ interface SlidesPanelProps {
 export function SlidesPanel({ videoId }: SlidesPanelProps) {
   const [slidesState, setSlidesState] = useState<SlidesState>({
     status: "loading",
-    progress: 0,
+    step: 1,
+    totalSteps: 4,
     message: "Loading slides...",
     error: null,
     slides: [],
@@ -58,18 +59,30 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
         case "completed": {
           setSlidesState({
             status: "completed",
-            progress: 100,
+            step: 4,
+            totalSteps: 4,
             message: slidesMessage,
             error: null,
             slides,
           });
           return;
         }
-        case "in_progress":
+        case "in_progress": {
+          setSlidesState({
+            status: "extracting",
+            step: 2,
+            totalSteps: 4,
+            message: "Slide extraction in progress...",
+            error: null,
+            slides,
+          });
+          return;
+        }
         case "pending": {
           setSlidesState({
             status: "extracting",
-            progress: 0,
+            step: 1,
+            totalSteps: 4,
             message: "Slide extraction in progress...",
             error: null,
             slides,
@@ -79,7 +92,8 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
         case "failed": {
           setSlidesState({
             status: "error",
-            progress: 0,
+            step: 1,
+            totalSteps: 4,
             message: "",
             error:
               data.errorMessage ?? "Slide extraction failed. Please try again.",
@@ -90,7 +104,8 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
         default: {
           setSlidesState({
             status: slides.length > 0 ? "completed" : "idle",
-            progress: slides.length > 0 ? 100 : 0,
+            step: slides.length > 0 ? 4 : 1,
+            totalSteps: 4,
             message: slides.length > 0 ? slidesMessage : "",
             error: null,
             slides,
@@ -103,7 +118,8 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
 
       setSlidesState({
         status: "error",
-        progress: 0,
+        step: 1,
+        totalSteps: 4,
         message: "",
         error: errorMessage,
         slides: [],
@@ -164,7 +180,8 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
     setSlidesState((prev) => ({
       ...prev,
       status: "extracting",
-      progress: 0,
+      step: 1,
+      totalSteps: 4,
       message: "Starting slides extraction...",
       error: null,
       slides: [],
@@ -188,7 +205,8 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
           setSlidesState((prev) => ({
             ...prev,
             status: "extracting",
-            progress: e.progress ?? prev.progress,
+            step: e.step ?? prev.step,
+            totalSteps: e.totalSteps ?? prev.totalSteps,
             message: e.message ?? prev.message,
           }));
         },
@@ -202,7 +220,8 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
           setSlidesState((prev) => ({
             ...prev,
             status: "completed",
-            progress: 100,
+            step: 4,
+            totalSteps: 4,
             message: `Extracted ${e.totalSlides} slides`,
             error: null,
           }));
@@ -211,7 +230,8 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
           setSlidesState((prev) => ({
             ...prev,
             status: "error",
-            progress: 0,
+            step: 1,
+            totalSteps: 4,
             message: "",
             error: e.message,
           }));
@@ -224,7 +244,8 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
       setSlidesState((prev) => ({
         ...prev,
         status: "error",
-        progress: 0,
+        step: 1,
+        totalSteps: 4,
         message: "",
         error: errorMessage,
       }));
@@ -267,7 +288,8 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
   if (slidesState.status === "extracting") {
     return (
       <ExtractingState
-        progress={slidesState.progress}
+        step={slidesState.step}
+        totalSteps={slidesState.totalSteps}
         message={slidesState.message}
         slides={slidesState.slides}
         feedbackMap={feedbackMap}
@@ -307,13 +329,15 @@ function LoadingState() {
 }
 
 function ExtractingState({
-  progress,
+  step,
+  totalSteps,
   message,
   slides,
   feedbackMap,
   onSubmitFeedback,
 }: {
-  progress: number;
+  step: number;
+  totalSteps: number;
   message: string;
   slides: SlideData[];
   feedbackMap: Map<number, SlideFeedbackData>;
@@ -331,8 +355,11 @@ function ExtractingState({
       </CardHeader>
 
       <CardContent className="space-y-4">
-        <Progress value={progress} className="h-2" />
-        <p className="text-sm text-muted-foreground">{message}</p>
+        <StepIndicator
+          currentStep={step}
+          totalSteps={totalSteps}
+          message={message}
+        />
 
         {hasSlidesFound && (
           <div className="mt-6">
