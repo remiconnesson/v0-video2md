@@ -1,6 +1,7 @@
 "use client";
 
-import { Check, Copy } from "lucide-react";
+import { Check, Copy, ExternalLink } from "lucide-react";
+import Image from "next/image";
 import { createParser, useQueryState } from "nuqs";
 import {
   useCallback,
@@ -23,6 +24,8 @@ import type { AnalysisStreamEvent } from "@/workflows/steps/transcript-analysis"
 
 interface AnalysisPanelProps {
   videoId: string;
+  title: string;
+  channelName: string;
 }
 
 const parseAsSectionId = createParser<string>({
@@ -30,7 +33,11 @@ const parseAsSectionId = createParser<string>({
   serialize: (value) => value ?? "",
 });
 
-export function AnalysisPanel({ videoId }: AnalysisPanelProps) {
+export function AnalysisPanel({
+  videoId,
+  title,
+  channelName,
+}: AnalysisPanelProps) {
   const [activeSection, setActiveSection] = useQueryState(
     "section",
     parseAsSectionId,
@@ -216,12 +223,6 @@ export function AnalysisPanel({ videoId }: AnalysisPanelProps) {
 
   return (
     <div className="space-y-4">
-      <CopyButton
-        copied={copied}
-        onCopy={handleCopyMarkdown}
-        disabled={!hasContent}
-      />
-
       {statusMessage ? (
         <p className="text-sm text-muted-foreground">{statusMessage}</p>
       ) : null}
@@ -234,11 +235,17 @@ export function AnalysisPanel({ videoId }: AnalysisPanelProps) {
         <p className="text-sm text-muted-foreground">Loading analysis...</p>
       ) : null}
 
-      <div className="grid gap-6 lg:grid-cols-[220px_minmax(0,1fr)]">
+      <div className="grid gap-6 lg:grid-cols-[240px_minmax(0,1fr)]">
         <AnalysisSidebar
           sections={sections}
           activeSection={activeSection ?? undefined}
           onSectionClick={handleSectionClick}
+          videoId={videoId}
+          title={title}
+          channelName={channelName}
+          onCopyMarkdown={handleCopyMarkdown}
+          copyDisabled={!hasContent}
+          copied={copied}
         />
 
         <div className="space-y-4">
@@ -266,40 +273,6 @@ export function AnalysisPanel({ videoId }: AnalysisPanelProps) {
 // ============================================================================
 // Sub-components
 // ============================================================================
-
-function CopyButton({
-  copied,
-  onCopy,
-  disabled,
-}: {
-  copied: boolean;
-  onCopy: () => void;
-  disabled?: boolean;
-}) {
-  return (
-    <div className="flex justify-end">
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={onCopy}
-        className="gap-2"
-        disabled={disabled}
-      >
-        {copied ? (
-          <>
-            <Check className="h-4 w-4" />
-            Copied!
-          </>
-        ) : (
-          <>
-            <Copy className="h-4 w-4" />
-            Copy Markdown
-          </>
-        )}
-      </Button>
-    </div>
-  );
-}
 
 function SectionContent({ content }: { content: unknown }): React.ReactNode {
   if (content === null || content === undefined || content === "") {
@@ -415,7 +388,7 @@ function SectionHeader({
   );
 }
 
-export function ObjectSection({ data }: { data: Record<string, unknown> }) {
+function ObjectSection({ data }: { data: Record<string, unknown> }) {
   return (
     <dl className="divide-y divide-border/60">
       {Object.entries(data).map(([key, value]) => {
@@ -446,43 +419,156 @@ function AnalysisSidebar({
   sections,
   activeSection,
   onSectionClick,
+  videoId,
+  title,
+  channelName,
+  onCopyMarkdown,
+  copyDisabled,
+  copied,
 }: {
   sections: Array<{ id: string; title: string }>;
   activeSection?: string;
   onSectionClick: (sectionId: string) => void;
+  videoId: string;
+  title: string;
+  channelName: string;
+  onCopyMarkdown: () => void;
+  copyDisabled: boolean;
+  copied: boolean;
 }) {
   return (
     <aside className="hidden lg:block sticky top-24 self-start">
-      <div className="space-y-3">
-        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          Sections
-        </p>
-        {sections.length === 0 ? (
-          <p className="text-sm text-muted-foreground">Waiting for sections…</p>
-        ) : (
-          <nav className="space-y-1">
-            {sections.map((section) => {
-              const isActive = section.id === activeSection;
+      <div className="space-y-4">
+        <VideoInfoCard
+          videoId={videoId}
+          title={title}
+          channelName={channelName}
+          onCopyMarkdown={onCopyMarkdown}
+          copyDisabled={copyDisabled}
+          copied={copied}
+        />
 
-              return (
-                <button
-                  key={section.id}
-                  type="button"
-                  onClick={() => onSectionClick(section.id)}
-                  className={`w-full rounded-md px-2 py-1 text-left text-sm transition hover:bg-muted ${
-                    isActive
-                      ? "bg-muted text-foreground"
-                      : "text-muted-foreground"
-                  }`}
-                >
-                  {section.title}
-                </button>
-              );
-            })}
-          </nav>
-        )}
+        <div className="space-y-3">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Sections
+          </p>
+          {sections.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              Waiting for sections…
+            </p>
+          ) : (
+            <nav className="space-y-1">
+              {sections.map((section) => {
+                const isActive = section.id === activeSection;
+
+                return (
+                  <button
+                    key={section.id}
+                    type="button"
+                    onClick={() => onSectionClick(section.id)}
+                    className={`w-full rounded-md px-2 py-1 text-left text-sm transition hover:bg-muted ${
+                      isActive
+                        ? "bg-muted text-foreground"
+                        : "text-muted-foreground"
+                    }`}
+                  >
+                    {section.title}
+                  </button>
+                );
+              })}
+            </nav>
+          )}
+        </div>
       </div>
     </aside>
+  );
+}
+
+function VideoInfoCard({
+  videoId,
+  title,
+  channelName,
+  onCopyMarkdown,
+  copyDisabled,
+  copied,
+}: {
+  videoId: string;
+  title: string;
+  channelName: string;
+  onCopyMarkdown: () => void;
+  copyDisabled: boolean;
+  copied: boolean;
+}) {
+  const thumbnailUrl = `https://i.ytimg.com/vi/${videoId}/mqdefault.jpg`;
+
+  return (
+    <Card className="overflow-hidden border-none bg-muted/30 shadow-none">
+      <CardContent className="p-3 space-y-3">
+        <ThumbnailCell src={thumbnailUrl} alt={title} />
+
+        <div className="space-y-1">
+          <h3 className="font-semibold text-sm line-clamp-2 leading-tight">
+            {title}
+          </h3>
+          <p className="text-xs text-muted-foreground line-clamp-1">
+            {channelName}
+          </p>
+        </div>
+
+        <div className="flex flex-col gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onCopyMarkdown}
+            className="w-full h-8 text-xs gap-2"
+            disabled={copyDisabled}
+          >
+            {copied ? (
+              <>
+                <Check className="h-3 w-3" />
+                Copied!
+              </>
+            ) : (
+              <>
+                <Copy className="h-3 w-3" />
+                Copy Markdown
+              </>
+            )}
+          </Button>
+
+          <Button
+            variant="ghost"
+            size="sm"
+            asChild
+            className="w-full h-8 text-xs gap-2 text-muted-foreground"
+          >
+            <a
+              href={`https://www.youtube.com/watch?v=${videoId}`}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <ExternalLink className="h-3 w-3" />
+              Watch Video
+            </a>
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function ThumbnailCell({ src, alt }: { src?: string; alt?: string }) {
+  return (
+    <div className="aspect-video relative overflow-hidden rounded-md border bg-muted/20">
+      <Image
+        src={src || "/placeholder.svg?height=90&width=160"}
+        alt={alt || "Video thumbnail"}
+        fill
+        sizes="(max-width: 240px) 100vw, 240px"
+        className="object-cover"
+        unoptimized // YouTube images don't need Next.js optimization usually, and avoid remote pattern issues if not configured
+      />
+    </div>
   );
 }
 

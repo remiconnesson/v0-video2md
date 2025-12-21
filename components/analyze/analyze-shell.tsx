@@ -100,12 +100,19 @@ export function AnalyzeShell({
         />
         <SidebarInset className="flex flex-col">
           <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-6 py-6">
-            <VideoInfoDisplay
+            {activeTab !== "analyze" && (
+              <VideoInfoDisplay
+                title={title}
+                channelName={channelName}
+                youtubeId={videoId}
+              />
+            )}
+            <AnalyzeTabContent
+              activeTab={activeTab}
+              videoId={videoId}
               title={title}
               channelName={channelName}
-              youtubeId={videoId}
             />
-            <AnalyzeTabContent activeTab={activeTab} videoId={videoId} />
           </div>
         </SidebarInset>
       </div>
@@ -201,9 +208,13 @@ function AnalyzeSidebar({
 function AnalyzeTabContent({
   activeTab,
   videoId,
+  title,
+  channelName,
 }: {
   activeTab: AnalyzeTabId;
   videoId: string;
+  title: string;
+  channelName: string;
 }) {
   if (activeTab === "slides") {
     return <SlidesPanel videoId={videoId} view="curation" />;
@@ -213,7 +224,9 @@ function AnalyzeTabContent({
     return <SlidesPanel videoId={videoId} view="grid" />;
   }
 
-  return <AnalysisPanel videoId={videoId} />;
+  return (
+    <AnalysisPanel videoId={videoId} title={title} channelName={channelName} />
+  );
 }
 
 function VideoInfoDisplay({
