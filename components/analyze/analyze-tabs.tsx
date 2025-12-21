@@ -14,6 +14,7 @@ const parseAsPresence = createParser<boolean>({
 const tabQueryConfig = {
   analyze: parseAsPresence,
   slides: parseAsPresence,
+  slidesGrid: parseAsPresence,
 };
 
 type AnalyzeTabsProps = {
@@ -22,15 +23,24 @@ type AnalyzeTabsProps = {
 
 export function AnalyzeTabs({ videoId }: AnalyzeTabsProps) {
   const [queryState, setQueryState] = useQueryStates(tabQueryConfig);
-  const activeTab = queryState.slides ? "slides" : "analyze";
+  const activeTab = queryState.slidesGrid
+    ? "slides-grid"
+    : queryState.slides
+      ? "slides"
+      : "analyze";
 
   const handleTabChange = (value: string) => {
-    if (value === "slides") {
-      void setQueryState({ slides: true, analyze: null });
+    if (value === "slides-grid") {
+      void setQueryState({ slidesGrid: true, slides: null, analyze: null });
       return;
     }
 
-    void setQueryState({ analyze: true, slides: null });
+    if (value === "slides") {
+      void setQueryState({ slides: true, slidesGrid: null, analyze: null });
+      return;
+    }
+
+    void setQueryState({ analyze: true, slides: null, slidesGrid: null });
   };
 
   return (
@@ -41,7 +51,8 @@ export function AnalyzeTabs({ videoId }: AnalyzeTabsProps) {
     >
       <TabsList>
         <TabsTrigger value="analyze">Analysis</TabsTrigger>
-        <TabsTrigger value="slides">Slides</TabsTrigger>
+        <TabsTrigger value="slides">Slide Curation</TabsTrigger>
+        <TabsTrigger value="slides-grid">Slides Grid</TabsTrigger>
       </TabsList>
 
       <TabsContent value="analyze">
@@ -49,7 +60,11 @@ export function AnalyzeTabs({ videoId }: AnalyzeTabsProps) {
       </TabsContent>
 
       <TabsContent value="slides">
-        <SlidesPanel videoId={videoId} />
+        <SlidesPanel videoId={videoId} view="curation" />
+      </TabsContent>
+
+      <TabsContent value="slides-grid">
+        <SlidesPanel videoId={videoId} view="grid" />
       </TabsContent>
     </Tabs>
   );

@@ -65,14 +65,16 @@ describe("SlidesPanel Auto-Trigger Extraction", () => {
     });
 
     // Verify that the POST request was made to start extraction
-    const mockFetch = fetch as unknown as {
-      mock: { calls: Array<[string, RequestInit?]> };
-    };
-    const calls = mockFetch.mock.calls;
-    const postCall = calls.find((call) => call[1]?.method === "POST");
-    expect(postCall).toBeDefined();
-    expect(postCall?.[0]).toBe(`/api/video/${mockVideoId}/slides`);
-    expect(postCall?.[1]?.method).toBe("POST");
+    await waitFor(() => {
+      const mockFetch = fetch as unknown as {
+        mock: { calls: Array<[string, RequestInit?]> };
+      };
+      const calls = mockFetch.mock.calls;
+      const postCall = calls.find((call) => call[1]?.method === "POST");
+      expect(postCall).toBeDefined();
+      expect(postCall?.[0]).toBe(`/api/video/${mockVideoId}/slides`);
+      expect(postCall?.[1]?.method).toBe("POST");
+    });
   });
 
   it("should not auto-trigger extraction when slides already exist", async () => {
