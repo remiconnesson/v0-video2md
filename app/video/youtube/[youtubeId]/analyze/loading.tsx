@@ -14,16 +14,12 @@ export default function AnalyzeLoading() {
         <AnalyzeSidebar activeTab="analyze" />
         <SidebarInset className="flex flex-col">
           <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-6 py-6">
-            <div className="space-y-4">
-              {/* This matches the min-h-5 container in AnalysisPanel to prevent layout shift */}
-              <div className="min-h-5 flex items-center">
-                <p className="text-sm text-muted-foreground animate-pulse">
-                  Preparing video analysis...
-                </p>
-              </div>
+            <div className="grid gap-6 lg:grid-cols-[240px_minmax(0,1fr)]">
+              <AnalysisSidebar sections={[]} />
 
-              <div className="grid gap-6 lg:grid-cols-[240px_minmax(0,1fr)]">
-                <AnalysisSidebar sections={[]} />
+              <div className="flex flex-col gap-4">
+                {/* Reserved space for status messages to prevent layout shift */}
+                <div className="min-h-5 flex items-center" />
 
                 <div className="space-y-6">
                   {[1, 2, 3].map((i) => (

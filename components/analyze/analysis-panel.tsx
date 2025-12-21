@@ -14,6 +14,7 @@ import { Streamdown } from "streamdown";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   analysisToMarkdown,
   formatSectionTitle,
@@ -224,22 +225,6 @@ export function AnalysisPanel({
 
   return (
     <div className="space-y-4">
-      <div className="min-h-5 flex items-center">
-        {statusMessage ? (
-          <p className="text-sm text-muted-foreground animate-in fade-in slide-in-from-top-1 duration-200">
-            {statusMessage}
-          </p>
-        ) : errorMessage ? (
-          <p className="text-sm text-destructive animate-in fade-in slide-in-from-top-1 duration-200">
-            {errorMessage}
-          </p>
-        ) : status === "loading" && !statusMessage ? (
-          <p className="text-sm text-muted-foreground animate-in fade-in slide-in-from-top-1 duration-200">
-            Loading analysis...
-          </p>
-        ) : null}
-      </div>
-
       <div className="grid gap-6 lg:grid-cols-[240px_minmax(0,1fr)]">
         <AnalysisSidebar
           sections={sections}
@@ -253,22 +238,63 @@ export function AnalysisPanel({
           copied={copied}
         />
 
-        <div className="space-y-4">
-          {hasContent ? (
-            Object.entries(analysis).map(([key, value]) => (
-              <Section
-                key={key}
-                title={key}
-                content={value}
-                onCopy={() => handleCopySection(key, value)}
-                copied={copiedSection === key}
-              />
-            ))
-          ) : status === "ready" && !errorMessage ? (
-            <p className="text-muted-foreground italic">
-              No analysis available.
-            </p>
-          ) : null}
+        <div className="flex flex-col gap-4">
+          <div className="min-h-5 flex items-center">
+            {statusMessage ? (
+              <p className="text-sm text-muted-foreground animate-in fade-in slide-in-from-top-1 duration-200">
+                {statusMessage}
+              </p>
+            ) : errorMessage ? (
+              <p className="text-sm text-destructive animate-in fade-in slide-in-from-top-1 duration-200">
+                {errorMessage}
+              </p>
+            ) : status === "loading" && !statusMessage ? (
+              <p className="text-sm text-muted-foreground animate-in fade-in slide-in-from-top-1 duration-200">
+                Loading analysis...
+              </p>
+            ) : null}
+          </div>
+
+          <div className="space-y-6">
+            {hasContent ? (
+              Object.entries(analysis).map(([key, value]) => (
+                <Section
+                  key={key}
+                  title={key}
+                  content={value}
+                  onCopy={() => handleCopySection(key, value)}
+                  copied={copiedSection === key}
+                />
+              ))
+            ) : status === "loading" || status === "streaming" ? (
+              <div className="space-y-6">
+                {[1, 2, 3].map((i) => (
+                  <Card key={i} className="animate-pulse border-muted/30">
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+                      <Skeleton className="h-8 w-24 rounded-lg" />
+                      <div className="flex items-center gap-2 text-muted-foreground/40">
+                        <Copy className="h-4 w-4" />
+                        <span className="text-xs font-medium uppercase tracking-wider">
+                          Copy
+                        </span>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="space-y-2">
+                        <Skeleton className="h-4 w-full" />
+                        <Skeleton className="h-4 w-[96%]" />
+                        <Skeleton className="h-4 w-[92%]" />
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : status === "ready" && !errorMessage ? (
+              <p className="text-muted-foreground italic">
+                No analysis available.
+              </p>
+            ) : null}
+          </div>
         </div>
       </div>
     </div>
