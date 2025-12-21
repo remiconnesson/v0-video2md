@@ -3,6 +3,8 @@
  * Extracted from workflow steps for testability and reuse.
  */
 
+import { formatDuration, toClockParts } from "./time-utils";
+
 export interface TranscriptSegment {
   start: number;
   end?: number;
@@ -19,14 +21,7 @@ export interface TranscriptSegment {
  * formatTimestamp(3723) => "1:02:03"
  */
 export function formatTimestamp(seconds: number): string {
-  const hours = Math.floor(seconds / 3600);
-  const mins = Math.floor((seconds % 3600) / 60);
-  const secs = Math.floor(seconds % 60);
-
-  if (hours > 0) {
-    return `${hours}:${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
-  }
-  return `${mins}:${secs.toString().padStart(2, "0")}`;
+  return formatDuration(seconds);
 }
 
 /**
@@ -35,9 +30,7 @@ export function formatTimestamp(seconds: number): string {
  * @returns Formatted timestamp with leading zeros (e.g., "00:01:23")
  */
 export function formatTimestampForLLM(seconds: number): string {
-  const hours = Math.floor(seconds / 3600);
-  const mins = Math.floor((seconds % 3600) / 60);
-  const secs = Math.floor(seconds % 60);
+  const { hours, mins, secs } = toClockParts(seconds);
 
   return `${String(hours).padStart(2, "0")}:${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
 }

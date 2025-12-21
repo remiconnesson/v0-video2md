@@ -1,39 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatDuration, formatTime } from "./time-utils";
-
-describe("formatTime", () => {
-  it("should format seconds only", () => {
-    expect(formatTime(45)).toBe("0:45");
-  });
-
-  it("should format minutes and seconds", () => {
-    expect(formatTime(125)).toBe("2:05");
-  });
-
-  it("should format hours, minutes, and seconds", () => {
-    expect(formatTime(3665)).toBe("1:01:05");
-  });
-
-  it("should pad single-digit seconds with zero", () => {
-    expect(formatTime(5)).toBe("0:05");
-  });
-
-  it("should pad single-digit minutes with zero when hours present", () => {
-    expect(formatTime(3605)).toBe("1:00:05");
-  });
-
-  it("should handle zero seconds", () => {
-    expect(formatTime(0)).toBe("0:00");
-  });
-
-  it("should handle large durations", () => {
-    expect(formatTime(36000)).toBe("10:00:00"); // 10 hours
-  });
-
-  it("should floor decimal seconds", () => {
-    expect(formatTime(45.7)).toBe("0:45");
-  });
-});
+import { formatDuration } from "./time-utils";
 
 describe("formatDuration", () => {
   it("should format seconds only", () => {

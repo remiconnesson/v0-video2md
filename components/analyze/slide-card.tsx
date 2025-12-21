@@ -13,7 +13,7 @@ import Image from "next/image";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import type { SlideData, SlideFeedbackData } from "@/lib/slides-types";
-import { formatTime } from "@/lib/time-utils";
+import { formatDuration } from "@/lib/time-utils";
 import { cn } from "@/lib/utils";
 import { ZoomDialog } from "./zoom-dialog";
 
@@ -334,7 +334,7 @@ export function SlideCard({
         <div className="flex items-center gap-3">
           <span className="font-semibold">Slide #{slide.slideNumber}</span>
           <span className="text-sm text-muted-foreground">
-            {formatTime(slide.startTime)} - {formatTime(slide.endTime)}
+            {formatDuration(slide.startTime)} - {formatDuration(slide.endTime)}
           </span>
         </div>
       </div>
