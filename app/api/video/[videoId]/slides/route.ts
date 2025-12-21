@@ -9,7 +9,7 @@ import {
   updateSlideExtractionStatus,
   upsertSlideExtraction,
 } from "@/db/queries";
-import { createSSEResponse } from "@/lib/api-utils";
+import { createSSEResponse, errorResponse, logError } from "@/lib/api-utils";
 import { extractSlidesWorkflow } from "@/workflows/extract-slides";
 
 // ============================================================================
@@ -114,18 +114,16 @@ export async function POST(
 
   // If already completed, return existing data
   if (existing?.status === "completed") {
-    return NextResponse.json(
-      { error: "Slides already extracted", status: "completed" },
-      { status: 409 },
-    );
+    return errorResponse("Slides already extracted", 409, {
+      context: { status: "completed" },
+    });
   }
 
   // If in progress, return conflict
   if (existing?.status === "in_progress") {
-    return NextResponse.json(
-      { error: "Extraction already in progress", runId: existing.runId },
-      { status: 409 },
-    );
+    return errorResponse("Extraction already in progress", 409, {
+      context: { runId: existing.runId },
+    });
   }
 
   // If retrying after failure, delete existing slides first
@@ -145,14 +143,11 @@ export async function POST(
 
     return createSSEResponse(run.readable, run.runId);
   } catch (error) {
-    console.error("Failed to start workflow:", error);
+    logError(error, "Failed to start slides workflow", { videoId });
 
     // FIX: Revert DB state so user can try again
     await deleteSlideExtraction(videoId);
 
-    return NextResponse.json(
-      { error: "Failed to start extraction workflow" },
-      { status: 500 },
-    );
+    return errorResponse("Failed to start extraction workflow", 500);
   }
 }

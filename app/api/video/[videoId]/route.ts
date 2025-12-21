@@ -4,7 +4,11 @@ import {
   type VideoStatusResponse,
   videoStatusResponseSchema,
 } from "@/lib/api-types";
-import { validateYouTubeVideoId } from "@/lib/api-utils";
+import {
+  errorResponse,
+  logError,
+  validateYouTubeVideoId,
+} from "@/lib/api-utils";
 
 // ============================================================================
 // GET - Check video status and get basic info
@@ -56,11 +60,8 @@ export async function GET(
   const validationResult = videoStatusResponseSchema.safeParse(responseData);
 
   if (!validationResult.success) {
-    console.error("Invalid response data:", validationResult.error);
-    return NextResponse.json(
-      { error: "Invalid response data" },
-      { status: 500 },
-    );
+    logError(validationResult.error, "Invalid response data", { videoId });
+    return errorResponse("Invalid response data", 500);
   }
 
   return NextResponse.json(validationResult.data);

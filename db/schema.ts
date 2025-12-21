@@ -69,13 +69,16 @@ export const videos = pgTable(
   (table) => [index("videos_channel_id_idx").on(table.channelId)],
 );
 
+const videoIdColumn = () =>
+  varchar("video_id", { length: 32 })
+    .notNull()
+    .references(() => videos.videoId, { onDelete: "cascade" });
+
 export const scrapTranscriptV1 = pgTable(
   "scrap_transcript_v1",
   {
     id: serial("id").primaryKey(),
-    videoId: varchar("video_id", { length: 32 })
-      .notNull()
-      .references(() => videos.videoId, { onDelete: "cascade" }),
+    videoId: videoIdColumn(),
     channelId: varchar("channel_id", { length: 64 })
       .notNull()
       .references(() => channels.channelId, { onDelete: "cascade" }),
@@ -96,10 +99,7 @@ export type ScrapedTranscript = typeof scrapTranscriptV1.$inferSelect;
 export type NewScrapedTranscript = typeof scrapTranscriptV1.$inferInsert;
 
 export const videoAnalysisRuns = pgTable("video_analysis_runs", {
-  videoId: varchar("video_id", { length: 32 })
-    .notNull()
-    .primaryKey()
-    .references(() => videos.videoId, { onDelete: "cascade" }),
+  videoId: videoIdColumn().primaryKey(),
   result: jsonb("result").$type<Record<string, unknown>>(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
@@ -110,10 +110,7 @@ export type NewVideoAnalysisRun = typeof videoAnalysisRuns.$inferInsert;
 export const videoAnalysisWorkflowIds = pgTable(
   "video_analysis_workflow_ids",
   {
-    videoId: varchar("video_id", { length: 32 })
-      .notNull()
-      .primaryKey()
-      .references(() => videos.videoId, { onDelete: "cascade" }),
+    videoId: videoIdColumn().primaryKey(),
     workflowId: varchar("workflow_id", { length: 100 }).notNull(),
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
@@ -135,9 +132,7 @@ export const videoSlideExtractions = pgTable(
   "video_slide_extractions",
   {
     id: serial("id").primaryKey(),
-    videoId: varchar("video_id", { length: 32 })
-      .notNull()
-      .references(() => videos.videoId, { onDelete: "cascade" }),
+    videoId: videoIdColumn(),
     status: extractionStatusEnum("status").notNull().default("pending"),
     runId: varchar("run_id", { length: 100 }), // Workflow run ID for resumption
     totalSlides: integer("total_slides"),
@@ -156,9 +151,7 @@ export const videoSlides = pgTable(
   "video_slides",
   {
     id: serial("id").primaryKey(),
-    videoId: varchar("video_id", { length: 32 })
-      .notNull()
-      .references(() => videos.videoId, { onDelete: "cascade" }),
+    videoId: videoIdColumn(),
     slideNumber: integer("slide_index").notNull(),
 
     // Timing
@@ -208,9 +201,7 @@ export const slideFeedback = pgTable(
   "slide_feedback",
   {
     id: serial("id").primaryKey(),
-    videoId: varchar("video_id", { length: 32 })
-      .notNull()
-      .references(() => videos.videoId, { onDelete: "cascade" }),
+    videoId: videoIdColumn(),
     slideNumber: integer("slide_index").notNull(),
 
     // First frame validation

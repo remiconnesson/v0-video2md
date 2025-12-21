@@ -6,6 +6,7 @@ import {
   videoExists,
 } from "@/db/queries";
 import { slideFeedback } from "@/db/schema";
+import { errorResponse } from "@/lib/api-utils";
 
 // ============================================================================
 // Schemas
@@ -29,7 +30,7 @@ export async function GET(
 
   // Verify video exists
   if (!(await videoExists(videoId))) {
-    return NextResponse.json({ error: "Video not found" }, { status: 404 });
+    return errorResponse("Video not found", 404);
   }
 
   const feedback = await getSlideFeedback(videoId);
@@ -49,7 +50,7 @@ export async function POST(
 
   // Verify video exists
   if (!(await videoExists(videoId))) {
-    return NextResponse.json({ error: "Video not found" }, { status: 404 });
+    return errorResponse("Video not found", 404);
   }
 
   // Parse and validate body
@@ -57,15 +58,14 @@ export async function POST(
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+    return errorResponse("Invalid JSON body", 400);
   }
 
   const parsed = slideFeedbackSchema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json(
-      { error: "Validation failed", details: parsed.error.format() },
-      { status: 400 },
-    );
+    return errorResponse("Validation failed", 400, {
+      details: parsed.error.format(),
+    });
   }
 
   const feedback = parsed.data;
