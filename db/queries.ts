@@ -407,28 +407,67 @@ export async function upsertSlideFeedbackBatch(
   const excludedValue = (column: string) =>
     sql`excluded.${sql.identifier(column)}`;
 
-  await db
-    .insert(slideFeedback)
-    .values(
-      feedbackItems.map((feedback) => ({
+  const fieldOrder = [
+    "firstFrameHasUsefulContent",
+    "lastFrameHasUsefulContent",
+    "framesSameness",
+    "isFirstFramePicked",
+    "isLastFramePicked",
+  ] as const;
+
+  const fieldColumns: Record<(typeof fieldOrder)[number], string> = {
+    firstFrameHasUsefulContent: "first_frame_has_useful_content",
+    lastFrameHasUsefulContent: "last_frame_has_useful_content",
+    framesSameness: "frames_sameness",
+    isFirstFramePicked: "is_first_frame_picked",
+    isLastFramePicked: "is_last_frame_picked",
+  };
+
+  const hasField = (
+    feedback: (typeof feedbackItems)[number],
+    field: (typeof fieldOrder)[number],
+  ) => Object.hasOwn(feedback, field);
+
+  const groupedFeedback = feedbackItems.reduce((acc, feedback) => {
+    const signature = fieldOrder
+      .map((field) => (hasField(feedback, field) ? "1" : "0"))
+      .join("");
+    const group = acc.get(signature) ?? [];
+    group.push(feedback);
+    acc.set(signature, group);
+    return acc;
+  }, new Map<string, typeof feedbackItems>());
+
+  for (const [signature, items] of groupedFeedback) {
+    const setFields = fieldOrder.reduce<Record<string, unknown>>(
+      (acc, field, index) => {
+        if (signature[index] === "1") {
+          acc[field] = excludedValue(fieldColumns[field]);
+        }
+        return acc;
+      },
+      {},
+    );
+
+    const insertQuery = db.insert(slideFeedback).values(
+      items.map((feedback) => ({
         videoId,
         ...feedback,
       })),
-    )
-    .onConflictDoUpdate({
+    );
+
+    if (Object.keys(setFields).length === 0) {
+      await insertQuery.onConflictDoNothing({
+        target: [slideFeedback.videoId, slideFeedback.slideNumber],
+      });
+      continue;
+    }
+
+    await insertQuery.onConflictDoUpdate({
       target: [slideFeedback.videoId, slideFeedback.slideNumber],
-      set: {
-        firstFrameHasUsefulContent: excludedValue(
-          "first_frame_has_useful_content",
-        ),
-        lastFrameHasUsefulContent: excludedValue(
-          "last_frame_has_useful_content",
-        ),
-        framesSameness: excludedValue("frames_sameness"),
-        isFirstFramePicked: excludedValue("is_first_frame_picked"),
-        isLastFramePicked: excludedValue("is_last_frame_picked"),
-      },
+      set: setFields,
     });
+  }
 }
 
 // ============================================================================
