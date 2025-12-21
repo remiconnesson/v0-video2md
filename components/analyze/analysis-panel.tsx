@@ -192,9 +192,10 @@ export function AnalysisPanel({ videoId }: AnalysisPanelProps) {
     },
   );
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: scrollToActiveSection is an effect event
   useEffect(() => {
     scrollToActiveSection(activeSection, scrollToSection);
-  }, [activeSection, scrollToSection, scrollToActiveSection]);
+  }, [activeSection, scrollToSection]);
 
   return (
     <div className="space-y-4">
