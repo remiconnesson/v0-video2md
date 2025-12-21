@@ -1,7 +1,5 @@
 import { ExternalLink } from "lucide-react";
-import { AnalysisPanel } from "@/components/analyze/analysis-panel";
-import { SlidesPanel } from "@/components/analyze/slides-panel";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { AnalyzeTabs } from "@/components/analyze/analyze-tabs";
 import { fetchAndSaveTranscript } from "@/lib/fetch-and-save-transcript";
 import { isValidYouTubeVideoId } from "@/lib/youtube-utils";
 
@@ -33,20 +31,7 @@ export default async function AnalyzePage(props: AnalyzePageProps) {
           youtubeId={youtubeId}
         />
       </div>
-      <Tabs defaultValue="analysis" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="analysis">Analysis</TabsTrigger>
-          <TabsTrigger value="slides">Slides</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="analysis">
-          <AnalysisPanel videoId={youtubeId} />
-        </TabsContent>
-
-        <TabsContent value="slides">
-          <SlidesPanel videoId={youtubeId} />
-        </TabsContent>
-      </Tabs>
+      <AnalyzeTabs videoId={youtubeId} />
     </>
   );
 }
