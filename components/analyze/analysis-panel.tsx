@@ -380,6 +380,7 @@ function SectionHeader({
         size="sm"
         onClick={onCopy}
         className="gap-2 shrink-0"
+        aria-label={copied ? `Copied ${title} section` : `Copy ${title} section`}
       >
         {copied ? (
           <>
