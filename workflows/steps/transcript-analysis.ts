@@ -107,12 +107,13 @@ export async function saveTranscriptAIAnalysisToDb(
 
   // Clean up workflow ID after successful analysis save
   // This is a cleanup operation and should not fail the workflow
+  // Note: videoId is the primary key of videoAnalysisWorkflowIds, so at most one record will be deleted
   try {
     await db
       .delete(videoAnalysisWorkflowIds)
       .where(eq(videoAnalysisWorkflowIds.videoId, videoId));
   } catch (error) {
-    console.error("Failed to cleanup workflow ID:", error);
+    console.error(`Failed to cleanup workflow ID for video ${videoId}:`, error);
     // Continue execution - this is not critical
   }
 
