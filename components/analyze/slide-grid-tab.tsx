@@ -2,6 +2,7 @@
 
 import { ImageIcon, ZoomIn } from "lucide-react";
 import Image from "next/image";
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import {
   Card,
@@ -99,8 +100,13 @@ function ConfirmationCard({
         <CardTitle>Slide Review</CardTitle>
         <CardDescription>
           Review the curated slides below. You can go to the{" "}
-          <strong>Slide Curation</strong> tab to select exactly the slides that
-          are useful and not redundant.
+          <Link
+            href="?slides"
+            className="text-primary underline underline-offset-4"
+          >
+            Slide Curation
+          </Link>{" "}
+          tab to select exactly the slides that are useful and not redundant.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
