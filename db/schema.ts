@@ -228,7 +228,7 @@ export const slideFeedback = pgTable(
     isFirstFramePicked: boolean("is_first_frame_picked")
       .default(true)
       .notNull(),
-    isLastFramePicked: boolean("is_last_frame_picked").default(true).notNull(),
+    isLastFramePicked: boolean("is_last_frame_picked").default(false).notNull(),
 
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
