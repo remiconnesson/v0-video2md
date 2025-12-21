@@ -210,16 +210,6 @@ describe("resolveShortUrl", () => {
     expect(videoId).toBe("dQw4w9WgXcQ");
   });
 
-  it("should prevent SSRF attacks with private IPs", async () => {
-    const mockFetch = vi.fn();
-    global.fetch = mockFetch;
-
-    // Test various private IP ranges - the URL should be validated before fetch
-    const videoId = await resolveShortUrl("https://youtu.be/abc12345678");
-    // Since 'abc12345678' is 11 chars and looks like a valid ID, it will be extracted directly
-    expect(videoId).toBe("abc12345678");
-  });
-
   it("should return null after max redirects", async () => {
     const mockFetch = vi.fn().mockImplementation(() =>
       Promise.resolve({

@@ -24,75 +24,6 @@ export function isValidYouTubeVideoId(
  */
 
 /**
- * Checks if an IP address is in a private or reserved range.
- * Treats malformed IPs as unsafe.
- * This prevents SSRF attacks targeting internal services.
- */
-function isPrivateOrReservedIP(hostname: string): boolean {
-  // Obvious local names
-  if (hostname === "localhost" || hostname === "::1") {
-    return true;
-  }
-
-  // IPv4 dotted-decimal
-  const ipv4Match = hostname.match(
-    /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/,
-  );
-  if (ipv4Match) {
-    const octets = ipv4Match.slice(1).map(Number);
-
-    // Invalid octet -> treat as unsafe
-    if (
-      octets.some((octet) => Number.isNaN(octet) || octet < 0 || octet > 255)
-    ) {
-      return true;
-    }
-
-    const [firstOctet, secondOctet] = octets;
-
-    // Private ranges
-    if (firstOctet === 10) return true; // 10.0.0.0/8
-    if (firstOctet === 172 && secondOctet >= 16 && secondOctet <= 31)
-      return true; // 172.16.0.0/12
-    if (firstOctet === 192 && secondOctet === 168) return true; // 192.168.0.0/16
-
-    // Loopback
-    if (firstOctet === 127) return true; // 127.0.0.0/8
-
-    // Link-local
-    if (firstOctet === 169 && secondOctet === 254) return true; // 169.254.0.0/16
-
-    // Multicast and reserved
-    if (firstOctet >= 224) return true; // 224.0.0.0/4 and above
-
-    // 0.0.0.0/8
-    if (firstOctet === 0) return true;
-  }
-
-  // IPv6-ish
-  if (hostname.includes(":")) {
-    const lower = hostname.toLowerCase();
-
-    // Loopback
-    if (lower === "::1" || lower === "0:0:0:0:0:0:0:1") return true;
-
-    // Link-local (fe80::/10)
-    if (lower.startsWith("fe80:")) return true;
-
-    // Unique local addresses (fc00::/7)
-    if (lower.startsWith("fc") || lower.startsWith("fd")) return true;
-
-    // Multicast (ff00::/8)
-    if (lower.startsWith("ff")) return true;
-
-    // IPv4-mapped IPv6 (::ffff:127.0.0.1, etc.)
-    if (lower.includes("::ffff:")) return true;
-  }
-
-  return false;
-}
-
-/**
  * Allowed YouTube domains for URL resolution
  */
 const ALLOWED_YOUTUBE_DOMAINS = [
@@ -112,7 +43,6 @@ const MAX_REDIRECTS = 5;
  * Validates a URL to prevent SSRF attacks.
  * - Only HTTP/HTTPS
  * - YouTube domains only
- * - Rejects localhost / private / reserved IPs
  */
 function validateUrlForSSRF(urlString: string): {
   valid: boolean;
@@ -146,14 +76,6 @@ function validateUrlForSSRF(urlString: string): {
     return {
       valid: false,
       error: "Only YouTube URLs are allowed for resolution",
-    };
-  }
-
-  // Defense-in-depth: block private/reserved IP literals masquerading as hostnames
-  if (isPrivateOrReservedIP(hostname)) {
-    return {
-      valid: false,
-      error: "Access to private or reserved IP addresses is not allowed",
     };
   }
 
@@ -211,7 +133,7 @@ export function extractYoutubeVideoId(input: string): YouTubeVideoId | null {
 /**
  * Resolves a short YouTube URL to a full URL and extracts the video ID.
  * - Handles youtu.be redirects
- * - Includes SSRF protection (allowlist, protocol checks, IP blocklist, manual redirects)
+ * - Includes SSRF protection (allowlist, protocol checks, manual redirects)
  */
 export async function resolveShortUrl(
   input: string,
