@@ -19,9 +19,11 @@ const tabQueryConfig = {
 
 type AnalyzeTabsProps = {
   videoId: string;
+  title: string;
+  channelName: string;
 };
 
-export function AnalyzeTabs({ videoId }: AnalyzeTabsProps) {
+export function AnalyzeTabs({ videoId, title, channelName }: AnalyzeTabsProps) {
   const [queryState, setQueryState] = useQueryStates(tabQueryConfig);
   const activeTab = queryState.slidesGrid
     ? "slides-grid"
@@ -56,7 +58,11 @@ export function AnalyzeTabs({ videoId }: AnalyzeTabsProps) {
       </TabsList>
 
       <TabsContent value="analyze">
-        <AnalysisPanel videoId={videoId} />
+        <AnalysisPanel
+          videoId={videoId}
+          title={title}
+          channelName={channelName}
+        />
       </TabsContent>
 
       <TabsContent value="slides">
