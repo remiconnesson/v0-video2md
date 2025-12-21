@@ -18,9 +18,6 @@ export default function AnalyzeLoading() {
               <AnalysisSidebar sections={[]} />
 
               <div className="flex flex-col gap-4">
-                {/* Reserved space for status messages to prevent layout shift */}
-                <div className="min-h-5 flex items-center" />
-
                 <div className="space-y-6">
                   {[1, 2, 3].map((i) => (
                     <Card key={i} className="animate-pulse border-muted/30">

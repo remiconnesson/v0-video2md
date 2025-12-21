@@ -239,21 +239,13 @@ export function AnalysisPanel({
         />
 
         <div className="flex flex-col gap-4">
-          <div className="min-h-5 flex items-center">
-            {statusMessage ? (
-              <p className="text-sm text-muted-foreground animate-in fade-in slide-in-from-top-1 duration-200">
-                {statusMessage}
-              </p>
-            ) : errorMessage ? (
+          {errorMessage ? (
+            <div className="min-h-5 flex items-center">
               <p className="text-sm text-destructive animate-in fade-in slide-in-from-top-1 duration-200">
                 {errorMessage}
               </p>
-            ) : status === "loading" && !statusMessage ? (
-              <p className="text-sm text-muted-foreground animate-in fade-in slide-in-from-top-1 duration-200">
-                Loading analysis...
-              </p>
-            ) : null}
-          </div>
+            </div>
+          ) : null}
 
           <div className="space-y-6">
             {hasContent ? (
