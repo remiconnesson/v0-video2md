@@ -437,8 +437,8 @@ function AnalysisSidebar({
   copied: boolean;
 }) {
   return (
-    <aside className="hidden lg:block sticky top-24 self-start">
-      <div className="space-y-4">
+    <aside className="hidden lg:block sticky top-6 self-start">
+      <div className="space-y-6">
         <VideoInfoCard
           videoId={videoId}
           title={title}
@@ -449,11 +449,11 @@ function AnalysisSidebar({
         />
 
         <div className="space-y-3">
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70 px-1">
             Sections
           </p>
           {sections.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-muted-foreground px-1">
               Waiting for sections…
             </p>
           ) : (
@@ -466,9 +466,9 @@ function AnalysisSidebar({
                     key={section.id}
                     type="button"
                     onClick={() => onSectionClick(section.id)}
-                    className={`w-full rounded-md px-2 py-1 text-left text-sm transition hover:bg-muted ${
+                    className={`w-full rounded-md px-2 py-1.5 text-left text-sm transition hover:bg-muted ${
                       isActive
-                        ? "bg-muted text-foreground"
+                        ? "bg-muted text-foreground font-medium"
                         : "text-muted-foreground"
                     }`}
                   >
@@ -502,71 +502,64 @@ function VideoInfoCard({
   const thumbnailUrl = `https://i.ytimg.com/vi/${videoId}/mqdefault.jpg`;
 
   return (
-    <Card className="overflow-hidden border-none bg-muted/30 shadow-none">
-      <CardContent className="p-3 space-y-3">
+    <div className="space-y-3">
+      <div className="group relative">
         <ThumbnailCell src={thumbnailUrl} alt={title} />
+        <a
+          href={`https://www.youtube.com/watch?v=${videoId}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="absolute inset-0 flex items-center justify-center bg-black/0 transition-colors group-hover:bg-black/20 rounded-md"
+          aria-label="Watch Video"
+        >
+          <div className="opacity-0 transition-opacity group-hover:opacity-100 bg-background/90 p-1.5 rounded-full shadow-sm text-foreground">
+            <ExternalLink className="h-4 w-4" />
+          </div>
+        </a>
+      </div>
 
-        <div className="space-y-1">
-          <h3 className="font-semibold text-sm line-clamp-2 leading-tight">
-            {title}
-          </h3>
-          <p className="text-xs text-muted-foreground line-clamp-1">
-            {channelName}
-          </p>
-        </div>
+      <div className="space-y-1 px-1">
+        <h3 className="font-bold text-sm line-clamp-2 leading-tight tracking-tight">
+          {title}
+        </h3>
+        <p className="text-xs text-muted-foreground line-clamp-1">
+          {channelName}
+        </p>
+      </div>
 
-        <div className="flex flex-col gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onCopyMarkdown}
-            className="w-full h-8 text-xs gap-2"
-            disabled={copyDisabled}
-          >
-            {copied ? (
-              <>
-                <Check className="h-3 w-3" />
-                Copied!
-              </>
-            ) : (
-              <>
-                <Copy className="h-3 w-3" />
-                Copy Markdown
-              </>
-            )}
-          </Button>
-
-          <Button
-            variant="ghost"
-            size="sm"
-            asChild
-            className="w-full h-8 text-xs gap-2 text-muted-foreground"
-          >
-            <a
-              href={`https://www.youtube.com/watch?v=${videoId}`}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <ExternalLink className="h-3 w-3" />
-              Watch Video
-            </a>
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={onCopyMarkdown}
+        className="w-full h-9 text-xs gap-2 shadow-none border-muted-foreground/20 hover:bg-muted"
+        disabled={copyDisabled}
+      >
+        {copied ? (
+          <>
+            <Check className="h-3.5 w-3.5" />
+            Copied!
+          </>
+        ) : (
+          <>
+            <Copy className="h-3.5 w-3.5" />
+            Copy Markdown
+          </>
+        )}
+      </Button>
+    </div>
   );
 }
 
 function ThumbnailCell({ src, alt }: { src?: string; alt?: string }) {
   return (
-    <div className="aspect-video relative overflow-hidden rounded-md border bg-muted/20">
+    <div className="aspect-video relative overflow-hidden rounded-md">
       <Image
         src={src || "/placeholder.svg?height=90&width=160"}
         alt={alt || "Video thumbnail"}
         fill
         sizes="(max-width: 240px) 100vw, 240px"
         className="object-cover"
-        unoptimized // YouTube images don't need Next.js optimization usually, and avoid remote pattern issues if not configured
+        unoptimized
       />
     </div>
   );
