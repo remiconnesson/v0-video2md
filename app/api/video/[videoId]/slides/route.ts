@@ -1,4 +1,4 @@
-import { asc, eq } from "drizzle-orm";
+import { and, asc, eq, isNull } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { start } from "workflow/api";
 import { db } from "@/db";
@@ -155,8 +155,9 @@ export async function POST(
     );
   }
 
-  // If in progress, return conflict
-  if (existing?.status === "in_progress") {
+  // If in progress with a runId, return conflict
+  // Note: We allow in_progress without runId to be retried (handles edge case of workflow start failure)
+  if (existing?.status === "in_progress" && existing.runId) {
     return NextResponse.json(
       { error: "Extraction already in progress", runId: existing.runId },
       { status: 409 },
@@ -168,39 +169,91 @@ export async function POST(
     await db.delete(videoSlides).where(eq(videoSlides.videoId, videoId));
   }
 
-  // Create or update extraction record
+  // Ensure extraction record exists (create if needed, set to pending if failed)
+  // This is idempotent and safe to run by multiple concurrent requests
   await db
     .insert(videoSlideExtractions)
     .values({
       videoId,
-      status: "in_progress",
+      status: "pending", // Use pending to indicate record exists but workflow not started
     })
     .onConflictDoUpdate({
       target: videoSlideExtractions.videoId,
       set: {
-        status: "in_progress",
+        status: "pending",
         errorMessage: null,
+        runId: null, // Clear any stale runId from previous failed attempts
       },
     });
 
   try {
-    // Start workflow
+    // Start workflow - this may be done by multiple concurrent requests
     const run = await start(extractSlidesWorkflow, [videoId]);
 
-    // Update with runId
-    await db
+    // Atomic claim: Update with runId ONLY if runId is still NULL and status is pending
+    // This ensures only ONE request wins the race and claims the workflow
+    const [claimed] = await db
       .update(videoSlideExtractions)
-      .set({ runId: run.runId })
-      .where(eq(videoSlideExtractions.videoId, videoId));
+      .set({
+        runId: run.runId,
+        status: "in_progress",
+      })
+      .where(
+        and(
+          eq(videoSlideExtractions.videoId, videoId),
+          isNull(videoSlideExtractions.runId),
+          eq(videoSlideExtractions.status, "pending"),
+        ),
+      )
+      .returning({ runId: videoSlideExtractions.runId });
 
-    return createSSEResponse(run.readable, run.runId);
+    // If we won the race (claimed is defined), return our stream
+    if (claimed) {
+      console.log(
+        `✅ Successfully claimed workflow ${run.runId} for video ${videoId}`,
+      );
+      return createSSEResponse(run.readable, run.runId);
+    }
+
+    // We lost the race - another request already claimed a runId
+    // Fetch the winning runId to return to the client
+    console.log(
+      `⚠️ Lost race for video ${videoId}, our workflow ${run.runId} will be orphaned`,
+    );
+    const [winner] = await db
+      .select()
+      .from(videoSlideExtractions)
+      .where(eq(videoSlideExtractions.videoId, videoId))
+      .limit(1);
+
+    // Note: The orphaned workflow will eventually complete or timeout
+    // but its results won't be stored since we don't have its runId in DB
+    // This is acceptable as only one workflow result should be used
+
+    return NextResponse.json(
+      {
+        error: "Extraction already in progress",
+        runId: winner?.runId ?? null,
+      },
+      { status: 409 },
+    );
   } catch (error) {
     console.error("Failed to start workflow:", error);
 
-    // FIX: Revert DB state so user can try again
+    // Revert DB state so user can try again
+    // Only delete if we haven't claimed a runId (otherwise another request may have succeeded)
     await db
-      .delete(videoSlideExtractions)
-      .where(eq(videoSlideExtractions.videoId, videoId));
+      .update(videoSlideExtractions)
+      .set({
+        status: "failed",
+        errorMessage: "Failed to start extraction workflow",
+      })
+      .where(
+        and(
+          eq(videoSlideExtractions.videoId, videoId),
+          isNull(videoSlideExtractions.runId),
+        ),
+      );
 
     return NextResponse.json(
       { error: "Failed to start extraction workflow" },
