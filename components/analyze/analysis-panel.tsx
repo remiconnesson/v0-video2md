@@ -13,6 +13,7 @@ import {
 import { Streamdown } from "streamdown";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   analysisToMarkdown,
   formatSectionTitle,
@@ -437,8 +438,8 @@ function AnalysisSidebar({
   copied: boolean;
 }) {
   return (
-    <aside className="hidden lg:block sticky top-6 self-start">
-      <div className="space-y-6">
+    <aside className="hidden lg:flex flex-col sticky top-6 self-start h-[calc(100vh-3.5rem)] min-w-0 group/sidebar">
+      <div className="shrink-0 mb-6 pr-2">
         <VideoInfoCard
           videoId={videoId}
           title={title}
@@ -447,37 +448,46 @@ function AnalysisSidebar({
           copyDisabled={copyDisabled}
           copied={copied}
         />
+      </div>
 
-        <div className="space-y-3">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70 px-1">
-            Sections
-          </p>
-          {sections.length === 0 ? (
-            <p className="text-sm text-muted-foreground px-1">
-              Waiting for sections…
-            </p>
-          ) : (
-            <nav className="space-y-1">
-              {sections.map((section) => {
-                const isActive = section.id === activeSection;
+      <div className="flex flex-col flex-1 min-h-0 min-w-0 pr-2">
+        <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70 px-1 mb-3 shrink-0">
+          Sections
+        </p>
 
-                return (
-                  <button
-                    key={section.id}
-                    type="button"
-                    onClick={() => onSectionClick(section.id)}
-                    className={`w-full rounded-md px-2 py-1.5 text-left text-sm transition hover:bg-muted ${
-                      isActive
-                        ? "bg-muted text-foreground font-medium"
-                        : "text-muted-foreground"
-                    }`}
-                  >
-                    {section.title}
-                  </button>
-                );
-              })}
+        <div className="flex-1 min-h-0 relative">
+          <ScrollArea type="scroll" className="h-full pr-3">
+            <nav className="space-y-1 pb-8">
+              {sections.length === 0 ? (
+                <p className="text-sm text-muted-foreground px-1">
+                  Waiting for sections…
+                </p>
+              ) : (
+                sections.map((section) => {
+                  const isActive = section.id === activeSection;
+
+                  return (
+                    <button
+                      key={section.id}
+                      type="button"
+                      onClick={() => onSectionClick(section.id)}
+                      className={`w-full rounded-md px-2 py-1.5 text-left text-sm transition hover:bg-muted ${
+                        isActive
+                          ? "bg-muted text-foreground font-medium"
+                          : "text-muted-foreground"
+                      }`}
+                    >
+                      {section.title}
+                    </button>
+                  );
+                })
+              )}
             </nav>
-          )}
+          </ScrollArea>
+
+          {/* Fades for indicating more content */}
+          <div className="absolute top-0 left-0 right-0 h-4 bg-gradient-to-b from-background to-transparent pointer-events-none z-10" />
+          <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-background to-transparent pointer-events-none z-10" />
         </div>
       </div>
     </aside>
