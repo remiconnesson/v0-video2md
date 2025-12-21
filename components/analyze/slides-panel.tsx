@@ -14,12 +14,16 @@ import type {
 } from "@/lib/slides-types";
 import { consumeSSE } from "@/lib/sse";
 import { SlideCard } from "./slide-card";
+import { SlideGridTab } from "./slide-grid-tab";
+
+type SlidesPanelView = "curation" | "grid";
 
 interface SlidesPanelProps {
   videoId: string;
+  view?: SlidesPanelView;
 }
 
-export function SlidesPanel({ videoId }: SlidesPanelProps) {
+export function SlidesPanel({ videoId, view = "curation" }: SlidesPanelProps) {
   const [slidesState, setSlidesState] = useState<SlidesState>({
     status: "loading",
     step: 1,
@@ -307,6 +311,7 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
       slides={slidesState.slides}
       feedbackMap={feedbackMap}
       onSubmitFeedback={submitFeedback}
+      view={view}
     />
   );
 }
@@ -401,11 +406,13 @@ function CompletedState({
   slides,
   feedbackMap,
   onSubmitFeedback,
+  view,
 }: {
   slidesCount: number;
   slides: SlideData[];
   feedbackMap: Map<number, SlideFeedbackData>;
   onSubmitFeedback: (feedback: SlideFeedbackData) => Promise<void>;
+  view: SlidesPanelView;
 }) {
   return (
     <Card>
@@ -419,12 +426,16 @@ function CompletedState({
       </CardHeader>
 
       <CardContent>
-        <SlideGrid
-          slides={slides}
-          allSlides={slides}
-          feedbackMap={feedbackMap}
-          onSubmitFeedback={onSubmitFeedback}
-        />
+        {view === "curation" ? (
+          <SlideGrid
+            slides={slides}
+            allSlides={slides}
+            feedbackMap={feedbackMap}
+            onSubmitFeedback={onSubmitFeedback}
+          />
+        ) : (
+          <SlideGridTab slides={slides} feedbackMap={feedbackMap} />
+        )}
       </CardContent>
     </Card>
   );

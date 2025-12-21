@@ -120,3 +120,41 @@ export interface SlidesState {
   error: string | null;
   slides: SlideData[];
 }
+
+// ============================================================================
+// Slide Markdown Analysis Types
+// ============================================================================
+
+export type SlideAnalysisStreamEvent =
+  | {
+      type: "progress";
+      status: string;
+      progress: number;
+      message: string;
+    }
+  | {
+      type: "slide_markdown";
+      slideNumber: number;
+      framePosition: "first" | "last";
+      markdown: string;
+    }
+  | { type: "complete"; totalSlides: number }
+  | { type: "error"; message: string };
+
+export interface SlideAnalysisState {
+  status: "idle" | "loading" | "streaming" | "completed" | "error";
+  progress: number;
+  message: string;
+  error: string | null;
+}
+
+/**
+ * Picked slide info - represents a slide frame that was picked for analysis
+ */
+export interface PickedSlide {
+  slideNumber: number;
+  framePosition: "first" | "last";
+  imageUrl: string | null;
+  startTime: number;
+  endTime: number;
+}

@@ -1,4 +1,5 @@
 import { render, screen, waitFor } from "@testing-library/react";
+import { NuqsTestingAdapter } from "nuqs/adapters/testing";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { SlidesPanel } from "./slides-panel";
 
@@ -47,7 +48,11 @@ describe("SlidesPanel Auto-Trigger Extraction", () => {
     });
     vi.mocked(fetch).mockResolvedValueOnce(mockPostResponse);
 
-    render(<SlidesPanel videoId={mockVideoId} />);
+    render(
+      <NuqsTestingAdapter>
+        <SlidesPanel videoId={mockVideoId} />
+      </NuqsTestingAdapter>,
+    );
 
     // Should show loading state initially
     expect(screen.getByText("Loading slides...")).toBeInTheDocument();
@@ -60,14 +65,16 @@ describe("SlidesPanel Auto-Trigger Extraction", () => {
     });
 
     // Verify that the POST request was made to start extraction
-    const mockFetch = fetch as unknown as {
-      mock: { calls: Array<[string, RequestInit?]> };
-    };
-    const calls = mockFetch.mock.calls;
-    const postCall = calls.find((call) => call[1]?.method === "POST");
-    expect(postCall).toBeDefined();
-    expect(postCall?.[0]).toBe(`/api/video/${mockVideoId}/slides`);
-    expect(postCall?.[1]?.method).toBe("POST");
+    await waitFor(() => {
+      const mockFetch = fetch as unknown as {
+        mock: { calls: Array<[string, RequestInit?]> };
+      };
+      const calls = mockFetch.mock.calls;
+      const postCall = calls.find((call) => call[1]?.method === "POST");
+      expect(postCall).toBeDefined();
+      expect(postCall?.[0]).toBe(`/api/video/${mockVideoId}/slides`);
+      expect(postCall?.[1]?.method).toBe("POST");
+    });
   });
 
   it("should not auto-trigger extraction when slides already exist", async () => {
@@ -102,7 +109,11 @@ describe("SlidesPanel Auto-Trigger Extraction", () => {
       ),
     );
 
-    render(<SlidesPanel videoId={mockVideoId} />);
+    render(
+      <NuqsTestingAdapter>
+        <SlidesPanel videoId={mockVideoId} />
+      </NuqsTestingAdapter>,
+    );
 
     // Should show completed state, not trigger extraction
     await waitFor(() => {
