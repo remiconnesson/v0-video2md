@@ -1,13 +1,11 @@
-import { eq } from "drizzle-orm";
 import { Match } from "effect";
 import { type NextRequest, NextResponse } from "next/server";
 import { getRun, start } from "workflow/api";
-import { db } from "@/db";
 import {
-  type VideoAnalysisRun,
-  videoAnalysisRuns,
-  videoAnalysisWorkflowIds,
-} from "@/db/schema";
+  getCompletedAnalysis,
+  getWorkflowRecord,
+  storeWorkflowId,
+} from "@/db/queries";
 import { createSSEResponse, errorResponse, logError } from "@/lib/api-utils";
 import type { YouTubeVideoId } from "@/lib/youtube-utils";
 import { isValidYouTubeVideoId } from "@/lib/youtube-utils";
@@ -55,13 +53,7 @@ export async function GET(
   return startNewAnalysisWorkflow({ videoId });
 }
 
-async function getWorkflowRecord(videoId: string) {
-  const [workflowRecord] = await db
-    .select()
-    .from(videoAnalysisWorkflowIds)
-    .where(eq(videoAnalysisWorkflowIds.videoId, videoId));
-  return workflowRecord;
-}
+// Note: getWorkflowRecord is now imported from queries
 
 function dispatchOngoingWorkflowHandler({
   workflowId,
@@ -141,48 +133,11 @@ async function startNewAnalysisWorkflow({
     const run = await start(analyzeTranscriptWorkflow, [videoId]);
 
     // Store the workflow ID in the database for future reference
-    await storeWorkflowId({ videoId, workflowId: run.runId });
+    await storeWorkflowId(videoId, run.runId);
 
     return createSSEResponse(run.readable, run.runId);
   } catch (error) {
     logError(error, "Failed to start analysis workflow", { videoId });
     return errorResponse("Failed to start analysis workflow", 500);
   }
-}
-
-async function getCompletedAnalysis(
-  videoId: YouTubeVideoId,
-): Promise<VideoAnalysisRun | null> {
-  const [analysis] = await db
-    .select({
-      videoId: videoAnalysisRuns.videoId,
-      result: videoAnalysisRuns.result,
-      createdAt: videoAnalysisRuns.createdAt,
-    })
-    .from(videoAnalysisRuns)
-    .where(eq(videoAnalysisRuns.videoId, videoId));
-
-  return analysis;
-}
-
-async function storeWorkflowId({
-  videoId,
-  workflowId,
-}: {
-  videoId: YouTubeVideoId;
-  workflowId: string;
-}) {
-  await db
-    .insert(videoAnalysisWorkflowIds)
-    .values({
-      videoId,
-      workflowId,
-    })
-    .onConflictDoUpdate({
-      target: [videoAnalysisWorkflowIds.videoId],
-      set: {
-        workflowId,
-        createdAt: new Date(),
-      },
-    });
 }
