@@ -177,7 +177,7 @@ export function AnalysisPanel({ videoId }: AnalysisPanelProps) {
     if (!hasSection) return;
 
     scrollToSection(activeSection);
-  }, [activeSection, scrollToSection, sections]);
+  }, [activeSection, scrollToSection]);
 
   return (
     <div className="space-y-4">
