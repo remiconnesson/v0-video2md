@@ -3,7 +3,8 @@
 ## Important
 
 1. We use `pnpm`!!! Please start all new sessions by running `pnpm install`.
-2. Use `pnpm format`, `pnpm fix` and `pnpm tsc --noEmit` before saying your code is done.
+2. Use `pnpm next typegen` to generates the types before running type-checking
+3. Use `pnpm format`, `pnpm fix` and `pnpm tsc --noEmit` before saying your code is done.
 
 
 ## Project Overview
