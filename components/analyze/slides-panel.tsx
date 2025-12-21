@@ -2,10 +2,12 @@
 
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { ImageIcon, Loader2 } from "lucide-react";
+import { parseAsStringLiteral, useQueryState } from "nuqs";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type {
   SlideData,
   SlideFeedbackData,
@@ -14,6 +16,7 @@ import type {
 } from "@/lib/slides-types";
 import { consumeSSE } from "@/lib/sse";
 import { SlideCard } from "./slide-card";
+import { SlideGridTab } from "./slide-grid-tab";
 
 interface SlidesPanelProps {
   videoId: string;
@@ -281,6 +284,7 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
   // Completed state - show slides
   return (
     <CompletedState
+      videoId={videoId}
       slidesCount={slidesState.slides.length}
       slides={slidesState.slides}
       feedbackMap={feedbackMap}
@@ -369,17 +373,27 @@ function ErrorState({
   );
 }
 
+// Parser for slides subtabs
+const slidesSubtabParser = parseAsStringLiteral(["curation", "grid"] as const);
+
 function CompletedState({
+  videoId,
   slidesCount,
   slides,
   feedbackMap,
   onSubmitFeedback,
 }: {
+  videoId: string;
   slidesCount: number;
   slides: SlideData[];
   feedbackMap: Map<number, SlideFeedbackData>;
   onSubmitFeedback: (feedback: SlideFeedbackData) => Promise<void>;
 }) {
+  const [subtab, setSubtab] = useQueryState(
+    "slidesTab",
+    slidesSubtabParser.withDefault("curation"),
+  );
+
   return (
     <Card>
       <CardHeader>
@@ -392,12 +406,34 @@ function CompletedState({
       </CardHeader>
 
       <CardContent>
-        <SlideGrid
-          slides={slides}
-          allSlides={slides}
-          feedbackMap={feedbackMap}
-          onSubmitFeedback={onSubmitFeedback}
-        />
+        <Tabs
+          value={subtab}
+          onValueChange={(value) =>
+            void setSubtab(value as "curation" | "grid")
+          }
+        >
+          <TabsList className="mb-4">
+            <TabsTrigger value="curation">Slide Curation</TabsTrigger>
+            <TabsTrigger value="grid">Slides Grid</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="curation">
+            <SlideGrid
+              slides={slides}
+              allSlides={slides}
+              feedbackMap={feedbackMap}
+              onSubmitFeedback={onSubmitFeedback}
+            />
+          </TabsContent>
+
+          <TabsContent value="grid">
+            <SlideGridTab
+              videoId={videoId}
+              slides={slides}
+              feedbackMap={feedbackMap}
+            />
+          </TabsContent>
+        </Tabs>
       </CardContent>
     </Card>
   );

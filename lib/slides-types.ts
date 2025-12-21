@@ -1,6 +1,11 @@
 import { createSelectSchema } from "drizzle-zod";
 import { z } from "zod";
-import { slideFeedback, videoSlides } from "@/db/schema";
+import {
+  slideFeedback,
+  slideMarkdown,
+  slideMarkdownFeedback,
+  videoSlides,
+} from "@/db/schema";
 
 const FrameMetadataSchema = z.object({
   frame_id: z.string(),
@@ -112,4 +117,62 @@ export interface SlidesState {
   message: string;
   error: string | null;
   slides: SlideData[];
+}
+
+// ============================================================================
+// Slide Markdown Analysis Types
+// ============================================================================
+
+export const SlideMarkdownDataSchema = createSelectSchema(slideMarkdown).omit({
+  id: true,
+  videoId: true,
+  createdAt: true,
+});
+
+export type SlideMarkdownData = z.infer<typeof SlideMarkdownDataSchema>;
+
+export const SlideMarkdownFeedbackDataSchema = createSelectSchema(
+  slideMarkdownFeedback,
+).omit({
+  id: true,
+  videoId: true,
+  createdAt: true,
+});
+
+export type SlideMarkdownFeedbackData = z.infer<
+  typeof SlideMarkdownFeedbackDataSchema
+>;
+
+export type SlideAnalysisStreamEvent =
+  | {
+      type: "progress";
+      status: string;
+      progress: number;
+      message: string;
+    }
+  | {
+      type: "slide_markdown";
+      slideNumber: number;
+      framePosition: "first" | "last";
+      markdown: string;
+    }
+  | { type: "complete"; totalSlides: number }
+  | { type: "error"; message: string };
+
+export interface SlideAnalysisState {
+  status: "idle" | "loading" | "streaming" | "completed" | "error";
+  progress: number;
+  message: string;
+  error: string | null;
+}
+
+/**
+ * Picked slide info - represents a slide frame that was picked for analysis
+ */
+export interface PickedSlide {
+  slideNumber: number;
+  framePosition: "first" | "last";
+  imageUrl: string | null;
+  startTime: number;
+  endTime: number;
 }

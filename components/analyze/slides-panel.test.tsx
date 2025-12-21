@@ -1,4 +1,5 @@
 import { render, screen, waitFor } from "@testing-library/react";
+import { NuqsTestingAdapter } from "nuqs/adapters/testing";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { SlidesPanel } from "./slides-panel";
 
@@ -47,7 +48,11 @@ describe("SlidesPanel Auto-Trigger Extraction", () => {
     });
     vi.mocked(fetch).mockResolvedValueOnce(mockPostResponse);
 
-    render(<SlidesPanel videoId={mockVideoId} />);
+    render(
+      <NuqsTestingAdapter>
+        <SlidesPanel videoId={mockVideoId} />
+      </NuqsTestingAdapter>,
+    );
 
     // Should show loading state initially
     expect(screen.getByText("Loading slides...")).toBeInTheDocument();
@@ -102,7 +107,11 @@ describe("SlidesPanel Auto-Trigger Extraction", () => {
       ),
     );
 
-    render(<SlidesPanel videoId={mockVideoId} />);
+    render(
+      <NuqsTestingAdapter>
+        <SlidesPanel videoId={mockVideoId} />
+      </NuqsTestingAdapter>,
+    );
 
     // Should show completed state, not trigger extraction
     await waitFor(() => {
