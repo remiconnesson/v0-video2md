@@ -14,6 +14,18 @@ import {
 } from "./schema";
 
 // ============================================================================
+// Helper Functions
+// ============================================================================
+
+/**
+ * Helper to consistently handle single-result queries that may return null.
+ */
+async function findOne<T>(query: Promise<T[]>): Promise<T | null> {
+  const [result] = await query;
+  return result ?? null;
+}
+
+// ============================================================================
 // Video Status and Basic Info Queries
 // ============================================================================
 
@@ -22,21 +34,21 @@ import {
  * Returns null if no video with transcript is found.
  */
 export async function getVideoWithTranscript(videoId: string) {
-  const results = await db
-    .select({
-      videoId: videos.videoId,
-      title: videos.title,
-      channelName: channels.channelName,
-      description: scrapTranscriptV1.description,
-      transcript: scrapTranscriptV1.transcript,
-    })
-    .from(videos)
-    .innerJoin(channels, eq(videos.channelId, channels.channelId))
-    .innerJoin(scrapTranscriptV1, eq(videos.videoId, scrapTranscriptV1.videoId))
-    .where(eq(videos.videoId, videoId))
-    .limit(1);
-
-  return results.length > 0 ? results[0] : null;
+  return await findOne(
+    db
+      .select({
+        videoId: videos.videoId,
+        title: videos.title,
+        channelName: channels.channelName,
+        description: scrapTranscriptV1.description,
+        transcript: scrapTranscriptV1.transcript,
+      })
+      .from(videos)
+      .innerJoin(channels, eq(videos.channelId, channels.channelId))
+      .innerJoin(scrapTranscriptV1, eq(videos.videoId, scrapTranscriptV1.videoId))
+      .where(eq(videos.videoId, videoId))
+      .limit(1)
+  );
 }
 
 /**
@@ -44,21 +56,21 @@ export async function getVideoWithTranscript(videoId: string) {
  * Used for video status checking.
  */
 export async function getVideoStatus(videoId: string) {
-  const result = await db
-    .select({
-      videoId: videos.videoId,
-      title: videos.title,
-      channelName: channels.channelName,
-      thumbnail: scrapTranscriptV1.thumbnail,
-      transcript: scrapTranscriptV1.transcript,
-    })
-    .from(videos)
-    .leftJoin(channels, eq(videos.channelId, channels.channelId))
-    .leftJoin(scrapTranscriptV1, eq(videos.videoId, scrapTranscriptV1.videoId))
-    .where(eq(videos.videoId, videoId))
-    .limit(1);
-
-  return result[0] || null;
+  return await findOne(
+    db
+      .select({
+        videoId: videos.videoId,
+        title: videos.title,
+        channelName: channels.channelName,
+        thumbnail: scrapTranscriptV1.thumbnail,
+        transcript: scrapTranscriptV1.transcript,
+      })
+      .from(videos)
+      .leftJoin(channels, eq(videos.channelId, channels.channelId))
+      .leftJoin(scrapTranscriptV1, eq(videos.videoId, scrapTranscriptV1.videoId))
+      .where(eq(videos.videoId, videoId))
+      .limit(1)
+  );
 }
 
 // ============================================================================
@@ -121,13 +133,13 @@ export async function getVideoIdsWithAnalysis(videoIds: string[]) {
  * Gets slide extraction status for a video.
  */
 export async function getSlideExtractionStatus(videoId: string) {
-  const [extraction] = await db
-    .select()
-    .from(videoSlideExtractions)
-    .where(eq(videoSlideExtractions.videoId, videoId))
-    .limit(1);
-
-  return extraction || null;
+  return await findOne(
+    db
+      .select()
+      .from(videoSlideExtractions)
+      .where(eq(videoSlideExtractions.videoId, videoId))
+      .limit(1)
+  );
 }
 
 /**
@@ -251,28 +263,28 @@ export async function insertVideoSlide(videoId: string, slideData: SlideData) {
  * Gets completed analysis for a video.
  */
 export async function getCompletedAnalysis(videoId: string) {
-  const [analysis] = await db
-    .select({
-      videoId: videoAnalysisRuns.videoId,
-      result: videoAnalysisRuns.result,
-      createdAt: videoAnalysisRuns.createdAt,
-    })
-    .from(videoAnalysisRuns)
-    .where(eq(videoAnalysisRuns.videoId, videoId));
-
-  return analysis || null;
+  return await findOne(
+    db
+      .select({
+        videoId: videoAnalysisRuns.videoId,
+        result: videoAnalysisRuns.result,
+        createdAt: videoAnalysisRuns.createdAt,
+      })
+      .from(videoAnalysisRuns)
+      .where(eq(videoAnalysisRuns.videoId, videoId))
+  );
 }
 
 /**
  * Gets workflow record for a video.
  */
 export async function getWorkflowRecord(videoId: string) {
-  const [workflowRecord] = await db
-    .select()
-    .from(videoAnalysisWorkflowIds)
-    .where(eq(videoAnalysisWorkflowIds.videoId, videoId));
-
-  return workflowRecord || null;
+  return await findOne(
+    db
+      .select()
+      .from(videoAnalysisWorkflowIds)
+      .where(eq(videoAnalysisWorkflowIds.videoId, videoId))
+  );
 }
 
 /**
