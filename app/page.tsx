@@ -1,14 +1,5 @@
-import { Youtube } from "lucide-react";
-import Link from "next/link";
 import { ProcessedVideosList } from "@/components/processed-videos-list";
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { TranscriptFetcher } from "@/components/transcript-form";
 
 export default function Home() {
   return (
@@ -24,27 +15,7 @@ export default function Home() {
         </div>
 
         <div className="max-w-md mx-auto mb-12">
-          <Link href="/youtube" className="block group">
-            <Card className="border-2 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105">
-              <CardHeader className="pb-4">
-                <div className="mb-4 p-4 rounded-full bg-gradient-to-br from-red-500/10 to-red-600/10 w-fit">
-                  <Youtube className="h-8 w-8 text-red-600" />
-                </div>
-                <CardTitle className="text-2xl">YouTube Mode</CardTitle>
-                <CardDescription className="text-base">
-                  Extract and process content directly from YouTube videos
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Button
-                  variant="outline"
-                  className="w-full h-11 text-base group-hover:bg-accent bg-transparent"
-                >
-                  Get Started
-                </Button>
-              </CardContent>
-            </Card>
-          </Link>
+          <TranscriptFetcher />
         </div>
 
         <ProcessedVideosList />
