@@ -47,6 +47,7 @@
     "@radix-ui/react-toggle-group": "latest",
     "@radix-ui/react-tooltip": "latest",
     "@stackframe/stack": "latest",
+    "@tanstack/react-table": "^8.21.3",
     "@tanstack/react-virtual": "^3.13.13",
     "@testing-library/dom": "latest",
     "@types/debug": "latest",
