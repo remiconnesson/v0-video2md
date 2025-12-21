@@ -224,17 +224,21 @@ export function AnalysisPanel({
 
   return (
     <div className="space-y-4">
-      {statusMessage ? (
-        <p className="text-sm text-muted-foreground">{statusMessage}</p>
-      ) : null}
-
-      {errorMessage ? (
-        <p className="text-sm text-destructive">{errorMessage}</p>
-      ) : null}
-
-      {status === "loading" && !statusMessage ? (
-        <p className="text-sm text-muted-foreground">Loading analysis...</p>
-      ) : null}
+      <div className="min-h-5 flex items-center">
+        {statusMessage ? (
+          <p className="text-sm text-muted-foreground animate-in fade-in slide-in-from-top-1 duration-200">
+            {statusMessage}
+          </p>
+        ) : errorMessage ? (
+          <p className="text-sm text-destructive animate-in fade-in slide-in-from-top-1 duration-200">
+            {errorMessage}
+          </p>
+        ) : status === "loading" && !statusMessage ? (
+          <p className="text-sm text-muted-foreground animate-in fade-in slide-in-from-top-1 duration-200">
+            Loading analysis...
+          </p>
+        ) : null}
+      </div>
 
       <div className="grid gap-6 lg:grid-cols-[240px_minmax(0,1fr)]">
         <AnalysisSidebar
@@ -428,7 +432,7 @@ function ObjectSection({ data }: { data: Record<string, unknown> }) {
   );
 }
 
-function AnalysisSidebar({
+export function AnalysisSidebar({
   sections,
   activeSection,
   onSectionClick,
@@ -441,13 +445,13 @@ function AnalysisSidebar({
 }: {
   sections: Array<{ id: string; title: string }>;
   activeSection?: string;
-  onSectionClick: (sectionId: string) => void;
-  videoId: string;
-  title: string;
-  channelName: string;
-  onCopyMarkdown: () => void;
-  copyDisabled: boolean;
-  copied: boolean;
+  onSectionClick?: (sectionId: string) => void;
+  videoId?: string;
+  title?: string;
+  channelName?: string;
+  onCopyMarkdown?: () => void;
+  copyDisabled?: boolean;
+  copied?: boolean;
 }) {
   return (
     <aside className="hidden lg:flex flex-col sticky top-6 self-start h-[calc(100vh-3.5rem)] min-w-0 group/sidebar">
@@ -471,9 +475,14 @@ function AnalysisSidebar({
           <ScrollArea type="scroll" className="h-full pr-3">
             <nav className="space-y-1 pb-8">
               {sections.length === 0 ? (
-                <p className="text-sm text-muted-foreground px-1">
-                  Waiting for sections…
-                </p>
+                <div className="space-y-2 px-1">
+                  {[1, 2, 3, 4, 5].map((i) => (
+                    <div
+                      key={i}
+                      className="h-4 w-[85%] animate-pulse rounded bg-muted/50"
+                    />
+                  ))}
+                </div>
               ) : (
                 sections.map((section) => {
                   const isActive = section.id === activeSection;
@@ -482,7 +491,7 @@ function AnalysisSidebar({
                     <button
                       key={section.id}
                       type="button"
-                      onClick={() => onSectionClick(section.id)}
+                      onClick={() => onSectionClick?.(section.id)}
                       className={`w-full rounded-md px-2 py-1.5 text-left text-sm transition cursor-pointer hover:bg-muted ${
                         isActive
                           ? "bg-muted text-foreground font-medium"
@@ -506,7 +515,7 @@ function AnalysisSidebar({
   );
 }
 
-function VideoInfoCard({
+export function VideoInfoCard({
   videoId,
   title,
   channelName,
@@ -514,39 +523,51 @@ function VideoInfoCard({
   copyDisabled,
   copied,
 }: {
-  videoId: string;
-  title: string;
-  channelName: string;
-  onCopyMarkdown: () => void;
-  copyDisabled: boolean;
-  copied: boolean;
+  videoId?: string;
+  title?: string;
+  channelName?: string;
+  onCopyMarkdown?: () => void;
+  copyDisabled?: boolean;
+  copied?: boolean;
 }) {
-  const thumbnailUrl = `https://i.ytimg.com/vi/${videoId}/mqdefault.jpg`;
+  const thumbnailUrl = videoId
+    ? `https://i.ytimg.com/vi/${videoId}/mqdefault.jpg`
+    : undefined;
 
   return (
     <div className="space-y-3">
       <div className="group relative">
         <ThumbnailCell src={thumbnailUrl} alt={title} />
-        <a
-          href={`https://www.youtube.com/watch?v=${videoId}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="absolute inset-0 flex items-center justify-center bg-black/0 transition-colors cursor-pointer group-hover:bg-black/20 rounded-md"
-          aria-label="Watch Video"
-        >
-          <div className="opacity-0 transition-opacity group-hover:opacity-100 bg-background/90 p-1.5 rounded-full shadow-sm text-foreground">
-            <ExternalLink className="h-4 w-4" />
-          </div>
-        </a>
+        {videoId && (
+          <a
+            href={`https://www.youtube.com/watch?v=${videoId}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="absolute inset-0 flex items-center justify-center bg-black/0 transition-colors cursor-pointer group-hover:bg-black/20 rounded-md"
+            aria-label="Watch Video"
+          >
+            <div className="opacity-0 transition-opacity group-hover:opacity-100 bg-background/90 p-1.5 rounded-full shadow-sm text-foreground">
+              <ExternalLink className="h-4 w-4" />
+            </div>
+          </a>
+        )}
       </div>
 
       <div className="space-y-1 px-1">
-        <h3 className="font-bold text-sm line-clamp-2 leading-tight tracking-tight">
-          {title}
-        </h3>
-        <p className="text-xs text-muted-foreground line-clamp-1">
-          {channelName}
-        </p>
+        {title ? (
+          <h3 className="font-bold text-sm line-clamp-2 leading-tight tracking-tight">
+            {title}
+          </h3>
+        ) : (
+          <div className="h-4 w-full animate-pulse rounded bg-muted/50" />
+        )}
+        {channelName ? (
+          <p className="text-xs text-muted-foreground line-clamp-1">
+            {channelName}
+          </p>
+        ) : (
+          <div className="h-3 w-1/2 animate-pulse rounded bg-muted/50" />
+        )}
       </div>
 
       <Button
@@ -554,7 +575,7 @@ function VideoInfoCard({
         size="sm"
         onClick={onCopyMarkdown}
         className="w-full h-9 text-xs gap-2 shadow-none border-muted-foreground/20 hover:bg-muted"
-        disabled={copyDisabled}
+        disabled={copyDisabled || !onCopyMarkdown}
       >
         {copied ? (
           <>
