@@ -85,9 +85,10 @@ export async function getVideoStatus(videoId: string) {
 
 /**
  * Gets all processed videos (with transcripts) for the main videos list.
+ * Optional pagination support for performance.
  */
-export async function getProcessedVideos() {
-  return await db
+export async function getProcessedVideos(limit?: number, offset?: number) {
+  const baseQuery = db
     .select({
       videoId: videos.videoId,
       title: videos.title,
@@ -102,6 +103,18 @@ export async function getProcessedVideos() {
     .innerJoin(channels, eq(videos.channelId, channels.channelId))
     .where(isNotNull(scrapTranscriptV1.transcript))
     .orderBy(desc(scrapTranscriptV1.createdAt));
+
+  if (limit !== undefined && offset !== undefined) {
+    return await baseQuery.limit(limit).offset(offset);
+  }
+  if (limit !== undefined) {
+    return await baseQuery.limit(limit);
+  }
+  if (offset !== undefined) {
+    return await baseQuery.offset(offset);
+  }
+
+  return await baseQuery;
 }
 
 /**

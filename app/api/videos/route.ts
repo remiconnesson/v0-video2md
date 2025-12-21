@@ -7,12 +7,19 @@ import {
 import { formatDuration } from "@/lib/time-utils";
 
 // ============================================================================
-// GET - List all processed videos (with transcripts)
+// GET - List all processed videos (with transcripts) with optional pagination
 // ============================================================================
 
-export async function GET() {
-  // Query for all videos that have transcripts
-  const results = await getProcessedVideos();
+export async function GET(request: Request) {
+  const url = new URL(request.url);
+  const limit = url.searchParams.get("limit");
+  const offset = url.searchParams.get("offset");
+
+  // Query for videos with optional pagination
+  const results = await getProcessedVideos(
+    limit ? parseInt(limit, 10) : undefined,
+    offset ? parseInt(offset, 10) : undefined,
+  );
   const videoIds = results.map((row) => row.videoId);
 
   const [slidesRows, analysisRows] = await Promise.all([

@@ -12,7 +12,7 @@ import {
 import { FileVideo, Search } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -36,21 +36,52 @@ import {
 export function ProcessedVideosList() {
   const [videos, setVideos] = useState<VideoData[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingAll, setLoadingAll] = useState(false);
+  const [hasLoadedAll, setHasLoadedAll] = useState(false);
 
+  // Load first 10 videos quickly
   useEffect(() => {
-    async function fetchVideos() {
+    async function fetchInitialVideos() {
       try {
-        const response = await fetch("/api/videos");
+        const response = await fetch("/api/videos?limit=10");
         if (!response.ok) throw new Error("Failed to fetch videos");
-        setVideos(await response.json());
+        const initialVideos = await response.json();
+        setVideos(initialVideos);
       } catch (error) {
-        console.error("Error fetching videos:", error);
+        console.error("Error fetching initial videos:", error);
       } finally {
         setLoading(false);
       }
     }
-    fetchVideos();
+    fetchInitialVideos();
   }, []);
+
+  // Load all videos in the background
+  const loadAllVideos = useCallback(async () => {
+    if (hasLoadedAll || loadingAll) return;
+
+    setLoadingAll(true);
+    try {
+      const response = await fetch("/api/videos");
+      if (!response.ok) throw new Error("Failed to fetch all videos");
+      const allVideos = await response.json();
+      setVideos(allVideos);
+      setHasLoadedAll(true);
+    } catch (error) {
+      console.error("Error fetching all videos:", error);
+    } finally {
+      setLoadingAll(false);
+    }
+  }, [hasLoadedAll, loadingAll]);
+
+  // Trigger background loading after initial load
+  useEffect(() => {
+    if (!loading && videos.length > 0 && !hasLoadedAll) {
+      // Load all videos in background after a short delay
+      const timeoutId = setTimeout(loadAllVideos, 100);
+      return () => clearTimeout(timeoutId);
+    }
+  }, [loading, videos.length, hasLoadedAll, loadAllVideos]);
 
   if (loading) {
     return <SimpleCardLayout>Loading videos...</SimpleCardLayout>;
@@ -62,7 +93,7 @@ export function ProcessedVideosList() {
 
   return (
     <SimpleCardLayout descriptionOnly={false}>
-      <VideosDataTable data={videos} />
+      <VideosDataTable data={videos} loadingAll={loadingAll} />
     </SimpleCardLayout>
   );
 }
@@ -205,9 +236,10 @@ export const columns: ColumnDef<VideoData>[] = [
 
 interface VideosDataTableProps {
   data: VideoData[];
+  loadingAll: boolean;
 }
 
-export function VideosDataTable({ data }: VideosDataTableProps) {
+export function VideosDataTable({ data, loadingAll }: VideosDataTableProps) {
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
 
   const table = useReactTable({
@@ -257,6 +289,12 @@ export function VideosDataTable({ data }: VideosDataTableProps) {
               setFilter("hasAnalysis", v === "all" ? "" : v)
             }
           />
+          {loadingAll && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <div className="animate-spin h-4 w-4 border-2 border-primary border-t-transparent rounded-full" />
+              Loading all videos...
+            </div>
+          )}
         </div>
       </div>
 
