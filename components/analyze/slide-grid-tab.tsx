@@ -2,7 +2,7 @@
 
 import { ImageIcon, ZoomIn } from "lucide-react";
 import Image from "next/image";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Card,
   CardContent,
@@ -136,6 +136,16 @@ function PickedSlidesGrid({ slides }: { slides: PickedSlide[] }) {
       })),
     [slides],
   );
+
+  // Reset zoomIndex when slides array changes to prevent out-of-bounds access
+  useEffect(() => {
+    // If the current zoomIndex is out of bounds, reset it
+    if (zoomIndex >= slides.length && slides.length > 0) {
+      setZoomIndex(slides.length - 1);
+    } else if (slides.length === 0) {
+      setZoomIndex(0);
+    }
+  }, [slides.length, zoomIndex]);
 
   const handleZoom = (index: number) => {
     setZoomIndex(index);
