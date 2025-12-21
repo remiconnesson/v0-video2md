@@ -394,6 +394,46 @@ export async function upsertSlideFeedback(
 
 /**
  * Saves transcript data to the database.
+ *
+ * ## Why No Transaction Wrapper?
+ *
+ * This function performs three sequential inserts without wrapping them in a
+ * transaction. This is intentional due to the constraints of the Neon serverless
+ * driver (@neondatabase/serverless with drizzle-orm/neon-http).
+ *
+ * ### The Problem with Transactions in Serverless
+ *
+ * The Neon serverless driver:
+ * - Uses HTTP/WebSocket transport instead of persistent TCP connections
+ * - Cannot guarantee connection affinity across queries
+ * - May execute each query on a different backend connection
+ *
+ * As a result, `db.transaction()` calls may silently degrade and NOT provide
+ * true ACID guarantees. Neon explicitly documents transactions as unsupported
+ * in serverless mode.
+ *
+ * ### Why This Implementation Is Safe
+ *
+ * 1. **Idempotency**: Each insert uses `onConflictDoUpdate`, making retries safe
+ * 2. **Correct Order**: Inserts follow parent-to-child order (channels → videos → transcript)
+ * 3. **Foreign Keys**: Database constraints prevent orphaned records at commit time
+ * 4. **Partial Failure Handling**:
+ *    - If channels insert succeeds but videos fails: retry will upsert channel (no-op) and retry video
+ *    - If videos succeeds but transcript fails: retry will upsert channel/video (no-op) and retry transcript
+ *    - The upsert semantics ensure eventual consistency
+ *
+ * ### Alternative: Pooled Connection (Not Used)
+ *
+ * To use real transactions, we would need to switch to Neon's pooled driver
+ * (node-postgres) which requires:
+ * - Node.js runtime (not Edge)
+ * - Persistent TCP connections
+ * - Connection pooling overhead
+ *
+ * For this serverless use case, the idempotent upsert pattern is the recommended
+ * approach and provides sufficient consistency guarantees.
+ *
+ * @see https://neon.tech/docs/serverless/serverless-driver
  */
 export async function saveTranscriptToDb(data: {
   videoId: string;
@@ -411,6 +451,7 @@ export async function saveTranscriptToDb(data: {
   thumbnailUrl: string;
   transcript: TranscriptSegment[];
 }) {
+  // NOTE: These inserts are NOT wrapped in a transaction. See function documentation above.
   await db
     .insert(channels)
     .values({
