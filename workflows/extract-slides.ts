@@ -48,7 +48,20 @@ export async function extractSlidesWorkflow(videoId: string) {
       },
       writable,
     );
-    await checkJobStatus(videoId, writable);
+    const { manifestUri, jobFailed, failureReason } = await checkJobStatus(
+      videoId,
+      writable,
+    );
+
+    // Check if job completed successfully
+    if (jobFailed) {
+      throw new Error(`Job failed: ${failureReason}`);
+    }
+    if (!manifestUri) {
+      throw new Error(
+        "Job did not complete successfully - no manifest URI was provided by the extraction service",
+      );
+    }
 
     currentStep = "fetching manifest";
     await emit<SlideStreamEvent>(

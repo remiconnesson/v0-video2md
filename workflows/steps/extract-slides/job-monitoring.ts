@@ -144,6 +144,7 @@ export async function checkJobStatus(
 
   if (response.ok && response.body) {
     let eventCount = 0;
+    const pendingEmits: Promise<void>[] = [];
     const parser = createParser({
       onEvent: (event) => {
         console.dir(event);
@@ -187,16 +188,18 @@ export async function checkJobStatus(
               );
             }
 
-            // Emit progress (fire and forget inside sync callback is safer in loop)
+            // Emit progress - collect promises to await later
             if (!jobFailed && !manifestUri) {
-              emit<SlideStreamEvent>(
-                {
-                  type: "progress",
-                  status: jobUpdate.status,
-                  progress: jobUpdate.progress,
-                  message: jobUpdate.message,
-                },
-                writable,
+              pendingEmits.push(
+                emit<SlideStreamEvent>(
+                  {
+                    type: "progress",
+                    status: jobUpdate.status,
+                    progress: jobUpdate.progress,
+                    message: jobUpdate.message,
+                  },
+                  writable,
+                ),
               );
             }
           } catch (parseError) {
@@ -217,6 +220,14 @@ export async function checkJobStatus(
       if (done) break;
       parser.feed(decoder.decode(value));
       if (manifestUri || jobFailed) break;
+    }
+
+    // Wait for all pending progress emits to complete before continuing
+    if (pendingEmits.length > 0) {
+      console.log(
+        `🔍 checkJobStatus: Waiting for ${pendingEmits.length} pending progress events to be sent for video ${videoId}`,
+      );
+      await Promise.all(pendingEmits);
     }
 
     console.log(
