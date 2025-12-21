@@ -234,9 +234,25 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
     loadFeedback();
   }, [loadFeedback, loadSlidesState]);
 
-  // Idle state - show extract button
+  // Auto-trigger extraction when in idle state
+  useEffect(() => {
+    if (slidesState.status === "idle") {
+      startExtraction();
+    }
+  }, [slidesState.status, startExtraction]);
+
+  // Idle state - show loading state while extraction starts
   if (slidesState.status === "idle") {
-    return <IdleState onExtract={startExtraction} />;
+    return (
+      <Card>
+        <CardContent className="py-12">
+          <div className="flex items-center justify-center gap-3">
+            <Loader2 className="h-5 w-5 animate-spin" />
+            <span>Starting slides extraction...</span>
+          </div>
+        </CardContent>
+      </Card>
+    );
   }
 
   // Loading state
@@ -286,7 +302,10 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
 // State-specific Components
 // ============================================================================
 
-function IdleState({ onExtract }: { onExtract: () => void }) {
+// IdleState component is no longer used since extraction is auto-triggered
+// Keeping it commented out in case we need to revert the auto-trigger behavior
+/*
+function _IdleState({ onExtract }: { onExtract: () => void }) {
   return (
     <Card>
       <CardContent className="py-12">
@@ -308,6 +327,7 @@ function IdleState({ onExtract }: { onExtract: () => void }) {
     </Card>
   );
 }
+*/
 
 function LoadingState() {
   return (
