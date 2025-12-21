@@ -21,11 +21,11 @@ video2md is a Next.js application that processes YouTube videos and extracts mea
 
 ### Always Run Before Committing
 
-```bash
+\`\`\`bash
 pnpm format      # Format code with Biome
 pnpm fix         # Fix linting issues with Biome
 pnpm tsc --noEmit # Type check without emitting files
-```
+\`\`\`
 
 ### Formatting Rules
 
@@ -44,10 +44,10 @@ pnpm tsc --noEmit # Type check without emitting files
 
 ### Running Tests
 
-```bash
+\`\`\`bash
 pnpm test        # Run all tests once
 pnpm test:watch  # Run tests in watch mode
-```
+\`\`\`
 
 ## Component Organization
 

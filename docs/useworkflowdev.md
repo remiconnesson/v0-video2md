@@ -19,14 +19,14 @@ Workflow DevKit (WDK) provides **durable, resumable workflows** in TypeScript/Ja
 
 ### 1. Install the package
 
-```bash
+\`\`\`bash
 npm i workflow
 # or: pnpm add workflow
-```
+\`\`\`
 
 ### 2. Configure Next.js
 
-```ts
+\`\`\`ts
 // next.config.ts
 import { withWorkflow } from "workflow/next";
 import type { NextConfig } from "next";
@@ -36,18 +36,18 @@ const nextConfig: NextConfig = {
 };
 
 export default withWorkflow(nextConfig);
-```
+\`\`\`
 
 ### 3. (Optional) TypeScript IntelliSense
 
-```json
+\`\`\`json
 // tsconfig.json
 {
   "compilerOptions": {
     "plugins": [{ "name": "workflow" }]
   }
 }
-```
+\`\`\`
 
 ---
 
@@ -72,7 +72,7 @@ Inside `"use workflow"` functions:
 
 ### Serialization Pattern for Classes
 
-```ts
+\`\`\`ts
 class User {
   constructor(public name: string) {}
   greet() { return `Hello ${this.name}`; }
@@ -88,7 +88,7 @@ async function greetStep(data: { name: string }) {
   const user = new User(data.name);
   console.log(user.greet());
 }
-```
+\`\`\`
 
 ---
 
@@ -96,7 +96,7 @@ async function greetStep(data: { name: string }) {
 
 ### Basic Workflow + Steps
 
-```ts
+\`\`\`ts
 // workflows/user-signup.ts
 import { sleep, FatalError } from "workflow";
 
@@ -129,11 +129,11 @@ async function sendOnboardingEmail(user: { id: string; email: string }) {
   }
   console.log(`Onboarding email sent to ${user.id}`);
 }
-```
+\`\`\`
 
 ### LLM Content Generation Example
 
-```ts
+\`\`\`ts
 // workflows/ai-content.ts
 import { fetch } from "workflow";
 import { FatalError } from "workflow";
@@ -178,7 +178,7 @@ async function summarizeDraft(draftText: string) {
   if (!response.ok) throw new FatalError("Failed to summarize");
   return data.choices[0].message.content;
 }
-```
+\`\`\`
 
 ---
 
@@ -186,7 +186,7 @@ async function summarizeDraft(draftText: string) {
 
 The AI SDK uses `fetch` internally. Override `globalThis.fetch` with workflow's fetch:
 
-```ts
+\`\`\`ts
 import { generateText } from "ai";
 import { fetch } from "workflow";
 
@@ -200,7 +200,7 @@ export async function aiWorkflow(userMessage: string) {
   });
   return result.text;
 }
-```
+\`\`\`
 
 ---
 
@@ -208,7 +208,7 @@ export async function aiWorkflow(userMessage: string) {
 
 ### Starting a Workflow (Fire-and-Forget)
 
-```ts
+\`\`\`ts
 // app/api/signup/route.ts
 import { NextResponse } from "next/server";
 import { start } from "workflow/api";
@@ -219,11 +219,11 @@ export async function POST(req: Request) {
   await start(handleUserSignup, [email]);
   return NextResponse.json({ message: "Workflow started" });
 }
-```
+\`\`\`
 
 ### Starting with Run ID (for tracking)
 
-```ts
+\`\`\`ts
 import { start } from "workflow/api";
 
 export async function POST(req: Request) {
@@ -234,7 +234,7 @@ export async function POST(req: Request) {
     runId: run.runId 
   });
 }
-```
+\`\`\`
 
 ---
 
@@ -242,7 +242,7 @@ export async function POST(req: Request) {
 
 ### Writing to Stream (Server)
 
-```ts
+\`\`\`ts
 import { getWritable } from "workflow";
 
 async function streamLLMResponse(prompt: string) {
@@ -261,11 +261,11 @@ async function streamLLMResponse(prompt: string) {
   }
   writer.releaseLock();
 }
-```
+\`\`\`
 
 ### Returning Stream from API Route
 
-```ts
+\`\`\`ts
 // app/api/chat/route.ts
 import { start } from "workflow/api";
 import { chatWorkflow } from "@/workflows/chat";
@@ -283,11 +283,11 @@ export async function POST(request: Request) {
     },
   });
 }
-```
+\`\`\`
 
 ### Stream Reconnection Route
 
-```ts
+\`\`\`ts
 // app/api/chat/[runId]/stream/route.ts
 import { getRun } from "workflow/api";
 import { NextResponse } from "next/server";
@@ -309,7 +309,7 @@ export async function GET(
     headers: { "Content-Type": "text/plain" },
   });
 }
-```
+\`\`\`
 
 ---
 
@@ -319,7 +319,7 @@ Use `WorkflowChatTransport` with the AI SDK's `useChat` hook for reliable stream
 
 ### Basic Usage
 
-```tsx
+\`\`\`tsx
 "use client";
 import { useChat } from "@ai-sdk/react";
 import { WorkflowChatTransport } from "@workflow/ai";
@@ -339,11 +339,11 @@ export default function Chat() {
     </div>
   );
 }
-```
+\`\`\`
 
 ### With Session Resumption
 
-```tsx
+\`\`\`tsx
 "use client";
 import { useChat } from "@ai-sdk/react";
 import { WorkflowChatTransport } from "@workflow/ai";
@@ -371,7 +371,7 @@ export default function ChatWithResumption() {
 
   // ... UI
 }
-```
+\`\`\`
 
 **WorkflowChatTransport provides:**
 - Automatic reconnection on network issues
@@ -384,7 +384,7 @@ export default function ChatWithResumption() {
 
 ### Hooks (for external events)
 
-```ts
+\`\`\`ts
 import { createHook } from "workflow";
 
 export async function approvalWorkflow() {
@@ -398,11 +398,11 @@ export async function approvalWorkflow() {
     console.log("Approved:", result.comment);
   }
 }
-```
+\`\`\`
 
 ### Webhooks (HTTP-based)
 
-```ts
+\`\`\`ts
 import { createWebhook } from "workflow";
 
 export async function webhookWorkflow() {
@@ -414,7 +414,7 @@ export async function webhookWorkflow() {
   const body = await request.text();
   console.log("Received:", body);
 }
-```
+\`\`\`
 
 ---
 
@@ -429,7 +429,7 @@ export async function webhookWorkflow() {
 
 ## Observability (CLI)
 
-```bash
+\`\`\`bash
 # List recent runs
 npx workflow inspect runs
 
@@ -438,7 +438,7 @@ npx workflow inspect runs --web
 
 # Inspect Vercel backend
 npx workflow inspect runs --backend vercel
-```
+\`\`\`
 
 ---
 
@@ -454,7 +454,7 @@ npx workflow inspect runs --backend vercel
 
 ## Quick Reference
 
-```ts
+\`\`\`ts
 // Workflow function
 export async function myWorkflow(arg: string) {
   "use workflow";
@@ -492,7 +492,7 @@ const writable = getWritable<string>();
 
 // Workflow-safe fetch
 import { fetch } from "workflow";
-```
+\`\`\`
 
 ---
 
@@ -501,4 +501,3 @@ import { fetch } from "workflow";
 - Documentation: https://useworkflow.dev
 - Examples: https://github.com/vercel/workflow-examples
 - Vercel Blog: https://vercel.com/blog/introducing-workflow-devkit
-

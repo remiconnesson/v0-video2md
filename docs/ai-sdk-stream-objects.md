@@ -1,4 +1,3 @@
-
 # AI SDK Structured Output Streaming with `streamObject`
 
 This document provides actionable guidance for implementing structured output streaming using the AI SDK's `streamObject` function.
@@ -22,7 +21,7 @@ This document provides actionable guidance for implementing structured output st
 
 Create a schema using Zod in a **separate file** so both client and server can import it:
 
-```typescript
+\`\`\`typescript
 // schema.ts
 import { z } from "zod";
 
@@ -36,11 +35,11 @@ export const notificationSchema = z.object({
 });
 
 export type NotificationResult = z.infer<typeof notificationSchema>;
-```
+\`\`\`
 
 ### 2. Server-Side: API Route
 
-```typescript
+\`\`\`typescript
 // app/api/generate/route.ts
 import { streamObject } from "ai";
 import { notificationSchema } from "@/lib/schema";
@@ -58,11 +57,11 @@ export async function POST(req: Request) {
 
   return result.toTextStreamResponse();
 }
-```
+\`\`\`
 
 ### 3. Client-Side: React Hook
 
-```tsx
+\`\`\`tsx
 "use client";
 
 import { experimental_useObject as useObject } from "@ai-sdk/react";
@@ -94,13 +93,13 @@ export function NotificationGenerator() {
     </div>
   );
 }
-```
+\`\`\`
 
 ## `streamObject` API Reference
 
 ### Parameters
 
-```typescript
+\`\`\`typescript
 streamObject({
   model: "openai/gpt-5-mini",       // Required: model identifier
   schema: myZodSchema,               // Required: Zod schema defining output structure
@@ -112,13 +111,13 @@ streamObject({
   abortSignal: controller.signal,    // Optional: for cancellation
   onFinish: (result) => { },         // Optional: callback when complete
 });
-```
+\`\`\`
 
 ### Return Values
 
 The `streamObject` function returns an object with several useful properties:
 
-```typescript
+\`\`\`typescript
 const result = streamObject({ ... });
 
 // Stream Helpers
@@ -131,13 +130,13 @@ await result.object                // Final complete object (typed)
 await result.usage                 // Token usage statistics
 await result.warnings              // Any warnings from the model
 await result.providerMetadata      // Provider-specific metadata
-```
+\`\`\`
 
 ### Consuming Streams Manually
 
 For more control, iterate over the streams directly:
 
-```typescript
+\`\`\`typescript
 const result = streamObject({
   model: "openai/gpt-5-mini",
   schema: mySchema,
@@ -156,13 +155,13 @@ for await (const textChunk of result.textStream) {
 
 // Get final object
 const finalObject = await result.object;
-```
+\`\`\`
 
 ## `useObject` Hook Reference
 
 The `useObject` hook (from `@ai-sdk/react`) handles client-side streaming:
 
-```typescript
+\`\`\`typescript
 const {
   object,      // DeepPartial<T> | undefined - current streamed value
   submit,      // (input: string | object) => void - trigger generation
@@ -177,13 +176,13 @@ const {
   onError?: (error) => { },          // Optional: error callback
   onFinish?: (result) => { },        // Optional: completion callback
 });
-```
+\`\`\`
 
 ## Error Handling
 
 ### Server-Side
 
-```typescript
+\`\`\`typescript
 export async function POST(req: Request) {
   try {
     const result = streamObject({
@@ -199,11 +198,11 @@ export async function POST(req: Request) {
     });
   }
 }
-```
+\`\`\`
 
 ### Client-Side
 
-```tsx
+\`\`\`tsx
 const { error, object } = useObject({
   api: "/api/generate",
   schema: mySchema,
@@ -214,13 +213,13 @@ const { error, object } = useObject({
 });
 
 {error && <ErrorBanner message={error.message} />}
-```
+\`\`\`
 
 ## Handling Partial Data
 
 During streaming, `object` contains partial data with potentially undefined fields. Always use optional chaining:
 
-```tsx
+\`\`\`tsx
 // ✅ Safe - handles undefined
 <div>{object?.title}</div>
 <div>{object?.items?.map(item => item?.name)}</div>
@@ -228,7 +227,7 @@ During streaming, `object` contains partial data with potentially undefined fiel
 // ❌ Unsafe - will crash during streaming
 <div>{object.title}</div>
 <div>{object.items.map(item => item.name)}</div>
-```
+\`\`\`
 
 ## Output Modes
 
@@ -236,43 +235,43 @@ During streaming, `object` contains partial data with potentially undefined fiel
 
 Generates a single object matching the schema:
 
-```typescript
+\`\`\`typescript
 streamObject({
   output: "object",
   schema: z.object({ title: z.string(), items: z.array(z.string()) }),
   // ...
 });
-```
+\`\`\`
 
 ### Array Mode
 
 Generates an array of items, streamed one at a time:
 
-```typescript
+\`\`\`typescript
 streamObject({
   output: "array",
   schema: z.object({ name: z.string(), value: z.number() }), // Schema for each item
   // ...
 });
-```
+\`\`\`
 
 ### Enum Mode
 
 Generates one of several predefined values:
 
-```typescript
+\`\`\`typescript
 streamObject({
   output: "enum",
   enum: ["positive", "negative", "neutral"],
   // ...
 });
-```
+\`\`\`
 
 ## Example: Converting Existing Code
 
 ### Before: Using `generateObject`
 
-```typescript
+\`\`\`typescript
 // ai/transcript-to-book.ts
 import { generateObject } from "ai";
 import { transcriptToBookSchema } from "./transcript-to-book-schema";
@@ -286,11 +285,11 @@ export async function generateTranscriptToBook(input: TranscriptToBookInput) {
   });
   return result.object;
 }
-```
+\`\`\`
 
 ### After: Using `streamObject` (Server Action)
 
-```typescript
+\`\`\`typescript
 // ai/transcript-to-book-stream.ts
 import { streamObject } from "ai";
 import { transcriptToBookSchema } from "./transcript-to-book-schema";
@@ -303,11 +302,11 @@ export async function streamTranscriptToBook(input: TranscriptToBookInput) {
     prompt: buildUserPrompt(input),
   });
 }
-```
+\`\`\`
 
 ### After: API Route + Client
 
-```typescript
+\`\`\`typescript
 // app/api/transcript/route.ts
 import { streamObject } from "ai";
 import { transcriptToBookSchema } from "@/ai/transcript-to-book-schema";
@@ -324,9 +323,9 @@ export async function POST(req: Request) {
 
   return result.toTextStreamResponse();
 }
-```
+\`\`\`
 
-```tsx
+\`\`\`tsx
 // components/transcript-form.tsx
 "use client";
 
@@ -355,7 +354,7 @@ export function TranscriptForm() {
     </div>
   );
 }
-```
+\`\`\`
 
 ## References
 

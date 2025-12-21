@@ -35,31 +35,31 @@ A Next.js application that processes YouTube videos to extract transcripts, perf
 ### Installation
 
 1. Clone the repository:
-   ```bash
+   \`\`\`bash
    git clone https://github.com/remiconnesson/v0-video2md.git
    cd v0-video2md
-   ```
+   \`\`\`
 
 2. Install dependencies:
-   ```bash
+   \`\`\`bash
    pnpm install
-   ```
+   \`\`\`
 
 3. Set up environment variables:
-   ```bash
+   \`\`\`bash
    cp .env.example .env
    # Edit .env with your database URL and API keys
-   ```
+   \`\`\`
 
 4. Run database migrations:
-   ```bash
+   \`\`\`bash
    pnpm drizzle-kit push
-   ```
+   \`\`\`
 
 5. Start the development server:
-   ```bash
+   \`\`\`bash
    pnpm dev
-   ```
+   \`\`\`
 
 Visit [http://localhost:3000](http://localhost:3000) to see the application.
 
@@ -67,7 +67,7 @@ Visit [http://localhost:3000](http://localhost:3000) to see the application.
 
 ### Commands
 
-```bash
+\`\`\`bash
 pnpm dev         # Start development server
 pnpm build       # Build for production
 pnpm start       # Start production server
@@ -76,11 +76,11 @@ pnpm test:watch  # Run tests in watch mode
 pnpm format      # Format code with Biome
 pnpm fix         # Fix linting issues
 pnpm tsc --noEmit # Type check
-```
+\`\`\`
 
 ### Project Structure
 
-```
+\`\`\`
 /app              # Next.js App Router pages and API routes
   /api            # API endpoints for video processing
   /youtube        # YouTube URL input page
@@ -92,7 +92,7 @@ pnpm tsc --noEmit # Type check
 /workflows        # Vercel Workflow definitions
 /db               # Drizzle ORM schema
 /ai               # AI integration and prompts
-```
+\`\`\`
 
 ### API Endpoints
 
@@ -107,13 +107,13 @@ pnpm tsc --noEmit # Type check
 ## Contributing
 
 1. Ensure code passes quality checks before committing:
-   ```bash
+   \`\`\`bash
    pnpm format && pnpm fix && pnpm tsc --noEmit
-   ```
+   \`\`\`
 
 2. Run tests:
-   ```bash
+   \`\`\`bash
    pnpm test
-   ```
+   \`\`\`
 
 3. Follow the coding guidelines in [.github/copilot-instructions.md](.github/copilot-instructions.md)

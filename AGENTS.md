@@ -30,7 +30,7 @@ video2md is a Next.js 16 application that processes YouTube videos to extract tr
 
 ## Project Structure
 
-```
+\`\`\`
 /app                    # Next.js App Router pages and API routes
   /api                  # API endpoints (video, youtube, slides)
   /youtube              # YouTube URL input page
@@ -47,25 +47,25 @@ video2md is a Next.js 16 application that processes YouTube videos to extract tr
   /steps                # Workflow step implementations
 /db                     # Drizzle ORM schema (PostgreSQL)
 /ai                     # AI integration (prompts, analysis)
-```
+\`\`\`
 
 ## Always Run Before Committing
 
-```bash
+\`\`\`bash
 pnpm format      # Format code with Biome
 pnpm fix         # Fix linting issues with Biome
 pnpm tsc --noEmit # Type check without emitting files
-```
+\`\`\`
 
 ## Development Commands
 
-```bash
+\`\`\`bash
 pnpm dev         # Start development server
 pnpm build       # Build for production
 pnpm start       # Start production server
 pnpm test        # Run all tests once
 pnpm test:watch  # Run tests in watch mode
-```
+\`\`\`
 
 ## Testing Philosophy
 
@@ -114,7 +114,7 @@ pnpm test:watch  # Run tests in watch mode
 3. **TypeScript**: Always use strict mode, avoid `any` types
 4. **API Routes**: Use Server-Sent Events for streaming responses
 5. **Route Context Types**: Use the `RouteContext` helper for all route parameters instead of inline types. The `RouteContext` helper is globally available after type generation and provides strongly typed params from route literals.
-   ```typescript
+   \`\`\`typescript
    // ✅ Correct - Use RouteContext helper
    export async function GET(
      request: Request,
@@ -130,7 +130,7 @@ pnpm test:watch  # Run tests in watch mode
    ) {
      const { videoId } = await params;
    }
-   ```
+   \`\`\`
 6. **Security**: Validate all user inputs, sanitize data before rendering
 7. **Styling**: Use Tailwind CSS utility classes exclusively
 
@@ -179,6 +179,3 @@ We use all tools available, unit tests, components test, e2e tests and type leve
 > Component Extraction for Readability
 
 This codebase prioritizes narrative readability over reuse-driven minimalism. JSX blocks may be extracted into private (ie. not exported), single-use “dumb” components when doing so clarifies the structure of a page or keeps the core logic easy to scan. Extraction is used as an editorial tool to surface the important parts of a component and push low-signal UI scaffolding out of the way. Reuse is not required. However, extracted components must remain simple: minimal props, no side effects, and no non-trivial logic. When a component accumulates real behavior or becomes reused, it should be promoted to a proper, exported component or refactored accordingly.
-
-
-

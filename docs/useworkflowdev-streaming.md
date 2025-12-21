@@ -21,7 +21,7 @@ Workflows can stream data in real-time to clients without waiting for the entire
 
 Every workflow run has a default writable stream. Steps write to it using `getWritable()`. Data written becomes immediately available to clients.
 
-```ts
+\`\`\`ts
 import { getWritable } from "workflow";
 
 async function writeProgress(message: string) {
@@ -40,7 +40,7 @@ export async function simpleStreamingWorkflow() {
   await writeProgress("Processing data...");
   await writeProgress("Task complete!");
 }
-```
+\`\`\`
 
 ---
 
@@ -53,7 +53,7 @@ Workflow functions must be deterministic for replay. Streams bypass the event lo
 
 ### ❌ Bad Example
 
-```ts
+\`\`\`ts
 export async function badWorkflow() {
   "use workflow";
 
@@ -61,11 +61,11 @@ export async function badWorkflow() {
   const writer = writable.getWriter(); // ❌ Cannot do this
   await writer.write("data"); // ❌ Cannot do this
 }
-```
+\`\`\`
 
 ### ✅ Good Example
 
-```ts
+\`\`\`ts
 export async function goodWorkflow() {
   "use workflow";
 
@@ -80,7 +80,7 @@ async function writeToStream(data: string) {
   await writer.write(data);
   writer.releaseLock();
 }
-```
+\`\`\`
 
 ---
 
@@ -88,7 +88,7 @@ async function writeToStream(data: string) {
 
 ### Basic Stream Response
 
-```ts
+\`\`\`ts
 // app/api/stream/route.ts
 import { start } from "workflow/api";
 import { simpleStreamingWorkflow } from "@/workflows/simple";
@@ -100,13 +100,13 @@ export async function POST() {
     headers: { "Content-Type": "text/plain" },
   });
 }
-```
+\`\`\`
 
 ### Resuming Streams (Reconnection)
 
 Use `run.getReadable({ startIndex })` to resume from a specific position after timeouts or network interruptions:
 
-```ts
+\`\`\`ts
 // app/api/resume-stream/[runId]/route.ts
 import { getRun } from "workflow/api";
 
@@ -127,7 +127,7 @@ export async function GET(
     headers: { "Content-Type": "text/plain" },
   });
 }
-```
+\`\`\`
 
 ---
 
@@ -137,7 +137,7 @@ Streams are serializable in WDK. You can pass them as workflow arguments:
 
 ### API Route
 
-```ts
+\`\`\`ts
 // app/api/upload/route.ts
 import { start } from "workflow/api";
 import { streamProcessingWorkflow } from "@/workflows/streaming";
@@ -149,11 +149,11 @@ export async function POST(request: Request) {
 
   return Response.json({ status: "complete" });
 }
-```
+\`\`\`
 
 ### Workflow
 
-```ts
+\`\`\`ts
 // workflows/streaming.ts
 export async function streamProcessingWorkflow(
   inputStream: ReadableStream<Uint8Array>
@@ -173,7 +173,7 @@ async function processInputStream(input: ReadableStream<Uint8Array>) {
   }
   return Buffer.concat(chunks).toString("utf8");
 }
-```
+\`\`\`
 
 ---
 
@@ -183,7 +183,7 @@ Use `getWritable({ namespace: 'name' })` for multiple independent streams (logs,
 
 ### Writing to Namespaced Streams
 
-```ts
+\`\`\`ts
 import { getWritable } from "workflow";
 
 type LogEntry = { level: string; message: string };
@@ -227,11 +227,11 @@ export async function multiStreamWorkflow() {
   await writeMetrics();
   await closeStreams();
 }
-```
+\`\`\`
 
 ### Consuming Namespaced Streams
 
-```ts
+\`\`\`ts
 import { start } from "workflow/api";
 import { multiStreamWorkflow } from "@/workflows/multi";
 
@@ -245,7 +245,7 @@ export async function GET() {
     headers: { "Content-Type": "application/json" },
   });
 }
-```
+\`\`\`
 
 ---
 
@@ -253,7 +253,7 @@ export async function GET() {
 
 One step produces a stream, another consumes it:
 
-```ts
+\`\`\`ts
 export async function streamPipelineWorkflow() {
   "use workflow";
 
@@ -285,7 +285,7 @@ async function consumeData(readable: ReadableStream<number>) {
   }
   return values;
 }
-```
+\`\`\`
 
 ---
 
@@ -293,7 +293,7 @@ async function consumeData(readable: ReadableStream<number>) {
 
 Stream chunks through transformation steps without loading entire files:
 
-```ts
+\`\`\`ts
 export async function fileProcessingWorkflow(fileUrl: string) {
   "use workflow";
 
@@ -330,13 +330,13 @@ async function uploadResult(stream: ReadableStream<Uint8Array>) {
     body: stream,
   });
 }
-```
+\`\`\`
 
 ---
 
 ## Progress Updates Pattern
 
-```ts
+\`\`\`ts
 import { getWritable, sleep } from "workflow";
 
 type ProgressUpdate = {
@@ -401,7 +401,7 @@ export async function progressWorkflow(items: string[]) {
 
   await finalizeProgress();
 }
-```
+\`\`\`
 
 ---
 
@@ -409,7 +409,7 @@ export async function progressWorkflow(items: string[]) {
 
 ### With AI SDK (UIMessageChunk)
 
-```ts
+\`\`\`ts
 import { DurableAgent } from "@workflow/ai/agent";
 import { getWritable } from "workflow";
 import { z } from "zod";
@@ -452,11 +452,11 @@ export async function aiAssistantWorkflow(userMessage: string) {
     writable: getWritable<UIMessageChunk>(),
   });
 }
-```
+\`\`\`
 
 ### API Route with createUIMessageStreamResponse
 
-```ts
+\`\`\`ts
 // app/api/ai-assistant/route.ts
 import { createUIMessageStreamResponse } from "ai";
 import { start } from "workflow/api";
@@ -471,7 +471,7 @@ export async function POST(request: Request) {
     stream: run.readable,
   });
 }
-```
+\`\`\`
 
 ---
 
@@ -479,7 +479,7 @@ export async function POST(request: Request) {
 
 When a step returns a stream, the step succeeds once it returns—even if the stream later errors. The workflow won't retry the step. Consumers must handle errors:
 
-```ts
+\`\`\`ts
 import { FatalError } from "workflow";
 
 async function produceStream(): Promise<ReadableStream<number>> {
@@ -515,7 +515,7 @@ export async function streamErrorWorkflow() {
   const stream = await produceStream(); // Step succeeds
   await consumeStream(stream); // Consumer handles errors
 }
-```
+\`\`\`
 
 > **Note:** Stream errors don't trigger automatic retries for the producer step. Use `FatalError` in consumers to fail immediately since retrying won't help.
 
@@ -525,38 +525,38 @@ export async function streamErrorWorkflow() {
 
 ### 1. Always Release Locks
 
-```ts
+\`\`\`ts
 const writer = writable.getWriter();
 try {
   await writer.write(data);
 } finally {
   writer.releaseLock(); // Always release!
 }
-```
+\`\`\`
 
 > If a lock is not released, the step process cannot terminate. Even though the step returns and the workflow continues, the underlying process remains active until timeout.
 
 ### 2. Close Streams When Done
 
-```ts
+\`\`\`ts
 async function finalizeStream() {
   "use step";
 
   await getWritable().close(); // Signal completion
 }
-```
+\`\`\`
 
 Streams auto-close when the workflow completes, but explicit closing signals completion to consumers earlier.
 
 ### 3. Use Typed Streams
 
-```ts
+\`\`\`ts
 type MyData = { id: string; value: number };
 
 const writable = getWritable<MyData>();
 const writer = writable.getWriter();
 await writer.write({ id: "abc", value: 42 }); // Type-safe
-```
+\`\`\`
 
 ### 4. Handle Concurrent Writers
 
@@ -579,7 +579,7 @@ This enables streams to maintain state across workflow suspensions.
 
 ## Quick Reference
 
-```ts
+\`\`\`ts
 // Get default writable stream
 import { getWritable } from "workflow";
 const writable = getWritable<T>();
@@ -606,7 +606,7 @@ const readable = run.getReadable({ startIndex: 5 });
 
 // Get namespaced readable
 const logs = run.getReadable({ namespace: "logs" });
-```
+\`\`\`
 
 ---
 
@@ -619,4 +619,3 @@ const logs = run.getReadable({ namespace: "logs" });
 - [Errors and Retries](https://useworkflow.dev/docs/foundations/errors-and-retries)
 - [Serialization](https://useworkflow.dev/docs/foundations/serialization)
 - [Flight Booking Example](https://github.com/vercel/workflow-examples/tree/main/flight-booking-app)
-
