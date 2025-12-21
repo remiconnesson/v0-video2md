@@ -2,7 +2,13 @@
 
 import { Check, Copy } from "lucide-react";
 import { createParser, useQueryState } from "nuqs";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useEffectEvent,
+  useMemo,
+  useState,
+} from "react";
 import { Streamdown } from "streamdown";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -171,13 +177,24 @@ export function AnalysisPanel({ videoId }: AnalysisPanelProps) {
     scrollToSection(sectionId);
   };
 
-  useEffect(() => {
-    if (!activeSection) return;
-    const hasSection = sections.some((section) => section.id === activeSection);
-    if (!hasSection) return;
+  const scrollToActiveSection = useEffectEvent(
+    (
+      activeSection: string | undefined,
+      scrollToSection: (sectionId: string) => void,
+    ) => {
+      if (!activeSection) return;
+      const hasSection = sections.some(
+        (section) => section.id === activeSection,
+      );
+      if (!hasSection) return;
 
-    scrollToSection(activeSection);
-  }, [activeSection, scrollToSection]);
+      scrollToSection(activeSection);
+    },
+  );
+
+  useEffect(() => {
+    scrollToActiveSection(activeSection, scrollToActiveSection);
+  }, [activeSection, scrollToActiveSection]);
 
   return (
     <div className="space-y-4">
