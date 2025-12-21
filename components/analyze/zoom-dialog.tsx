@@ -69,7 +69,7 @@ export function ZoomDialog({
           {currentImage.url ? (
             <div className="relative w-full h-[85vh]">
               <Image
-                src={currentImage.url || "/placeholder.svg"}
+                src={currentImage.url}
                 alt={currentImage.title}
                 fill
                 className="object-contain"

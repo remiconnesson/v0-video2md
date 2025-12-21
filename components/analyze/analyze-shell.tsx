@@ -31,7 +31,7 @@ import { cn } from "@/lib/utils";
 
 export type AnalyzeTabId = "analyze" | "slides" | "slides-grid";
 
-const tabs = [
+export const tabs = [
   { id: "analyze" as AnalyzeTabId, label: "Analysis", icon: FileText },
   { id: "slides" as AnalyzeTabId, label: "Slide Curation", icon: FolderOpen },
   { id: "slides-grid" as AnalyzeTabId, label: "Slides Grid", icon: Grid3x3 },
@@ -120,7 +120,7 @@ export function AnalyzeShell({
   );
 }
 
-function AnalyzeSidebar({
+export function AnalyzeSidebar({
   activeTab,
   onTabChange,
   mounted,
@@ -128,10 +128,10 @@ function AnalyzeSidebar({
   onToggleTheme,
 }: {
   activeTab: AnalyzeTabId;
-  onTabChange: (tab: AnalyzeTabId) => void;
-  mounted: boolean;
-  isDark: boolean;
-  onToggleTheme: () => void;
+  onTabChange?: (tab: AnalyzeTabId) => void;
+  mounted?: boolean;
+  isDark?: boolean;
+  onToggleTheme?: () => void;
 }) {
   return (
     <Sidebar variant="floating" collapsible="icon">
@@ -163,7 +163,7 @@ function AnalyzeSidebar({
                 <SidebarMenuButton
                   tooltip={tab.label}
                   isActive={isActive}
-                  onClick={() => onTabChange(tab.id)}
+                  onClick={() => onTabChange?.(tab.id)}
                   className={cn(
                     "relative flex items-center justify-center",
                     isActive && "bg-sidebar-accent",
@@ -197,7 +197,11 @@ function AnalyzeSidebar({
                   <Moon className="size-5" />
                 )}
               </SidebarMenuButton>
-            ) : null}
+            ) : (
+              <div className="flex items-center justify-center size-9 animate-pulse rounded bg-muted/50">
+                <div className="size-5 bg-muted-foreground/30 rounded-full" />
+              </div>
+            )}
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarFooter>
