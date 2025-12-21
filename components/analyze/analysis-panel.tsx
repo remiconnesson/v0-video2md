@@ -50,6 +50,7 @@ export function AnalysisPanel({
   const [status, setStatus] = useState<
     "idle" | "loading" | "streaming" | "ready" | "error"
   >("idle");
+  const [_statusMessage, setStatusMessage] = useState<string>("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
