@@ -201,11 +201,30 @@ export function SlidesPanel({ videoId, view = "curation" }: SlidesPanelProps) {
         };
       });
 
-      await Promise.all(updates.map((feedback) => submitFeedback(feedback)));
+      setFeedbackMap((prev) => {
+        const next = new Map(prev);
+        updates.forEach((feedback) => {
+          next.set(feedback.slideNumber, feedback);
+        });
+        return next;
+      });
+
+      const response = await fetch(`/api/video/${videoId}/slides/feedback`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updates),
+      });
+
+      if (!response.ok) {
+        await loadFeedback();
+      }
+    } catch (error) {
+      console.error("Failed to unpick slide frames:", error);
+      await loadFeedback();
     } finally {
       setIsUnpickingAll(false);
     }
-  }, [feedbackMap, slidesState.slides, submitFeedback]);
+  }, [feedbackMap, loadFeedback, slidesState.slides, videoId]);
 
   const hasPickedFrames = useMemo(
     () =>

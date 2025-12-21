@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, inArray, isNotNull } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNotNull, sql } from "drizzle-orm";
 import type { SlideData } from "@/lib/slides-types";
 import type { TranscriptSegment } from "@/lib/transcript-format";
 import { db } from "./index";
@@ -384,6 +384,49 @@ export async function upsertSlideFeedback(
       target: [slideFeedback.videoId, slideFeedback.slideNumber],
       set: {
         ...feedback,
+      },
+    });
+}
+
+/**
+ * Inserts or updates multiple slide feedback entries.
+ */
+export async function upsertSlideFeedbackBatch(
+  videoId: string,
+  feedbackItems: Array<{
+    slideNumber: number;
+    firstFrameHasUsefulContent?: boolean | null;
+    lastFrameHasUsefulContent?: boolean | null;
+    framesSameness?: "same" | "different" | null;
+    isFirstFramePicked?: boolean;
+    isLastFramePicked?: boolean;
+  }>,
+) {
+  if (feedbackItems.length === 0) return;
+
+  const excludedValue = (column: string) =>
+    sql`excluded.${sql.identifier(column)}`;
+
+  await db
+    .insert(slideFeedback)
+    .values(
+      feedbackItems.map((feedback) => ({
+        videoId,
+        ...feedback,
+      })),
+    )
+    .onConflictDoUpdate({
+      target: [slideFeedback.videoId, slideFeedback.slideNumber],
+      set: {
+        firstFrameHasUsefulContent: excludedValue(
+          "first_frame_has_useful_content",
+        ),
+        lastFrameHasUsefulContent: excludedValue(
+          "last_frame_has_useful_content",
+        ),
+        framesSameness: excludedValue("frames_sameness"),
+        isFirstFramePicked: excludedValue("is_first_frame_picked"),
+        isLastFramePicked: excludedValue("is_last_frame_picked"),
       },
     });
 }

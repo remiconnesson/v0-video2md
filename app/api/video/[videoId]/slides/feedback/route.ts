@@ -1,8 +1,10 @@
 import { createInsertSchema } from "drizzle-zod";
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import {
   getSlideFeedback,
   upsertSlideFeedback,
+  upsertSlideFeedbackBatch,
   videoExists,
 } from "@/db/queries";
 import { slideFeedback } from "@/db/schema";
@@ -17,6 +19,7 @@ const slideFeedbackSchema = createInsertSchema(slideFeedback).omit({
   videoId: true,
   createdAt: true,
 });
+const slideFeedbackBatchSchema = z.array(slideFeedbackSchema);
 
 // ============================================================================
 // GET - Get all slide feedback for a video
@@ -61,7 +64,9 @@ export async function POST(
     return errorResponse("Invalid JSON body", 400);
   }
 
-  const parsed = slideFeedbackSchema.safeParse(body);
+  const parsed = Array.isArray(body)
+    ? slideFeedbackBatchSchema.safeParse(body)
+    : slideFeedbackSchema.safeParse(body);
   if (!parsed.success) {
     return errorResponse("Validation failed", 400, {
       details: parsed.error.format(),
@@ -71,7 +76,14 @@ export async function POST(
   const feedback = parsed.data;
 
   // Upsert slide feedback
-  await upsertSlideFeedback(videoId, feedback);
+  if (Array.isArray(feedback)) {
+    await upsertSlideFeedbackBatch(videoId, feedback);
+  } else {
+    await upsertSlideFeedback(videoId, feedback);
+  }
 
-  return NextResponse.json({ success: true });
+  return NextResponse.json({
+    success: true,
+    updatedCount: Array.isArray(feedback) ? feedback.length : 1,
+  });
 }
