@@ -6,6 +6,7 @@ import {
   channels,
   scrapTranscriptV1,
   videoAnalysisRuns,
+  videoAnalysisWorkflowIds,
   videos,
 } from "@/db/schema";
 import { emit } from "@/lib/stream-utils";
@@ -103,6 +104,11 @@ export async function saveTranscriptAIAnalysisToDb(
         result,
       },
     });
+
+  // Clean up workflow ID after successful analysis save
+  await db
+    .delete(videoAnalysisWorkflowIds)
+    .where(eq(videoAnalysisWorkflowIds.videoId, videoId));
 
   await emit<AnalysisStreamEvent>(
     { type: "result", data: result },
