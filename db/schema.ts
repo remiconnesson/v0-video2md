@@ -204,13 +204,9 @@ export const slideFeedback = pgTable(
     videoId: videoIdColumn(),
     slideNumber: integer("slide_index").notNull(),
 
-    // First frame validation
-    firstFrameIsDuplicateValidated: boolean(
-      "first_frame_is_duplicate_validated",
-    ),
-
-    // Last frame validation
-    lastFrameIsDuplicateValidated: boolean("last_frame_is_duplicate_validated"),
+    // Frame-level content assessment
+    firstFrameHasUsefulContent: boolean("first_frame_has_useful_content"),
+    lastFrameHasUsefulContent: boolean("last_frame_has_useful_content"),
 
     // Sameness feedback
     framesSameness: samenessEnum("frames_sameness"),
