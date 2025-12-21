@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
@@ -45,6 +46,8 @@ export function ProcessedVideosList() {
   const [searchQuery, setSearchQuery] = useState("");
   const [slidesFilter, setSlidesFilter] = useState<FilterOption>("all");
   const [analysisFilter, setAnalysisFilter] = useState<FilterOption>("all");
+  const [pageIndex, setPageIndex] = useState(0);
+  const [pageSize, setPageSize] = useState(10);
 
   useEffect(() => {
     async function fetchVideos() {
@@ -86,6 +89,21 @@ export function ProcessedVideosList() {
       return matchesSearch && matchesSlides && matchesAnalysis;
     });
   }, [videos, searchQuery, slidesFilter, analysisFilter]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredVideos.length / pageSize));
+  const currentPageIndex = Math.min(pageIndex, totalPages - 1);
+
+  useEffect(() => {
+    if (pageIndex !== currentPageIndex) {
+      setPageIndex(currentPageIndex);
+    }
+  }, [currentPageIndex, pageIndex]);
+
+  const paginatedVideos = useMemo(() => {
+    const start = currentPageIndex * pageSize;
+    const end = start + pageSize;
+    return filteredVideos.slice(start, end);
+  }, [currentPageIndex, filteredVideos, pageSize]);
 
   if (loading) {
     return (
@@ -132,11 +150,20 @@ export function ProcessedVideosList() {
         </CardTitle>
         <ProcessedVideosFilters
           searchQuery={searchQuery}
-          onSearchChange={setSearchQuery}
+          onSearchChange={(value) => {
+            setSearchQuery(value);
+            setPageIndex(0);
+          }}
           slidesFilter={slidesFilter}
-          onSlidesFilterChange={setSlidesFilter}
+          onSlidesFilterChange={(value) => {
+            setSlidesFilter(value);
+            setPageIndex(0);
+          }}
           analysisFilter={analysisFilter}
-          onAnalysisFilterChange={setAnalysisFilter}
+          onAnalysisFilterChange={(value) => {
+            setAnalysisFilter(value);
+            setPageIndex(0);
+          }}
         />
       </CardHeader>
       <CardContent>
@@ -145,7 +172,20 @@ export function ProcessedVideosList() {
             No videos found matching your search
           </p>
         ) : (
-          <ProcessedVideosTable videos={filteredVideos} />
+          <div className="space-y-4">
+            <ProcessedVideosTable videos={paginatedVideos} />
+            <ProcessedVideosPagination
+              totalItems={filteredVideos.length}
+              pageIndex={currentPageIndex}
+              pageSize={pageSize}
+              totalPages={totalPages}
+              onPageChange={setPageIndex}
+              onPageSizeChange={(nextSize) => {
+                setPageSize(nextSize);
+                setPageIndex(0);
+              }}
+            />
+          </div>
         )}
       </CardContent>
     </Card>
@@ -279,6 +319,97 @@ function ProcessedVideosTable({ videos }: { videos: VideoData[] }) {
           ))}
         </TableBody>
       </Table>
+    </div>
+  );
+}
+
+interface ProcessedVideosPaginationProps {
+  totalItems: number;
+  pageIndex: number;
+  pageSize: number;
+  totalPages: number;
+  onPageChange: (page: number) => void;
+  onPageSizeChange: (size: number) => void;
+}
+
+function ProcessedVideosPagination({
+  totalItems,
+  pageIndex,
+  pageSize,
+  totalPages,
+  onPageChange,
+  onPageSizeChange,
+}: ProcessedVideosPaginationProps) {
+  const start = totalItems === 0 ? 0 : pageIndex * pageSize + 1;
+  const end = Math.min(totalItems, (pageIndex + 1) * pageSize);
+
+  return (
+    <div className="flex flex-col gap-3 border-t pt-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="text-sm text-muted-foreground">
+        Showing {start}-{end} of {totalItems}
+      </div>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-muted-foreground">Rows per page</span>
+          <Select
+            value={pageSize.toString()}
+            onValueChange={(value) => onPageSizeChange(Number(value))}
+          >
+            <SelectTrigger className="h-9 w-[120px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="10">10</SelectItem>
+              <SelectItem value="25">25</SelectItem>
+              <SelectItem value="50">50</SelectItem>
+              <SelectItem value="100">100</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => onPageChange(0)}
+            disabled={pageIndex === 0}
+          >
+            First
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => onPageChange(Math.max(0, pageIndex - 1))}
+            disabled={pageIndex === 0}
+          >
+            Previous
+          </Button>
+          <span className="text-sm text-muted-foreground">
+            Page {pageIndex + 1} of {totalPages}
+          </span>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() =>
+              onPageChange(Math.min(totalPages - 1, pageIndex + 1))
+            }
+            disabled={pageIndex >= totalPages - 1}
+          >
+            Next
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => onPageChange(totalPages - 1)}
+            disabled={pageIndex >= totalPages - 1}
+          >
+            Last
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }

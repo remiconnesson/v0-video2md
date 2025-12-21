@@ -30,8 +30,7 @@ export async function GET() {
     .innerJoin(scrapTranscriptV1, eq(videos.videoId, scrapTranscriptV1.videoId))
     .innerJoin(channels, eq(videos.channelId, channels.channelId))
     .where(isNotNull(scrapTranscriptV1.transcript))
-    .orderBy(desc(scrapTranscriptV1.createdAt))
-    .limit(50);
+    .orderBy(desc(scrapTranscriptV1.createdAt));
 
   const videoIds = results.map((row) => row.videoId);
 
