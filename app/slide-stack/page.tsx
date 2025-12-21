@@ -109,6 +109,8 @@ export default function SlideStackShowcase() {
 
   const handleDrop = useCallback(
     (targetSlideNumber: number) => {
+      console.log("[v0] Drop event:", { draggedSlide, targetSlideNumber })
+
       if (!draggedSlide || draggedSlide === targetSlideNumber) {
         handleDragEnd()
         return
@@ -119,11 +121,13 @@ export default function SlideStackShowcase() {
         const sourceGroupIndex = prevGroups.findIndex((g) => g.slides.some((s) => s.slideNumber === draggedSlide))
         const targetGroupIndex = prevGroups.findIndex((g) => g.slides.some((s) => s.slideNumber === targetSlideNumber))
 
+        console.log("[v0] Group indices:", { sourceGroupIndex, targetGroupIndex })
+
         if (sourceGroupIndex === -1 || targetGroupIndex === -1) return prevGroups
 
         const newGroups = [...prevGroups]
-        const sourceGroup = newGroups[sourceGroupIndex]
-        const targetGroup = newGroups[targetGroupIndex]
+        const sourceGroup = { ...newGroups[sourceGroupIndex], slides: [...newGroups[sourceGroupIndex].slides] }
+        const targetGroup = { ...newGroups[targetGroupIndex], slides: [...newGroups[targetGroupIndex].slides] }
 
         // Find and remove dragged slide from source
         const draggedSlideData = sourceGroup.slides.find((s) => s.slideNumber === draggedSlide)
@@ -131,12 +135,21 @@ export default function SlideStackShowcase() {
 
         sourceGroup.slides = sourceGroup.slides.filter((s) => s.slideNumber !== draggedSlide)
 
-        // Add to target group
         targetGroup.slides.push(draggedSlideData)
 
-        // Remove empty source group if it's not the target
-        if (sourceGroup.slides.length === 0 && sourceGroupIndex !== targetGroupIndex) {
+        console.log("[v0] Target group after merge:", {
+          id: targetGroup.id,
+          slideCount: targetGroup.slides.length,
+          slideNumbers: targetGroup.slides.map((s) => s.slideNumber),
+        })
+
+        // Update the groups array
+        newGroups[targetGroupIndex] = targetGroup
+
+        if (sourceGroup.slides.length === 0) {
           newGroups.splice(sourceGroupIndex, 1)
+        } else {
+          newGroups[sourceGroupIndex] = sourceGroup
         }
 
         return newGroups
@@ -203,8 +216,9 @@ export default function SlideStackShowcase() {
                 <p className="font-medium text-blue-900 dark:text-blue-100">How to use:</p>
                 <ul className="list-disc space-y-1 pl-5 text-blue-800 dark:text-blue-200">
                   <li>Click and drag the grip handle on any slide card</li>
-                  <li>Drop it onto another slide to create a stack</li>
-                  <li>Stacked slides show a counter badge and can be expanded</li>
+                  <li>Drop it onto another slide to create or add to a stack</li>
+                  <li>You can stack unlimited slides together</li>
+                  <li>Each slide shows first frame (.F) and last frame (.L) thumbnails</li>
                   <li>Use the X button to unstack individual slides</li>
                 </ul>
               </div>
@@ -276,7 +290,7 @@ export default function SlideStackShowcase() {
                     <div className="p-4 space-y-3">
                       {/* First frame */}
                       <div className="space-y-1.5">
-                        <p className="text-xs font-medium text-muted-foreground">First Frame</p>
+                        <p className="text-xs font-medium text-muted-foreground">First Frame (.F)</p>
                         <div className="relative aspect-video w-full overflow-hidden rounded-md border bg-muted">
                           {primarySlide.firstFrameImageUrl ? (
                             <Image
@@ -295,7 +309,7 @@ export default function SlideStackShowcase() {
 
                       {/* Last frame */}
                       <div className="space-y-1.5">
-                        <p className="text-xs font-medium text-muted-foreground">Last Frame</p>
+                        <p className="text-xs font-medium text-muted-foreground">Last Frame (.L)</p>
                         <div className="relative aspect-video w-full overflow-hidden rounded-md border bg-muted">
                           {primarySlide.lastFrameImageUrl ? (
                             <Image

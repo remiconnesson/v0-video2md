@@ -3,6 +3,7 @@
 import { Layers, X } from "lucide-react"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
 import type { SlideData } from "@/lib/slides-types"
 import { cn } from "@/lib/utils"
 
@@ -27,7 +28,7 @@ export function SlideStack({ slides, onUnstack, onSelectSlide, selectedSlideNumb
       </div>
 
       {/* Stacked slide thumbnails */}
-      <div className="space-y-2">
+      <div className="space-y-1.5">
         {slides.map((slide, index) => (
           <div
             key={slide.slideNumber}
@@ -44,24 +45,45 @@ export function SlideStack({ slides, onUnstack, onSelectSlide, selectedSlideNumb
               {index + 1}
             </div>
 
-            {/* Thumbnail */}
-            <div className="relative w-16 h-9 rounded overflow-hidden border flex-shrink-0">
-              {slide.firstFrameImageUrl ? (
-                <Image
-                  src={slide.firstFrameImageUrl || "/placeholder.svg"}
-                  alt={`Slide ${slide.slideNumber}`}
-                  fill
-                  className="object-cover"
-                />
-              ) : (
-                <div className="w-full h-full bg-muted" />
-              )}
+            <div className="flex gap-1.5 flex-shrink-0">
+              {/* First frame */}
+              <div className="relative w-14 h-8 rounded overflow-hidden border">
+                {slide.firstFrameImageUrl ? (
+                  <Image
+                    src={slide.firstFrameImageUrl || "/placeholder.svg"}
+                    alt={`Slide ${slide.slideNumber} first frame`}
+                    fill
+                    className="object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full bg-muted" />
+                )}
+                {/* First frame badge */}
+                <Badge className="absolute bottom-0.5 right-0.5 h-3.5 px-1 text-[9px] leading-none">
+                  #{slide.slideNumber}.F
+                </Badge>
+              </div>
+
+              {/* Last frame */}
+              <div className="relative w-14 h-8 rounded overflow-hidden border">
+                {slide.lastFrameImageUrl ? (
+                  <Image
+                    src={slide.lastFrameImageUrl || "/placeholder.svg"}
+                    alt={`Slide ${slide.slideNumber} last frame`}
+                    fill
+                    className="object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full bg-muted" />
+                )}
+                {/* Last frame badge */}
+                <Badge className="absolute bottom-0.5 right-0.5 h-3.5 px-1 text-[9px] leading-none">
+                  #{slide.slideNumber}.L
+                </Badge>
+              </div>
             </div>
 
-            {/* Slide info */}
-            <div className="flex-1 min-w-0">
-              <div className="text-sm font-medium">Slide #{slide.slideNumber}</div>
-            </div>
+            <div className="flex-1" />
 
             {/* Unstack button */}
             <Button
