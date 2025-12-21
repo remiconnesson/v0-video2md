@@ -4,8 +4,9 @@
 
 1. We use `pnpm`!!! Please start all new sessions by running `pnpm install`.
 2. Use `pnpm next typegen` to generates the types before running type-checking
-3. Use `pnpm format`, `pnpm fix`, `pnpm test` and `pnpm tsc --noEmit` before saying your code is done.
+3. Use `pnpm format`, `pnpm fix`, `pnpm test`, and `pnpm tsc --noEmit` before saying your code is done.
 4. DO NOT GENERATE OR ATTEMPT MIGRATION, I will take care of it
+5. When you think everything is good, just run `pnpm build` to make sure the build passes. (it's slow, so only do it at the end please)
 
 
 ## Project Overview
