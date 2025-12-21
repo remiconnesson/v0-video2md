@@ -4,7 +4,6 @@ import localFont from "next/font/local";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
 import type React from "react";
 import { ThemeProvider } from "@/components/theme-provider";
-import { ThemeToggle } from "@/components/theme-toggle";
 import { stackClientApp } from "../stack/client";
 import "./globals.css";
 
@@ -52,12 +51,7 @@ export default function RootLayout({
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           <NuqsAdapter>
             <StackProvider app={stackClientApp}>
-              <StackTheme>
-                <div className="fixed right-4 top-4 z-50">
-                  <ThemeToggle />
-                </div>
-                {children}
-              </StackTheme>
+              <StackTheme>{children}</StackTheme>
             </StackProvider>
           </NuqsAdapter>
         </ThemeProvider>
