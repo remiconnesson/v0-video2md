@@ -90,3 +90,13 @@ export function analysisToMarkdown(analysis: Record<string, unknown>): string {
 
   return markdown.trim();
 }
+
+/**
+ * Converts a single section to markdown format.
+ * Includes the section title as an h2 header.
+ */
+export function sectionToMarkdown(title: string, content: unknown): string {
+  let markdown = `## ${formatSectionTitle(title)}\n\n`;
+  markdown += contentToMarkdown(content);
+  return markdown.trim();
+}

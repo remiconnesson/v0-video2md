@@ -6,7 +6,11 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Streamdown } from "streamdown";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { analysisToMarkdown, formatSectionTitle } from "@/lib/analysis-format";
+import {
+  analysisToMarkdown,
+  formatSectionTitle,
+  sectionToMarkdown,
+} from "@/lib/analysis-format";
 import { consumeSSE } from "@/lib/sse";
 import { isRecord } from "@/lib/type-utils";
 import type { AnalysisStreamEvent } from "@/workflows/steps/transcript-analysis";
@@ -26,6 +30,7 @@ export function AnalysisPanel({ videoId }: AnalysisPanelProps) {
     parseAsSectionId,
   );
   const [copied, setCopied] = useState(false);
+  const [copiedSection, setCopiedSection] = useState<string | null>(null);
   const [analysis, setAnalysis] = useState<Record<string, unknown>>({});
   const [status, setStatus] = useState<
     "idle" | "loading" | "streaming" | "ready" | "error"
@@ -148,6 +153,18 @@ export function AnalysisPanel({ videoId }: AnalysisPanelProps) {
     }
   };
 
+  const handleCopySection = async (title: string, content: unknown) => {
+    const markdown = sectionToMarkdown(title, content);
+
+    try {
+      await navigator.clipboard.writeText(markdown);
+      setCopiedSection(title);
+      setTimeout(() => setCopiedSection(null), 2000);
+    } catch (err) {
+      console.error("Failed to copy section:", err);
+    }
+  };
+
   const hasContent = Object.keys(analysis).length > 0;
   const sections = useMemo(
     () =>
@@ -209,7 +226,13 @@ export function AnalysisPanel({ videoId }: AnalysisPanelProps) {
         <div className="space-y-4">
           {hasContent ? (
             Object.entries(analysis).map(([key, value]) => (
-              <Section key={key} title={key} content={value} />
+              <Section
+                key={key}
+                title={key}
+                content={value}
+                onCopy={() => handleCopySection(key, value)}
+                copied={copiedSection === key}
+              />
             ))
           ) : status === "ready" && !errorMessage ? (
             <p className="text-muted-foreground italic">
@@ -304,7 +327,17 @@ function SectionContent({ content }: { content: unknown }): React.ReactNode {
 // Section Components
 // ============================================================================
 
-function Section({ title, content }: { title: string; content: unknown }) {
+function Section({
+  title,
+  content,
+  onCopy,
+  copied,
+}: {
+  title: string;
+  content: unknown;
+  onCopy: () => void;
+  copied: boolean;
+}) {
   const key = title;
   const sectionId = toSectionId(title);
   const formattedTitle = formatSectionTitle(title) || title;
@@ -313,7 +346,11 @@ function Section({ title, content }: { title: string; content: unknown }) {
     <section id={sectionId} className="scroll-mt-24">
       <Card key={key}>
         <CardHeader>
-          <SectionHeader title={formattedTitle} />
+          <SectionHeader
+            title={formattedTitle}
+            onCopy={onCopy}
+            copied={copied}
+          />
         </CardHeader>
 
         <CardContent>
@@ -324,12 +361,38 @@ function Section({ title, content }: { title: string; content: unknown }) {
   );
 }
 
-function SectionHeader({ title }: { title: string }) {
+function SectionHeader({
+  title,
+  onCopy,
+  copied,
+}: {
+  title: string;
+  onCopy: () => void;
+  copied: boolean;
+}) {
   return (
     <div className="flex items-start justify-between gap-4">
       <div>
         <CardTitle className="text-base">{title}</CardTitle>
       </div>
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={onCopy}
+        className="gap-2 shrink-0"
+      >
+        {copied ? (
+          <>
+            <Check className="h-4 w-4" />
+            Copied!
+          </>
+        ) : (
+          <>
+            <Copy className="h-4 w-4" />
+            Copy
+          </>
+        )}
+      </Button>
     </div>
   );
 }
