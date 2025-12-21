@@ -483,7 +483,7 @@ function AnalysisSidebar({
                       key={section.id}
                       type="button"
                       onClick={() => onSectionClick(section.id)}
-                      className={`w-full rounded-md px-2 py-1.5 text-left text-sm transition hover:bg-muted ${
+                      className={`w-full rounded-md px-2 py-1.5 text-left text-sm transition cursor-pointer hover:bg-muted ${
                         isActive
                           ? "bg-muted text-foreground font-medium"
                           : "text-muted-foreground"
@@ -531,7 +531,7 @@ function VideoInfoCard({
           href={`https://www.youtube.com/watch?v=${videoId}`}
           target="_blank"
           rel="noopener noreferrer"
-          className="absolute inset-0 flex items-center justify-center bg-black/0 transition-colors group-hover:bg-black/20 rounded-md"
+          className="absolute inset-0 flex items-center justify-center bg-black/0 transition-colors cursor-pointer group-hover:bg-black/20 rounded-md"
           aria-label="Watch Video"
         >
           <div className="opacity-0 transition-opacity group-hover:opacity-100 bg-background/90 p-1.5 rounded-full shadow-sm text-foreground">
