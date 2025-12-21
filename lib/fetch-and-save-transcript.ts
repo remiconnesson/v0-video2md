@@ -5,14 +5,12 @@ Moved the fetch-and-save-transcript logic from the workflow directly into a lib 
 
 Tried to reuse the workflow steps directly but stumbled upon another issue https://github.com/vercel/workflow/issues/630, where you can't call a step function outside of a workflow if that functions uses dependencies not marked with "use step"
 */
-import { eq } from "drizzle-orm";
 import { z } from "zod";
-import { db } from "@/db";
+import { getVideoWithTranscript } from "@/db/queries";
 import {
   saveTranscriptToDb,
   type TranscriptResult,
 } from "@/db/save-transcript";
-import { channels, scrapTranscriptV1, videos } from "@/db/schema";
 import { formatTranscriptForLLM } from "./transcript-format";
 
 // ============================================================================
@@ -99,32 +97,10 @@ function formatDurationFromSeconds(seconds: number): string {
 // DB Functions
 // ============================================================================
 
-async function getTranscriptRow(videoId: string) {
-  const results = await db
-    .select({
-      videoId: videos.videoId,
-      title: videos.title,
-      channelName: channels.channelName,
-      description: scrapTranscriptV1.description,
-      transcript: scrapTranscriptV1.transcript,
-    })
-    .from(videos)
-    .innerJoin(channels, eq(videos.channelId, channels.channelId))
-    .innerJoin(scrapTranscriptV1, eq(videos.videoId, scrapTranscriptV1.videoId))
-    .where(eq(videos.videoId, videoId))
-    .limit(1);
-
-  if (results.length === 0) {
-    return null;
-  }
-
-  return results[0];
-}
-
 async function getTranscriptDataFromDb(
   videoId: string,
 ): Promise<TranscriptData | null> {
-  const transcriptRow = await getTranscriptRow(videoId);
+  const transcriptRow = await getVideoWithTranscript(videoId);
 
   if (!transcriptRow) {
     return null;

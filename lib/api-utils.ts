@@ -2,16 +2,73 @@ import { NextResponse } from "next/server";
 import { isValidYouTubeVideoId } from "./youtube-utils";
 
 /**
+ * Standard error response format for API routes.
+ */
+export interface ApiErrorResponse {
+  error: string;
+  status?: number;
+  details?: unknown;
+  code?: string;
+  context?: Record<string, unknown>;
+}
+
+/**
+ * Creates a standardized error response.
+ * @param message - Error message
+ * @param status - HTTP status code (default: 400)
+ * @param options - Additional error context
+ * @returns NextResponse with standardized error format
+ */
+export function errorResponse(
+  message: string,
+  status = 400,
+  options?: {
+    details?: unknown;
+    code?: string;
+    context?: Record<string, unknown>;
+  },
+): NextResponse {
+  const responseBody: ApiErrorResponse = { error: message };
+
+  if (options?.details) {
+    responseBody.details = options.details;
+  }
+
+  if (options?.code) {
+    responseBody.code = options.code;
+  }
+
+  if (options?.context && Object.keys(options.context).length > 0) {
+    responseBody.context = options.context;
+  }
+
+  return NextResponse.json(responseBody, { status });
+}
+
+/**
+ * Standardized error logging helper.
+ */
+export function logError(
+  error: unknown,
+  context: string,
+  additionalData?: Record<string, unknown>,
+): void {
+  console.error(`[ERROR] ${context}:`, error);
+  if (additionalData) {
+    console.error("Additional context:", additionalData);
+  }
+}
+
+/**
  * Validates a YouTube video ID and returns an error response if invalid.
  * @param videoId - The video ID to validate
  * @returns NextResponse with error if invalid, null if valid
  */
 export function validateYouTubeVideoId(videoId: string): NextResponse | null {
   if (!isValidYouTubeVideoId(videoId)) {
-    return NextResponse.json(
-      { error: "Invalid YouTube video ID format" },
-      { status: 400 },
-    );
+    return errorResponse("Invalid YouTube video ID format", 400, {
+      context: { videoId },
+    });
   }
   return null;
 }
@@ -84,10 +141,7 @@ export function resumeWorkflowStream<T>(
 
     return createSSEResponse(readable, workflowRunId);
   } catch (error) {
-    console.error("Failed to resume workflow stream:", error);
-    return NextResponse.json(
-      { error: "Failed to resume stream" },
-      { status: 500 },
-    );
+    logError(error, "Failed to resume workflow stream", { workflowRunId });
+    return errorResponse("Failed to resume stream", 500);
   }
 }

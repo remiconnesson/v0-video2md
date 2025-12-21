@@ -1,21 +1,32 @@
-import { StackProvider, StackTheme } from "@stackframe/stack";
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import localFont from "next/font/local";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
 import type React from "react";
 import { ThemeProvider } from "@/components/theme-provider";
-import { ThemeToggle } from "@/components/theme-toggle";
-import { stackClientApp } from "../stack/client";
 import "./globals.css";
 
-const geistSans = Geist({
+const geistSans = localFont({
+  src: [
+    {
+      path: "../node_modules/geist/dist/fonts/geist-sans/Geist-Variable.woff2",
+      style: "normal",
+      weight: "100 900",
+    },
+  ],
   variable: "--font-geist-sans",
-  subsets: ["latin"],
+  display: "swap",
 });
 
-const geistMono = Geist_Mono({
+const geistMono = localFont({
+  src: [
+    {
+      path: "../node_modules/geist/dist/fonts/geist-mono/GeistMono-Variable.woff2",
+      style: "normal",
+      weight: "100 900",
+    },
+  ],
   variable: "--font-geist-mono",
-  subsets: ["latin"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -36,16 +47,7 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-          <NuqsAdapter>
-            <StackProvider app={stackClientApp}>
-              <StackTheme>
-                <div className="fixed right-4 top-4 z-50">
-                  <ThemeToggle />
-                </div>
-                {children}
-              </StackTheme>
-            </StackProvider>
-          </NuqsAdapter>
+          <NuqsAdapter>{children}</NuqsAdapter>
         </ThemeProvider>
       </body>
     </html>

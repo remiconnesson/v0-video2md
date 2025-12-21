@@ -13,6 +13,24 @@ import { CONFIG } from "./config";
 // Step: Trigger extraction
 // ============================================================================
 
+const TOTAL_STEPS = 4;
+
+function resolveJobStep(status: JobStatus): number {
+  switch (status) {
+    case JobStatus.PENDING:
+      return 1;
+    case JobStatus.DOWNLOADING:
+    case JobStatus.EXTRACTING:
+      return 2;
+    case JobStatus.UPLOADING:
+    case JobStatus.COMPLETED:
+    case JobStatus.FAILED:
+      return 4;
+    default:
+      return 2;
+  }
+}
+
 export async function triggerExtraction(
   videoId: YouTubeVideoId,
 ): Promise<void> {

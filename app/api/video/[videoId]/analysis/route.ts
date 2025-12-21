@@ -1,26 +1,15 @@
-import { eq } from "drizzle-orm";
 import { Match } from "effect";
 import { type NextRequest, NextResponse } from "next/server";
 import { getRun, start } from "workflow/api";
-import { db } from "@/db";
 import {
-  type VideoAnalysisRun,
-  videoAnalysisRuns,
-  videoAnalysisWorkflowIds,
-} from "@/db/schema";
-import { createSSEResponse } from "@/lib/api-utils";
+  getCompletedAnalysis,
+  getWorkflowRecord,
+  storeWorkflowId,
+} from "@/db/queries";
+import { createSSEResponse, errorResponse, logError } from "@/lib/api-utils";
 import type { YouTubeVideoId } from "@/lib/youtube-utils";
 import { isValidYouTubeVideoId } from "@/lib/youtube-utils";
 import { analyzeTranscriptWorkflow } from "@/workflows/analyze-transcript";
-
-class InvalidYouTubeVideoIdErrorResponse extends NextResponse {
-  constructor(videoId: string) {
-    super(
-      JSON.stringify({ error: "Invalid YouTube video ID format", videoId }),
-      { status: 400 },
-    );
-  }
-}
 
 export async function GET(
   _req: NextRequest,
@@ -31,7 +20,9 @@ export async function GET(
 
   // Validate YouTube video ID
   if (!isValidYouTubeVideoId(videoId)) {
-    return new InvalidYouTubeVideoIdErrorResponse(videoId);
+    return errorResponse("Invalid YouTube video ID format", 400, {
+      context: { videoId },
+    });
   }
 
   // Check for completed analysis in the database
@@ -62,13 +53,7 @@ export async function GET(
   return startNewAnalysisWorkflow({ videoId });
 }
 
-async function getWorkflowRecord(videoId: string) {
-  const [workflowRecord] = await db
-    .select()
-    .from(videoAnalysisWorkflowIds)
-    .where(eq(videoAnalysisWorkflowIds.videoId, videoId));
-  return workflowRecord;
-}
+// Note: getWorkflowRecord is now imported from queries
 
 function dispatchOngoingWorkflowHandler({
   workflowId,
@@ -116,20 +101,16 @@ function handleWorkflowAnomaly({
   workflowId: string;
   videoId: string;
 }) {
-  console.error(
-    `Workflow ${workflowId} for video ${videoId} appears to be completed but not found in database`,
+  logError(
+    new Error("Workflow appears completed but not found in database"),
+    "Workflow anomaly",
+    { workflowId, videoId },
   );
-  return NextResponse.json(
-    { error: "Internal server error" }, // hide the details of the error
-    { status: 500 },
-  );
+  return errorResponse("Internal server error", 500); // hide the details of the error
 }
 
 function handleWorkflowFailed() {
-  return NextResponse.json(
-    { error: "Workflow failed or cancelled" },
-    { status: 500 },
-  );
+  return errorResponse("Workflow failed or cancelled", 500);
 }
 
 function handleWorkflowInProgress({
@@ -152,51 +133,11 @@ async function startNewAnalysisWorkflow({
     const run = await start(analyzeTranscriptWorkflow, [videoId]);
 
     // Store the workflow ID in the database for future reference
-    await storeWorkflowId({ videoId, workflowId: run.runId });
+    await storeWorkflowId(videoId, run.runId);
 
     return createSSEResponse(run.readable, run.runId);
   } catch (error) {
-    console.error("Failed to start analysis workflow:", error);
-    return NextResponse.json(
-      { error: "Failed to start analysis workflow" },
-      { status: 500 },
-    );
+    logError(error, "Failed to start analysis workflow", { videoId });
+    return errorResponse("Failed to start analysis workflow", 500);
   }
-}
-
-async function getCompletedAnalysis(
-  videoId: YouTubeVideoId,
-): Promise<VideoAnalysisRun | null> {
-  const [analysis] = await db
-    .select({
-      videoId: videoAnalysisRuns.videoId,
-      result: videoAnalysisRuns.result,
-      createdAt: videoAnalysisRuns.createdAt,
-    })
-    .from(videoAnalysisRuns)
-    .where(eq(videoAnalysisRuns.videoId, videoId));
-
-  return analysis;
-}
-
-async function storeWorkflowId({
-  videoId,
-  workflowId,
-}: {
-  videoId: YouTubeVideoId;
-  workflowId: string;
-}) {
-  await db
-    .insert(videoAnalysisWorkflowIds)
-    .values({
-      videoId,
-      workflowId,
-    })
-    .onConflictDoUpdate({
-      target: [videoAnalysisWorkflowIds.videoId],
-      set: {
-        workflowId,
-        createdAt: new Date(),
-      },
-    });
 }

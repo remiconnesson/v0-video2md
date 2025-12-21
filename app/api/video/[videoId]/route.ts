@@ -1,12 +1,14 @@
-import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
-import { db } from "@/db";
-import { channels, scrapTranscriptV1, videos } from "@/db/schema";
+import { getVideoStatus } from "@/db/queries";
 import {
   type VideoStatusResponse,
   videoStatusResponseSchema,
 } from "@/lib/api-types";
-import { validateYouTubeVideoId } from "@/lib/api-utils";
+import {
+  errorResponse,
+  logError,
+  validateYouTubeVideoId,
+} from "@/lib/api-utils";
 
 // ============================================================================
 // GET - Check video status and get basic info
@@ -23,21 +25,7 @@ export async function GET(
   if (validationError) return validationError;
 
   // Query for video info and transcript
-  const result = await db
-    .select({
-      videoId: videos.videoId,
-      title: videos.title,
-      channelName: channels.channelName,
-      thumbnail: scrapTranscriptV1.thumbnail,
-      transcript: scrapTranscriptV1.transcript,
-    })
-    .from(videos)
-    .leftJoin(channels, eq(videos.channelId, channels.channelId))
-    .leftJoin(scrapTranscriptV1, eq(videos.videoId, scrapTranscriptV1.videoId))
-    .where(eq(videos.videoId, videoId))
-    .limit(1);
-
-  const row = result[0];
+  const row = await getVideoStatus(videoId);
 
   let responseData: VideoStatusResponse;
 
@@ -72,11 +60,8 @@ export async function GET(
   const validationResult = videoStatusResponseSchema.safeParse(responseData);
 
   if (!validationResult.success) {
-    console.error("Invalid response data:", validationResult.error);
-    return NextResponse.json(
-      { error: "Invalid response data" },
-      { status: 500 },
-    );
+    logError(validationResult.error, "Invalid response data", { videoId });
+    return errorResponse("Invalid response data", 500);
   }
 
   return NextResponse.json(validationResult.data);

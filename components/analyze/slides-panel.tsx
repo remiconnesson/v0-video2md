@@ -2,10 +2,10 @@
 
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { ImageIcon, Loader2 } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
+import { StepIndicator } from "@/components/ui/step-indicator";
 import type {
   SlideData,
   SlideFeedbackData,
@@ -14,15 +14,20 @@ import type {
 } from "@/lib/slides-types";
 import { consumeSSE } from "@/lib/sse";
 import { SlideCard } from "./slide-card";
+import { SlideGridTab } from "./slide-grid-tab";
+
+type SlidesPanelView = "curation" | "grid";
 
 interface SlidesPanelProps {
   videoId: string;
+  view?: SlidesPanelView;
 }
 
-export function SlidesPanel({ videoId }: SlidesPanelProps) {
+export function SlidesPanel({ videoId, view = "curation" }: SlidesPanelProps) {
   const [slidesState, setSlidesState] = useState<SlidesState>({
     status: "loading",
-    progress: 0,
+    step: 1,
+    totalSteps: 4,
     message: "Loading slides...",
     error: null,
     slides: [],
@@ -31,6 +36,7 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
   const [feedbackMap, setFeedbackMap] = useState<
     Map<number, SlideFeedbackData>
   >(new Map());
+  const [isUnpickingAll, setIsUnpickingAll] = useState(false);
 
   const loadSlidesState = useCallback(async () => {
     setSlidesState((prev) => ({
@@ -55,18 +61,30 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
         case "completed": {
           setSlidesState({
             status: "completed",
-            progress: 100,
+            step: 4,
+            totalSteps: 4,
             message: slidesMessage,
             error: null,
             slides,
           });
           return;
         }
-        case "in_progress":
+        case "in_progress": {
+          setSlidesState({
+            status: "extracting",
+            step: 2,
+            totalSteps: 4,
+            message: "Slide extraction in progress...",
+            error: null,
+            slides,
+          });
+          return;
+        }
         case "pending": {
           setSlidesState({
             status: "extracting",
-            progress: 0,
+            step: 1,
+            totalSteps: 4,
             message: "Slide extraction in progress...",
             error: null,
             slides,
@@ -76,7 +94,8 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
         case "failed": {
           setSlidesState({
             status: "error",
-            progress: 0,
+            step: 1,
+            totalSteps: 4,
             message: "",
             error:
               data.errorMessage ?? "Slide extraction failed. Please try again.",
@@ -87,7 +106,8 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
         default: {
           setSlidesState({
             status: slides.length > 0 ? "completed" : "idle",
-            progress: slides.length > 0 ? 100 : 0,
+            step: slides.length > 0 ? 4 : 1,
+            totalSteps: 4,
             message: slides.length > 0 ? slidesMessage : "",
             error: null,
             slides,
@@ -100,7 +120,8 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
 
       setSlidesState({
         status: "error",
-        progress: 0,
+        step: 1,
+        totalSteps: 4,
         message: "",
         error: errorMessage,
         slides: [],
@@ -156,12 +177,67 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
     [videoId, loadFeedback],
   );
 
+  const handleUnpickAll = useCallback(async () => {
+    if (slidesState.slides.length === 0) return;
+
+    setIsUnpickingAll(true);
+    try {
+      const updates = slidesState.slides.map((slide) => {
+        const existing = feedbackMap.get(slide.slideNumber);
+        const base = {
+          slideNumber: slide.slideNumber,
+          firstFrameHasUsefulContent: null,
+          lastFrameHasUsefulContent: null,
+          framesSameness: null,
+          isFirstFramePicked: true,
+          isLastFramePicked: false,
+          ...existing,
+        };
+
+        return {
+          ...base,
+          isFirstFramePicked: false,
+          isLastFramePicked: false,
+        };
+      });
+
+      await Promise.all(updates.map((feedback) => submitFeedback(feedback)));
+    } finally {
+      setIsUnpickingAll(false);
+    }
+  }, [feedbackMap, slidesState.slides, submitFeedback]);
+
+  const hasPickedFrames = useMemo(
+    () =>
+      slidesState.slides.some((slide) => {
+        const feedback = feedbackMap.get(slide.slideNumber);
+        const isFirstPicked = feedback?.isFirstFramePicked ?? true;
+        const isLastPicked = feedback?.isLastFramePicked ?? false;
+
+        return isFirstPicked || isLastPicked;
+      }),
+    [feedbackMap, slidesState.slides],
+  );
+
+  const pickedSlidesCount = useMemo(
+    () =>
+      slidesState.slides.filter((slide) => {
+        const feedback = feedbackMap.get(slide.slideNumber);
+        const isFirstPicked = feedback?.isFirstFramePicked ?? true;
+        const isLastPicked = feedback?.isLastFramePicked ?? false;
+
+        return isFirstPicked || isLastPicked;
+      }).length,
+    [feedbackMap, slidesState.slides],
+  );
+
   const startExtraction = useCallback(async () => {
     // Set state to extracting
     setSlidesState((prev) => ({
       ...prev,
       status: "extracting",
-      progress: 0,
+      step: 1,
+      totalSteps: 4,
       message: "Starting slides extraction...",
       error: null,
       slides: [],
@@ -185,7 +261,8 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
           setSlidesState((prev) => ({
             ...prev,
             status: "extracting",
-            progress: e.progress ?? prev.progress,
+            step: e.step ?? prev.step,
+            totalSteps: e.totalSteps ?? prev.totalSteps,
             message: e.message ?? prev.message,
           }));
         },
@@ -199,7 +276,8 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
           setSlidesState((prev) => ({
             ...prev,
             status: "completed",
-            progress: 100,
+            step: 4,
+            totalSteps: 4,
             message: `Extracted ${e.totalSlides} slides`,
             error: null,
           }));
@@ -208,7 +286,8 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
           setSlidesState((prev) => ({
             ...prev,
             status: "error",
-            progress: 0,
+            step: 1,
+            totalSteps: 4,
             message: "",
             error: e.message,
           }));
@@ -221,7 +300,8 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
       setSlidesState((prev) => ({
         ...prev,
         status: "error",
-        progress: 0,
+        step: 1,
+        totalSteps: 4,
         message: "",
         error: errorMessage,
       }));
@@ -264,7 +344,8 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
   if (slidesState.status === "extracting") {
     return (
       <ExtractingState
-        progress={slidesState.progress}
+        step={slidesState.step}
+        totalSteps={slidesState.totalSteps}
         message={slidesState.message}
         slides={slidesState.slides}
         feedbackMap={feedbackMap}
@@ -282,9 +363,14 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
   return (
     <CompletedState
       slidesCount={slidesState.slides.length}
+      pickedSlidesCount={pickedSlidesCount}
       slides={slidesState.slides}
       feedbackMap={feedbackMap}
       onSubmitFeedback={submitFeedback}
+      view={view}
+      onUnpickAll={handleUnpickAll}
+      isUnpickingAll={isUnpickingAll}
+      hasPickedFrames={hasPickedFrames}
     />
   );
 }
@@ -303,13 +389,15 @@ function LoadingState() {
 }
 
 function ExtractingState({
-  progress,
+  step,
+  totalSteps,
   message,
   slides,
   feedbackMap,
   onSubmitFeedback,
 }: {
-  progress: number;
+  step: number;
+  totalSteps: number;
   message: string;
   slides: SlideData[];
   feedbackMap: Map<number, SlideFeedbackData>;
@@ -327,8 +415,11 @@ function ExtractingState({
       </CardHeader>
 
       <CardContent className="space-y-4">
-        <Progress value={progress} className="h-2" />
-        <p className="text-sm text-muted-foreground">{message}</p>
+        <StepIndicator
+          currentStep={step}
+          totalSteps={totalSteps}
+          message={message}
+        />
 
         {hasSlidesFound && (
           <div className="mt-6">
@@ -337,7 +428,6 @@ function ExtractingState({
             </p>
             <SlideGrid
               slides={slides}
-              allSlides={slides}
               feedbackMap={feedbackMap}
               onSubmitFeedback={onSubmitFeedback}
             />
@@ -371,33 +461,61 @@ function ErrorState({
 
 function CompletedState({
   slidesCount,
+  pickedSlidesCount,
   slides,
   feedbackMap,
   onSubmitFeedback,
+  view,
+  onUnpickAll,
+  isUnpickingAll,
+  hasPickedFrames,
 }: {
   slidesCount: number;
+  pickedSlidesCount: number;
   slides: SlideData[];
   feedbackMap: Map<number, SlideFeedbackData>;
   onSubmitFeedback: (feedback: SlideFeedbackData) => Promise<void>;
+  view: SlidesPanelView;
+  onUnpickAll: () => Promise<void>;
+  isUnpickingAll: boolean;
+  hasPickedFrames: boolean;
 }) {
+  const slidesLabel =
+    view === "curation"
+      ? `Slides (${pickedSlidesCount}/${slidesCount})`
+      : `Slides (${slidesCount})`;
+
   return (
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center justify-between">
           <span className="flex items-center gap-2">
             <ImageIcon className="h-5 w-5" />
-            Slides ({slidesCount})
+            {slidesLabel}
           </span>
+          {view === "curation" && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onUnpickAll}
+              disabled={!hasPickedFrames || isUnpickingAll}
+            >
+              {isUnpickingAll ? "Unpicking..." : "Unpick all frames"}
+            </Button>
+          )}
         </CardTitle>
       </CardHeader>
 
       <CardContent>
-        <SlideGrid
-          slides={slides}
-          allSlides={slides}
-          feedbackMap={feedbackMap}
-          onSubmitFeedback={onSubmitFeedback}
-        />
+        {view === "curation" ? (
+          <SlideGrid
+            slides={slides}
+            feedbackMap={feedbackMap}
+            onSubmitFeedback={onSubmitFeedback}
+          />
+        ) : (
+          <SlideGridTab slides={slides} feedbackMap={feedbackMap} />
+        )}
       </CardContent>
     </Card>
   );
@@ -409,12 +527,10 @@ function CompletedState({
 
 function SlideGrid({
   slides,
-  allSlides,
   feedbackMap,
   onSubmitFeedback,
 }: {
   slides: SlideData[];
-  allSlides: SlideData[];
   feedbackMap: Map<number, SlideFeedbackData>;
   onSubmitFeedback: (feedback: SlideFeedbackData) => Promise<void>;
 }) {
@@ -460,7 +576,6 @@ function SlideGrid({
               <div className="pb-6">
                 <SlideCard
                   slide={slide}
-                  allSlides={allSlides}
                   initialFeedback={feedbackMap.get(slide.slideNumber)}
                   onSubmitFeedback={onSubmitFeedback}
                 />

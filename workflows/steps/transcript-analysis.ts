@@ -1,13 +1,6 @@
-import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { streamDynamicAnalysis } from "@/ai/dynamic-analysis";
-import { db } from "@/db";
-import {
-  channels,
-  scrapTranscriptV1,
-  videoAnalysisRuns,
-  videos,
-} from "@/db/schema";
+import { getVideoWithTranscript, saveTranscriptAnalysis } from "@/db/queries";
 import { emit } from "@/lib/stream-utils";
 import { formatTranscriptForLLM } from "@/lib/transcript-format";
 
@@ -41,34 +34,12 @@ export interface TranscriptData {
 // Step: Fetch transcript data from DB
 // ============================================================================
 
-async function getTranscriptRow(videoId: string) {
-  const results = await db
-    .select({
-      videoId: videos.videoId,
-      title: videos.title,
-      channelName: channels.channelName,
-      description: scrapTranscriptV1.description,
-      transcript: scrapTranscriptV1.transcript,
-    })
-    .from(videos)
-    .innerJoin(channels, eq(videos.channelId, channels.channelId))
-    .innerJoin(scrapTranscriptV1, eq(videos.videoId, scrapTranscriptV1.videoId))
-    .where(eq(videos.videoId, videoId))
-    .limit(1);
-
-  if (results.length === 0) {
-    return null;
-  }
-
-  return results[0];
-}
-
 export async function getTranscriptDataFromDb(
   videoId: string,
 ): Promise<TranscriptData | null> {
   "use step";
 
-  const transcriptRow = await getTranscriptRow(videoId);
+  const transcriptRow = await getVideoWithTranscript(videoId);
 
   if (!transcriptRow) {
     return null;
@@ -91,18 +62,7 @@ export async function saveTranscriptAIAnalysisToDb(
 ) {
   "use step";
 
-  await db
-    .insert(videoAnalysisRuns)
-    .values({
-      videoId,
-      result,
-    })
-    .onConflictDoUpdate({
-      target: [videoAnalysisRuns.videoId],
-      set: {
-        result,
-      },
-    });
+  await saveTranscriptAnalysis(videoId, result);
 
   await emit<AnalysisStreamEvent>(
     { type: "result", data: result },

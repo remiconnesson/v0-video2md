@@ -31,7 +31,8 @@ export async function extractSlidesWorkflow(videoId: string) {
       {
         type: "progress",
         status: "starting",
-        progress: 0,
+        step: 1,
+        totalSteps: 4,
         message: "Starting slide extraction...",
       },
       writable,
@@ -43,7 +44,8 @@ export async function extractSlidesWorkflow(videoId: string) {
       {
         type: "progress",
         status: "monitoring",
-        progress: 10,
+        step: 2,
+        totalSteps: 4,
         message: "Processing video on server...",
       },
       writable,
@@ -68,7 +70,8 @@ export async function extractSlidesWorkflow(videoId: string) {
       {
         type: "progress",
         status: "fetching",
-        progress: 80,
+        step: 3,
+        totalSteps: 4,
         message: "Fetching slide manifest...",
       },
       writable,
@@ -80,7 +83,8 @@ export async function extractSlidesWorkflow(videoId: string) {
       {
         type: "progress",
         status: "saving",
-        progress: 90,
+        step: 4,
+        totalSteps: 4,
         message: "Saving slides to database...",
       },
       writable,
