@@ -7,10 +7,6 @@ import { twMerge } from "tailwind-merge";
  * @param inputs - Class names, objects, or arrays to combine
  * @returns Merged class string
  */
-export function combineClassNames(...inputs: ClassValue[]) {
-  // NOTE: don't test this function, it's given by shadcn
+export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
-
-// Backward compatibility alias
-export const cn = combineClassNames;
