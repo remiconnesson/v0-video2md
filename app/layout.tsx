@@ -1,10 +1,8 @@
-import { StackProvider, StackTheme } from "@stackframe/stack";
 import type { Metadata } from "next";
 import localFont from "next/font/local";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
 import type React from "react";
 import { ThemeProvider } from "@/components/theme-provider";
-import { stackClientApp } from "../stack/client";
 import "./globals.css";
 
 const geistSans = localFont({
@@ -49,11 +47,7 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-          <NuqsAdapter>
-            <StackProvider app={stackClientApp}>
-              <StackTheme>{children}</StackTheme>
-            </StackProvider>
-          </NuqsAdapter>
+          <NuqsAdapter>{children}</NuqsAdapter>
         </ThemeProvider>
       </body>
     </html>
