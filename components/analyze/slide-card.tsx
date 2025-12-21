@@ -1,6 +1,6 @@
 "use client";
 
-import { Copy, ImageIcon, ThumbsDown, ThumbsUp, ZoomIn } from "lucide-react";
+import { ImageIcon, ThumbsDown, ThumbsUp, ZoomIn } from "lucide-react";
 import Image from "next/image";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -15,10 +15,6 @@ import { ZoomDialog } from "./zoom-dialog";
 interface FrameCardProps {
   label: "First" | "Last";
   imageUrl: string | null;
-  isDuplicate: boolean;
-  duplicateOfSlideNumber: number | null;
-  duplicateOfFramePosition: string | null;
-  allSlides: SlideData[];
   onZoom: () => void;
   isPicked: boolean;
   onPickedChange: (picked: boolean) => void;
@@ -29,28 +25,12 @@ interface FrameCardProps {
 function FrameCard({
   label,
   imageUrl,
-  isDuplicate,
-  duplicateOfSlideNumber,
-  duplicateOfFramePosition,
-  allSlides,
   onZoom,
   isPicked,
   onPickedChange,
   hasUsefulContent,
   onUsefulContentChange,
 }: FrameCardProps) {
-  // Find duplicate slide if exists
-  const duplicateSlide =
-    isDuplicate && duplicateOfSlideNumber !== null
-      ? allSlides.find((s) => s.slideNumber === duplicateOfSlideNumber)
-      : null;
-
-  const duplicateImageUrl = duplicateSlide
-    ? label === "First"
-      ? duplicateSlide.firstFrameImageUrl
-      : duplicateSlide.lastFrameImageUrl
-    : null;
-
   return (
     <div className="flex flex-col gap-3">
       {/* Frame header with checkbox */}
@@ -95,26 +75,6 @@ function FrameCard({
             {label}
           </div>
         </button>
-
-        {/* Mini duplicate preview */}
-        {isDuplicate && duplicateImageUrl && (
-          <div className="mt-2 flex items-center gap-2">
-            <Copy className="h-3 w-3 text-muted-foreground flex-shrink-0" />
-            <div className="relative w-16 rounded overflow-hidden border">
-              <Image
-                src={duplicateImageUrl || "/placeholder.svg"}
-                alt={`Duplicate of slide ${duplicateOfSlideNumber}`}
-                width={64}
-                height={36}
-                className="w-full h-auto object-contain"
-              />
-            </div>
-            <span className="text-xs text-muted-foreground">
-              #{duplicateOfSlideNumber}
-              {duplicateOfFramePosition ? `-${duplicateOfFramePosition}` : ""}
-            </span>
-          </div>
-        )}
       </div>
 
       <div className="flex items-center justify-between gap-2 rounded-md border bg-muted/30 p-3">
@@ -154,14 +114,12 @@ function FrameCard({
 
 interface SlideCardProps {
   slide: SlideData;
-  allSlides: SlideData[];
   initialFeedback?: SlideFeedbackData;
   onSubmitFeedback: (feedback: SlideFeedbackData) => Promise<void>;
 }
 
 export function SlideCard({
   slide,
-  allSlides,
   initialFeedback,
   onSubmitFeedback,
 }: SlideCardProps) {
@@ -240,10 +198,6 @@ export function SlideCard({
           <FrameCard
             label="First"
             imageUrl={slide.firstFrameImageUrl}
-            isDuplicate={slide.firstFrameIsDuplicate}
-            duplicateOfSlideNumber={slide.firstFrameDuplicateOfSlideNumber}
-            duplicateOfFramePosition={slide.firstFrameDuplicateOfFramePosition}
-            allSlides={allSlides}
             onZoom={() => handleZoom("first")}
             isPicked={feedback.isFirstFramePicked}
             onPickedChange={(picked) =>
@@ -257,10 +211,6 @@ export function SlideCard({
           <FrameCard
             label="Last"
             imageUrl={slide.lastFrameImageUrl}
-            isDuplicate={slide.lastFrameIsDuplicate}
-            duplicateOfSlideNumber={slide.lastFrameDuplicateOfSlideNumber}
-            duplicateOfFramePosition={slide.lastFrameDuplicateOfFramePosition}
-            allSlides={allSlides}
             onZoom={() => handleZoom("last")}
             isPicked={feedback.isLastFramePicked}
             onPickedChange={(picked) =>
