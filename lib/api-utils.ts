@@ -57,37 +57,3 @@ export function createSSEResponse<T>(
 
   return new NextResponse(sseStream, { headers });
 }
-
-/**
- * Interface for workflow runs that can be resumed
- */
-export interface ResumableWorkflowRun<T> {
-  getReadable: (opts?: { startIndex?: number }) => ReadableStream<T>;
-}
-
-/**
- * Resumes a workflow stream and returns it as an SSE response.
- * This is used to reconnect to an in-progress workflow.
- * @param getRun - Function to get the workflow run
- * @param workflowRunId - The workflow run ID to resume
- * @param startIndex - Optional index to start reading from
- * @returns NextResponse with SSE stream
- */
-export function resumeWorkflowStream<T>(
-  getRun: (runId: string) => ResumableWorkflowRun<T>,
-  workflowRunId: string,
-  startIndex = 0,
-): NextResponse {
-  try {
-    const run = getRun(workflowRunId);
-    const readable = run.getReadable({ startIndex });
-
-    return createSSEResponse(readable, workflowRunId);
-  } catch (error) {
-    console.error("Failed to resume workflow stream:", error);
-    return NextResponse.json(
-      { error: "Failed to resume stream" },
-      { status: 500 },
-    );
-  }
-}

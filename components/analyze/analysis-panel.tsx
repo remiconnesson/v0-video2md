@@ -280,7 +280,7 @@ function SectionHeader({ title }: { title: string }) {
   );
 }
 
-export function ObjectSection({ data }: { data: Record<string, unknown> }) {
+function ObjectSection({ data }: { data: Record<string, unknown> }) {
   return (
     <dl className="divide-y divide-gray-100">
       {Object.entries(data).map(([key, value]) => {

@@ -2,7 +2,7 @@ import { parseDuration } from "@/lib/time-utils";
 import { db } from "./index";
 import { channels, scrapTranscriptV1, videos } from "./schema";
 
-export interface TranscriptSegment {
+interface TranscriptSegment {
   start: number;
   end: number;
   text: string;

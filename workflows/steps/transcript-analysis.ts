@@ -147,7 +147,7 @@ export type AnalysisStreamEvent =
   await emit<AnalysisStreamEvent>({ type: "error", message }, { finished: true });
  * ```
  */
-export async function emit<T>(
+async function emit<T>(
   event: T,
   options: { finished?: boolean } = { finished: false },
 ) {

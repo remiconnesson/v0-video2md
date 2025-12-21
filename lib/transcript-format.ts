@@ -3,7 +3,7 @@
  * Extracted from workflow steps for testability and reuse.
  */
 
-export interface TranscriptSegment {
+interface TranscriptSegment {
   start: number;
   end?: number;
   text: string;

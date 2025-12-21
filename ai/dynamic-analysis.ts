@@ -4,7 +4,7 @@ import {
   DYNAMIC_ANALYSIS_SYSTEM_PROMPT,
 } from "./dynamic-analysis-prompt";
 
-export interface DynamicAnalysisInput {
+interface DynamicAnalysisInput {
   title: string;
   channelName?: string;
   description?: string;

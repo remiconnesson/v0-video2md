@@ -1,12 +1,12 @@
-export type SSEBaseEvent = { type: string; [key: string]: unknown };
+type SSEBaseEvent = { type: string; [key: string]: unknown };
 
-export type SSEHandlerMap<TEvent extends SSEBaseEvent> = {
+type SSEHandlerMap<TEvent extends SSEBaseEvent> = {
   [K in TEvent["type"]]: (
     event: Extract<TEvent, { type: K }>,
   ) => void | Promise<void>;
 };
 
-export interface ConsumeSSEOptions {
+interface ConsumeSSEOptions {
   /**
    * Called when something goes wrong while reading/parsing the stream.
    */

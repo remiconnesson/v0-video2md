@@ -46,7 +46,6 @@ export const VideoManifestSchema = z.record(z.string(), ManifestDataSchema); // 
 export type FrameMetadata = z.infer<typeof FrameMetadataSchema>;
 export type Segment = z.infer<typeof SegmentSchema>;
 export type StaticSegmentData = z.infer<typeof StaticSegmentSchema>;
-export type ManifestData = z.infer<typeof ManifestDataSchema>;
 export type VideoManifest = z.infer<typeof VideoManifestSchema>;
 
 // ============================================================================
@@ -59,7 +58,7 @@ export type SlideStreamEvent =
   | { type: "complete"; totalSlides: number }
   | { type: "error"; message: string };
 
-export const SlideDataSchema = createSelectSchema(videoSlides).omit({
+const SlideDataSchema = createSelectSchema(videoSlides).omit({
   id: true,
   videoId: true,
   createdAt: true,
@@ -71,7 +70,7 @@ export type SlideData = z.infer<typeof SlideDataSchema>;
 // Slide Feedback Types
 // ============================================================================
 
-export const SlideFeedbackDataSchema = createSelectSchema(slideFeedback).omit({
+const SlideFeedbackDataSchema = createSelectSchema(slideFeedback).omit({
   id: true,
   videoId: true,
   createdAt: true,
@@ -84,10 +83,6 @@ export type SlideFeedbackData = z.infer<typeof SlideFeedbackDataSchema>;
 // ============================================================================
 
 export enum JobStatus {
-  PENDING = "pending",
-  DOWNLOADING = "downloading",
-  EXTRACTING = "extracting",
-  UPLOADING = "uploading",
   COMPLETED = "completed",
   FAILED = "failed",
 }

@@ -34,7 +34,7 @@ function validateTranscriptStructure(data: unknown): TranscriptSegment[] {
 // Transcript Data Interface
 // ============================================================================
 
-export interface TranscriptData {
+interface TranscriptData {
   videoId: string;
   title: string;
   channelName: string;
