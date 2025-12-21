@@ -1,10 +1,9 @@
-import { FatalError } from "workflow";
+import { FatalError, getWritable } from "workflow";
+import type { SlideStreamEvent } from "@/lib/slides-types";
+import { emit } from "@/lib/stream-utils";
 import { isValidYouTubeVideoId } from "@/lib/youtube-utils";
 import {
   checkJobStatus,
-  emitComplete,
-  emitError,
-  emitProgress,
   fetchManifest,
   processSlidesFromManifest,
   triggerExtraction,
@@ -18,6 +17,7 @@ import {
 export async function extractSlidesWorkflow(videoId: string) {
   "use workflow";
 
+  const writable = getWritable<SlideStreamEvent>();
   let currentStep = "initialization";
 
   const isValid = isValidYouTubeVideoId(videoId);
@@ -27,24 +27,64 @@ export async function extractSlidesWorkflow(videoId: string) {
 
   try {
     currentStep = "triggering extraction";
-    await emitProgress("starting", 0, "Starting slide extraction...");
+    await emit<SlideStreamEvent>(
+      {
+        type: "progress",
+        status: "starting",
+        progress: 0,
+        message: "Starting slide extraction...",
+      },
+      writable,
+    );
     await triggerExtraction(videoId);
 
     currentStep = "monitoring job progress";
-    await emitProgress("monitoring", 10, "Processing video on server...");
-    await checkJobStatus(videoId);
+    await emit<SlideStreamEvent>(
+      {
+        type: "progress",
+        status: "monitoring",
+        progress: 10,
+        message: "Processing video on server...",
+      },
+      writable,
+    );
+    await checkJobStatus(videoId, writable);
 
     currentStep = "fetching manifest";
-    await emitProgress("fetching", 80, "Fetching slide manifest...");
+    await emit<SlideStreamEvent>(
+      {
+        type: "progress",
+        status: "fetching",
+        progress: 80,
+        message: "Fetching slide manifest...",
+      },
+      writable,
+    );
     const manifest = await fetchManifest(videoId);
 
     currentStep = "processing slides";
-    await emitProgress("saving", 90, "Saving slides to database...");
-    const totalSlides = await processSlidesFromManifest(videoId, manifest);
+    await emit<SlideStreamEvent>(
+      {
+        type: "progress",
+        status: "saving",
+        progress: 90,
+        message: "Saving slides to database...",
+      },
+      writable,
+    );
+    const totalSlides = await processSlidesFromManifest(
+      videoId,
+      manifest,
+      writable,
+    );
 
     currentStep = "updating status";
     await updateExtractionStatus(videoId, "completed", totalSlides);
-    await emitComplete(totalSlides);
+    await emit<SlideStreamEvent>(
+      { type: "complete", totalSlides },
+      writable,
+      true,
+    );
 
     return { success: true, totalSlides };
   } catch (error) {
@@ -84,7 +124,11 @@ export async function extractSlidesWorkflow(videoId: string) {
       );
     }
 
-    await emitError(detailedMessage);
+    await emit<SlideStreamEvent>(
+      { type: "error", message: detailedMessage },
+      writable,
+      true,
+    );
     throw error;
   }
 }

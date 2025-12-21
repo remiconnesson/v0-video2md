@@ -2,16 +2,17 @@ import { db } from "@/db";
 import { videoSlides } from "@/db/schema";
 import {
   type SlideData,
+  type SlideStreamEvent,
   type VideoManifest,
   VideoManifestSchema,
 } from "@/lib/slides-types";
+import { emit } from "@/lib/stream-utils";
 import type { YouTubeVideoId } from "@/lib/youtube-utils";
 import {
   extractSlideTimings,
   filterStaticSegments,
   normalizeIsDuplicate,
 } from "./manifest-processing.utils";
-import { emitSlide } from "./stream-emitters";
 
 function getBlobStorageRootUrl(): string {
   const token = process.env.BLOB_READ_WRITE_TOKEN;
@@ -66,6 +67,7 @@ export async function fetchManifest(
 export async function processSlidesFromManifest(
   videoId: YouTubeVideoId,
   manifest: VideoManifest,
+  writable: WritableStream<SlideStreamEvent>,
 ): Promise<number> {
   "use step";
 
@@ -121,7 +123,7 @@ export async function processSlidesFromManifest(
       })
       .onConflictDoNothing();
 
-    await emitSlide(slideData);
+    await emit<SlideStreamEvent>({ type: "slide", slide: slideData }, writable);
     slideNumber++;
   }
 

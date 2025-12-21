@@ -1,8 +1,10 @@
+import { getWritable } from "workflow";
 import {
   fetchYoutubeTranscriptFromApify,
   saveYoutubeTranscriptToDb,
 } from "./steps/fetch-transcript";
 import {
+  type AnalysisStreamEvent,
   doTranscriptAIAnalysis,
   getTranscriptDataFromDb,
   saveTranscriptAIAnalysisToDb,
@@ -12,6 +14,7 @@ import {
 export async function analyzeTranscriptWorkflow(videoId: string) {
   "use workflow";
 
+  const writable = getWritable<AnalysisStreamEvent>();
   let transcriptData: TranscriptData | null;
 
   const cachedTranscriptData = await getTranscriptDataFromDb(videoId);
@@ -25,9 +28,9 @@ export async function analyzeTranscriptWorkflow(videoId: string) {
     transcriptData = (await getTranscriptDataFromDb(videoId))!;
   }
 
-  const analysisResult = await doTranscriptAIAnalysis(transcriptData);
+  const analysisResult = await doTranscriptAIAnalysis(transcriptData, writable);
 
-  await saveTranscriptAIAnalysisToDb(videoId, analysisResult);
+  await saveTranscriptAIAnalysisToDb(videoId, analysisResult, writable);
 
   return {
     success: true,

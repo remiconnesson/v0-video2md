@@ -1,6 +1,11 @@
 import { createParser } from "eventsource-parser";
 import { FatalError, fetch } from "workflow";
-import { JobStatus, type JobUpdate } from "@/lib/slides-types";
+import {
+  JobStatus,
+  type JobUpdate,
+  type SlideStreamEvent,
+} from "@/lib/slides-types";
+import { emit } from "@/lib/stream-utils";
 import type { YouTubeVideoId } from "@/lib/youtube-utils";
 import { CONFIG } from "./config";
 
@@ -66,7 +71,10 @@ export async function triggerExtraction(
   }
 }
 
-export async function checkJobStatus(videoId: YouTubeVideoId): Promise<{
+export async function checkJobStatus(
+  videoId: YouTubeVideoId,
+  writable: WritableStream<SlideStreamEvent>,
+): Promise<{
   manifestUri: string | null;
   jobFailed: boolean;
   failureReason: string;
@@ -181,13 +189,14 @@ export async function checkJobStatus(videoId: YouTubeVideoId): Promise<{
 
             // Emit progress (fire and forget inside sync callback is safer in loop)
             if (!jobFailed && !manifestUri) {
-              // Import emitProgress dynamically to avoid circular dependency
-              import("./stream-emitters").then(({ emitProgress }) =>
-                emitProgress(
-                  jobUpdate.status,
-                  jobUpdate.progress,
-                  jobUpdate.message,
-                ).catch(() => {}),
+              emit<SlideStreamEvent>(
+                {
+                  type: "progress",
+                  status: jobUpdate.status,
+                  progress: jobUpdate.progress,
+                  message: jobUpdate.message,
+                },
+                writable,
               );
             }
           } catch (parseError) {

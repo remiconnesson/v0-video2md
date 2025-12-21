@@ -1,5 +1,4 @@
 import { eq } from "drizzle-orm";
-import { getWritable } from "workflow";
 import { z } from "zod";
 import { streamDynamicAnalysis } from "@/ai/dynamic-analysis";
 import { db } from "@/db";
@@ -9,6 +8,7 @@ import {
   videoAnalysisRuns,
   videos,
 } from "@/db/schema";
+import { emit } from "@/lib/stream-utils";
 import { formatTranscriptForLLM } from "@/lib/transcript-format";
 
 // ============================================================================
@@ -87,6 +87,7 @@ export async function getTranscriptDataFromDb(
 export async function saveTranscriptAIAnalysisToDb(
   videoId: string,
   result: Record<string, unknown>,
+  writable: WritableStream<AnalysisStreamEvent>,
 ) {
   "use step";
 
@@ -105,13 +106,15 @@ export async function saveTranscriptAIAnalysisToDb(
 
   await emit<AnalysisStreamEvent>(
     { type: "result", data: result },
-    { finished: true },
+    writable,
+    true,
   );
 }
 
 export async function doTranscriptAIAnalysis(
   transcriptData: TranscriptData,
-): Promise<Record<string, unknown>> {
+  writable: WritableStream<AnalysisStreamEvent>,
+) {
   "use step";
 
   const analysisStream = streamDynamicAnalysis({
@@ -122,7 +125,10 @@ export async function doTranscriptAIAnalysis(
   });
 
   for await (const partialResult of analysisStream.partialObjectStream) {
-    await emit<AnalysisStreamEvent>({ type: "partial", data: partialResult });
+    await emit<AnalysisStreamEvent>(
+      { type: "partial", data: partialResult },
+      writable,
+    );
   }
 
   const finalAnalysisResult = await analysisStream.object;
@@ -136,33 +142,3 @@ export type AnalysisStreamEvent =
   | { type: "result"; data: unknown }
   | { type: "complete"; runId: number }
   | { type: "error"; message: string };
-
-/**
- * example usage:
- * ```
-  await emit<AnalysisStreamEvent>({ type: "progress", phase, message });
-  await emit<AnalysisStreamEvent>({ type: "result", data });
-  await emit<AnalysisStreamEvent>({ type: "partial", data });
-  await emit<AnalysisStreamEvent>({ type: "complete", runId }, { finished: true });
-  await emit<AnalysisStreamEvent>({ type: "error", message }, { finished: true });
- * ```
- */
-export async function emit<T>(
-  event: T,
-  options: { finished?: boolean } = { finished: false },
-) {
-  "use step";
-
-  const defaultOptions = { finished: false } as const;
-  const mergedOptions = { ...defaultOptions, ...options };
-  const { finished } = mergedOptions;
-
-  const writable = getWritable<T>();
-  const writer = writable.getWriter();
-  await writer.write(event);
-  writer.releaseLock();
-
-  if (finished) {
-    await writable.close();
-  }
-}
