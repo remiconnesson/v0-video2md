@@ -293,18 +293,20 @@ function SectionContent({ content }: { content: unknown }): React.ReactNode {
       return <p className="text-muted-foreground italic">No items</p>;
     }
     return (
-      <Streamdown>
-        {content
-          .map((item) =>
-            typeof item === "string"
-              ? // Check if already starts with - * or numbered list (1. 2. etc.) or 1), 2), if so, don't add a -
-                item.trim().match(/^\s*[-*]\s+|^\s*\d+\.\s+|^\s*\d+\)\s+/)
-                ? item
-                : `- ${item}`
-              : `\n\`\`\`json\n${JSON.stringify(item, null, 2)}\n\`\`\`\n`,
-          )
-          .join("\n")}
-      </Streamdown>
+      <div className="prose prose-sm dark:prose-invert max-w-none prose-p:leading-relaxed">
+        <Streamdown>
+          {content
+            .map((item) =>
+              typeof item === "string"
+                ? // Check if already starts with - * or numbered list (1. 2. etc.) or 1), 2), if so, don't add a -
+                  item.trim().match(/^\s*[-*]\s+|^\s*\d+\.\s+|^\s*\d+\)\s+/)
+                  ? item
+                  : `- ${item}`
+                : `\n\`\`\`json\n${JSON.stringify(item, null, 2)}\n\`\`\`\n`,
+            )
+            .join("\n")}
+        </Streamdown>
+      </div>
     );
   }
 
@@ -391,8 +393,9 @@ function SectionHeader({
 
 function ObjectSection({ data }: { data: Record<string, unknown> }) {
   return (
-    <dl className="divide-y divide-border/60">
+    <div className="space-y-8 mt-2">
       {Object.entries(data).map(([key, value]) => {
+        const formattedKey = formatSectionTitle(key);
         const markdown =
           typeof value === "string"
             ? value || ""
@@ -401,18 +404,22 @@ function ObjectSection({ data }: { data: Record<string, unknown> }) {
               }\n\`\`\``;
 
         return (
-          <div
-            key={key}
-            className="px-4 py-6 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0"
-          >
-            <dt className="text-sm/6 font-medium text-foreground">{key}</dt>
-            <dd className="mt-1 text-sm/6 text-muted-foreground sm:col-span-2 sm:mt-0">
-              <Streamdown>{markdown}</Streamdown>
+          <div key={key} className="relative flex flex-col gap-3 group">
+            <div className="flex items-center gap-3">
+              <dt className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 select-none flex-none break-all">
+                {formattedKey}
+              </dt>
+              <div className="h-px flex-1 bg-border/50 group-hover:bg-primary/20 transition-colors" />
+            </div>
+            <dd className="pl-4 border-l-2 border-border/30 group-hover:border-primary/20 transition-colors">
+              <div className="prose prose-sm dark:prose-invert max-w-none prose-p:leading-relaxed prose-pre:bg-muted/50">
+                <Streamdown>{markdown}</Streamdown>
+              </div>
             </dd>
           </div>
         );
       })}
-    </dl>
+    </div>
   );
 }
 
