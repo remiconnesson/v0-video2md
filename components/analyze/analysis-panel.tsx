@@ -179,7 +179,7 @@ export function AnalysisPanel({ videoId }: AnalysisPanelProps) {
 
   const scrollToActiveSection = useEffectEvent(
     (
-      activeSection: string | undefined,
+      activeSection: string | null,
       scrollToSection: (sectionId: string) => void,
     ) => {
       if (!activeSection) return;
@@ -193,8 +193,8 @@ export function AnalysisPanel({ videoId }: AnalysisPanelProps) {
   );
 
   useEffect(() => {
-    scrollToActiveSection(activeSection, scrollToActiveSection);
-  }, [activeSection, scrollToActiveSection]);
+    scrollToActiveSection(activeSection, scrollToSection);
+  }, [activeSection, scrollToSection, scrollToActiveSection]);
 
   return (
     <div className="space-y-4">
