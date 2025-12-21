@@ -452,8 +452,8 @@ function AnalysisSidebar({
   onSectionClick: (sectionId: string) => void;
 }) {
   return (
-    <aside className="hidden lg:block">
-      <div className="sticky top-24 space-y-3">
+    <aside className="hidden h-fit lg:sticky lg:top-24 lg:block">
+      <div className="space-y-3">
         <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           Sections
         </p>
