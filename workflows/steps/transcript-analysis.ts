@@ -1,8 +1,6 @@
 import { z } from "zod";
 import { streamDynamicAnalysis } from "@/ai/dynamic-analysis";
-import { db } from "@/db";
-import { getVideoWithTranscript } from "@/db/queries";
-import { videoAnalysisRuns } from "@/db/schema";
+import { getVideoWithTranscript, saveTranscriptAnalysis } from "@/db/queries";
 import { emit } from "@/lib/stream-utils";
 import { formatTranscriptForLLM } from "@/lib/transcript-format";
 
@@ -64,18 +62,7 @@ export async function saveTranscriptAIAnalysisToDb(
 ) {
   "use step";
 
-  await db
-    .insert(videoAnalysisRuns)
-    .values({
-      videoId,
-      result,
-    })
-    .onConflictDoUpdate({
-      target: [videoAnalysisRuns.videoId],
-      set: {
-        result,
-      },
-    });
+  await saveTranscriptAnalysis(videoId, result);
 
   await emit<AnalysisStreamEvent>(
     { type: "result", data: result },

@@ -1,7 +1,5 @@
-import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
-import { db } from "@/db";
-import { channels, scrapTranscriptV1, videos } from "@/db/schema";
+import { getVideoStatus } from "@/db/queries";
 import {
   type VideoStatusResponse,
   videoStatusResponseSchema,
@@ -23,21 +21,7 @@ export async function GET(
   if (validationError) return validationError;
 
   // Query for video info and transcript
-  const result = await db
-    .select({
-      videoId: videos.videoId,
-      title: videos.title,
-      channelName: channels.channelName,
-      thumbnail: scrapTranscriptV1.thumbnail,
-      transcript: scrapTranscriptV1.transcript,
-    })
-    .from(videos)
-    .leftJoin(channels, eq(videos.channelId, channels.channelId))
-    .leftJoin(scrapTranscriptV1, eq(videos.videoId, scrapTranscriptV1.videoId))
-    .where(eq(videos.videoId, videoId))
-    .limit(1);
-
-  const row = result[0];
+  const row = await getVideoStatus(videoId);
 
   let responseData: VideoStatusResponse;
 

@@ -1,5 +1,4 @@
-import { db } from "@/db";
-import { videoSlides } from "@/db/schema";
+import { insertVideoSlide } from "@/db/queries";
 import {
   type SlideData,
   type SlideStreamEvent,
@@ -115,13 +114,7 @@ export async function processSlidesFromManifest(
       ...normalizeIsDuplicate(lastFrame, "lastFrame"),
     };
 
-    await db
-      .insert(videoSlides)
-      .values({
-        videoId,
-        ...slideData,
-      })
-      .onConflictDoNothing();
+    await insertVideoSlide(videoId, slideData);
 
     await emit<SlideStreamEvent>({ type: "slide", slide: slideData }, writable);
     slideNumber++;

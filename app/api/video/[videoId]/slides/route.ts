@@ -1,8 +1,14 @@
-import { asc, eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { start } from "workflow/api";
-import { db } from "@/db";
-import { videoSlideExtractions, videoSlides } from "@/db/schema";
+import {
+  deleteSlideExtraction,
+  deleteVideoSlides,
+  getSlideExtractionStatus,
+  getVideoSlides,
+  updateSlideExtractionRunId,
+  updateSlideExtractionStatus,
+  upsertSlideExtraction,
+} from "@/db/queries";
 import { createSSEResponse } from "@/lib/api-utils";
 import { extractSlidesWorkflow } from "@/workflows/extract-slides";
 
@@ -17,37 +23,10 @@ export async function GET(
   const { videoId } = await ctx.params;
 
   // Get extraction status
-  const [extraction] = await db
-    .select()
-    .from(videoSlideExtractions)
-    .where(eq(videoSlideExtractions.videoId, videoId))
-    .limit(1);
+  const extraction = await getSlideExtractionStatus(videoId);
 
   // Get existing slides
-  const slides = await db
-    .select({
-      slideNumber: videoSlides.slideNumber,
-      startTime: videoSlides.startTime,
-      endTime: videoSlides.endTime,
-      duration: videoSlides.duration,
-      // First frame data
-      firstFrameImageUrl: videoSlides.firstFrameImageUrl,
-      firstFrameIsDuplicate: videoSlides.firstFrameIsDuplicate,
-      firstFrameDuplicateOfSlideNumber:
-        videoSlides.firstFrameDuplicateOfSlideNumber,
-      firstFrameDuplicateOfFramePosition:
-        videoSlides.firstFrameDuplicateOfFramePosition,
-      // Last frame data
-      lastFrameImageUrl: videoSlides.lastFrameImageUrl,
-      lastFrameIsDuplicate: videoSlides.lastFrameIsDuplicate,
-      lastFrameDuplicateOfSlideNumber:
-        videoSlides.lastFrameDuplicateOfSlideNumber,
-      lastFrameDuplicateOfFramePosition:
-        videoSlides.lastFrameDuplicateOfFramePosition,
-    })
-    .from(videoSlides)
-    .where(eq(videoSlides.videoId, videoId))
-    .orderBy(asc(videoSlides.slideNumber));
+  const slides = await getVideoSlides(videoId);
 
   // If extraction status is "in_progress" but we have slides, fix the status
   // This handles the case where extraction completed but status wasn't updated
@@ -57,13 +36,7 @@ export async function GET(
       "⚙️ Found in_progress extraction with slides, marking as completed:",
       videoId,
     );
-    await db
-      .update(videoSlideExtractions)
-      .set({
-        status: "completed",
-        totalSlides: slides.length,
-      })
-      .where(eq(videoSlideExtractions.videoId, videoId));
+    await updateSlideExtractionStatus(videoId, "completed", slides.length);
     status = "completed";
   }
 
@@ -74,14 +47,12 @@ export async function GET(
       "⚙️ Found completed extraction with no slides (data inconsistency), marking as failed:",
       videoId,
     );
-    await db
-      .update(videoSlideExtractions)
-      .set({
-        status: "failed",
-        errorMessage:
-          "Extraction completed but no slides were saved. Please try again.",
-      })
-      .where(eq(videoSlideExtractions.videoId, videoId));
+    await updateSlideExtractionStatus(
+      videoId,
+      "failed",
+      undefined,
+      "Extraction completed but no slides were saved. Please try again.",
+    );
     status = "failed";
   }
 
@@ -96,14 +67,12 @@ export async function GET(
         "⚙️ Found stuck in_progress extraction (>30min old), marking as failed:",
         videoId,
       );
-      await db
-        .update(videoSlideExtractions)
-        .set({
-          status: "failed",
-          errorMessage:
-            "Extraction timed out or workflow failed to start. Please try again.",
-        })
-        .where(eq(videoSlideExtractions.videoId, videoId));
+      await updateSlideExtractionStatus(
+        videoId,
+        "failed",
+        undefined,
+        "Extraction timed out or workflow failed to start. Please try again.",
+      );
       status = "failed";
     }
   }
@@ -141,11 +110,7 @@ export async function POST(
   const { videoId } = await ctx.params;
 
   // Check for existing extraction
-  const [existing] = await db
-    .select()
-    .from(videoSlideExtractions)
-    .where(eq(videoSlideExtractions.videoId, videoId))
-    .limit(1);
+  const existing = await getSlideExtractionStatus(videoId);
 
   // If already completed, return existing data
   if (existing?.status === "completed") {
@@ -165,42 +130,25 @@ export async function POST(
 
   // If retrying after failure, delete existing slides first
   if (existing?.status === "failed") {
-    await db.delete(videoSlides).where(eq(videoSlides.videoId, videoId));
+    await deleteVideoSlides(videoId);
   }
 
   // Create or update extraction record
-  await db
-    .insert(videoSlideExtractions)
-    .values({
-      videoId,
-      status: "in_progress",
-    })
-    .onConflictDoUpdate({
-      target: videoSlideExtractions.videoId,
-      set: {
-        status: "in_progress",
-        errorMessage: null,
-      },
-    });
+  await upsertSlideExtraction(videoId, "in_progress");
 
   try {
     // Start workflow
     const run = await start(extractSlidesWorkflow, [videoId]);
 
     // Update with runId
-    await db
-      .update(videoSlideExtractions)
-      .set({ runId: run.runId })
-      .where(eq(videoSlideExtractions.videoId, videoId));
+    await updateSlideExtractionRunId(videoId, run.runId);
 
     return createSSEResponse(run.readable, run.runId);
   } catch (error) {
     console.error("Failed to start workflow:", error);
 
     // FIX: Revert DB state so user can try again
-    await db
-      .delete(videoSlideExtractions)
-      .where(eq(videoSlideExtractions.videoId, videoId));
+    await deleteSlideExtraction(videoId);
 
     return NextResponse.json(
       { error: "Failed to start extraction workflow" },

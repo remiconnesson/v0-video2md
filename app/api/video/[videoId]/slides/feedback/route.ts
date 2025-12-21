@@ -1,8 +1,11 @@
-import { eq } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { NextResponse } from "next/server";
-import { db } from "@/db";
-import { slideFeedback, videos } from "@/db/schema";
+import {
+  getSlideFeedback,
+  upsertSlideFeedback,
+  videoExists,
+} from "@/db/queries";
+import { slideFeedback } from "@/db/schema";
 
 // ============================================================================
 // Schemas
@@ -25,20 +28,11 @@ export async function GET(
   const { videoId } = await ctx.params;
 
   // Verify video exists
-  const [video] = await db
-    .select({ videoId: videos.videoId })
-    .from(videos)
-    .where(eq(videos.videoId, videoId))
-    .limit(1);
-
-  if (!video) {
+  if (!(await videoExists(videoId))) {
     return NextResponse.json({ error: "Video not found" }, { status: 404 });
   }
 
-  const feedback = await db
-    .select()
-    .from(slideFeedback)
-    .where(eq(slideFeedback.videoId, videoId));
+  const feedback = await getSlideFeedback(videoId);
 
   return NextResponse.json({ feedback });
 }
@@ -54,13 +48,7 @@ export async function POST(
   const { videoId } = await ctx.params;
 
   // Verify video exists
-  const [video] = await db
-    .select({ videoId: videos.videoId })
-    .from(videos)
-    .where(eq(videos.videoId, videoId))
-    .limit(1);
-
-  if (!video) {
+  if (!(await videoExists(videoId))) {
     return NextResponse.json({ error: "Video not found" }, { status: 404 });
   }
 
@@ -83,18 +71,7 @@ export async function POST(
   const feedback = parsed.data;
 
   // Upsert slide feedback
-  await db
-    .insert(slideFeedback)
-    .values({
-      videoId,
-      ...feedback,
-    })
-    .onConflictDoUpdate({
-      target: [slideFeedback.videoId, slideFeedback.slideNumber],
-      set: {
-        ...feedback,
-      },
-    });
+  await upsertSlideFeedback(videoId, feedback);
 
   return NextResponse.json({ success: true });
 }

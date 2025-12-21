@@ -1,6 +1,4 @@
-import { eq } from "drizzle-orm";
-import { db } from "@/db";
-import { videoSlideExtractions } from "@/db/schema";
+import { updateSlideExtractionStatus } from "@/db/queries";
 import type { YouTubeVideoId } from "@/lib/youtube-utils";
 
 export async function updateExtractionStatus(
@@ -21,14 +19,12 @@ export async function updateExtractionStatus(
       },
     );
 
-    await db
-      .update(videoSlideExtractions)
-      .set({
-        status,
-        totalSlides: totalSlides ?? null,
-        errorMessage: errorMessage ?? null,
-      })
-      .where(eq(videoSlideExtractions.videoId, videoId));
+    await updateSlideExtractionStatus(
+      videoId,
+      status,
+      totalSlides,
+      errorMessage,
+    );
 
     console.log(
       `📊 updateExtractionStatus: Successfully updated extraction status for video ${videoId}`,
