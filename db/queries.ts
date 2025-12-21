@@ -1,7 +1,7 @@
-import { and, asc, desc, eq, inArray, isNotNull } from "drizzle-orm";
-import type { SlideData } from "@/lib/slides-types";
-import type { TranscriptSegment } from "@/lib/transcript-format";
-import { db } from "./index";
+import { and, asc, desc, eq, inArray, isNotNull } from "drizzle-orm"
+import type { SlideData } from "@/lib/slides-types"
+import type { TranscriptSegment } from "@/lib/transcript-format"
+import { db } from "./index"
 import {
   channels,
   scrapTranscriptV1,
@@ -11,7 +11,7 @@ import {
   videoSlideExtractions,
   videoSlides,
   videos,
-} from "./schema";
+} from "./schema"
 
 // ============================================================================
 // Helper Functions
@@ -21,8 +21,8 @@ import {
  * Helper to consistently handle single-result queries that may return null.
  */
 async function findOne<T>(query: Promise<T[]>): Promise<T | null> {
-  const [result] = await query;
-  return result ?? null;
+  const [result] = await query
+  return result ?? null
 }
 
 // ============================================================================
@@ -45,13 +45,10 @@ export async function getVideoWithTranscript(videoId: string) {
       })
       .from(videos)
       .innerJoin(channels, eq(videos.channelId, channels.channelId))
-      .innerJoin(
-        scrapTranscriptV1,
-        eq(videos.videoId, scrapTranscriptV1.videoId),
-      )
+      .innerJoin(scrapTranscriptV1, eq(videos.videoId, scrapTranscriptV1.videoId))
       .where(eq(videos.videoId, videoId))
       .limit(1),
-  );
+  )
 }
 
 /**
@@ -70,13 +67,10 @@ export async function getVideoStatus(videoId: string) {
       })
       .from(videos)
       .leftJoin(channels, eq(videos.channelId, channels.channelId))
-      .leftJoin(
-        scrapTranscriptV1,
-        eq(videos.videoId, scrapTranscriptV1.videoId),
-      )
+      .leftJoin(scrapTranscriptV1, eq(videos.videoId, scrapTranscriptV1.videoId))
       .where(eq(videos.videoId, videoId))
       .limit(1),
-  );
+  )
 }
 
 // ============================================================================
@@ -101,34 +95,29 @@ export async function getProcessedVideos() {
     .innerJoin(scrapTranscriptV1, eq(videos.videoId, scrapTranscriptV1.videoId))
     .innerJoin(channels, eq(videos.channelId, channels.channelId))
     .where(isNotNull(scrapTranscriptV1.transcript))
-    .orderBy(desc(scrapTranscriptV1.createdAt));
+    .orderBy(desc(scrapTranscriptV1.createdAt))
 }
 
 /**
  * Gets video IDs that have slides.
  */
 export async function getVideoIdsWithSlides(videoIds: string[]) {
-  if (videoIds.length === 0) return [];
+  if (videoIds.length === 0) return []
   return await db
     .select({ videoId: videoSlides.videoId })
     .from(videoSlides)
-    .where(inArray(videoSlides.videoId, videoIds));
+    .where(inArray(videoSlides.videoId, videoIds))
 }
 
 /**
  * Gets video IDs that have completed analysis.
  */
 export async function getVideoIdsWithAnalysis(videoIds: string[]) {
-  if (videoIds.length === 0) return [];
+  if (videoIds.length === 0) return []
   return await db
     .select({ videoId: videoAnalysisRuns.videoId })
     .from(videoAnalysisRuns)
-    .where(
-      and(
-        inArray(videoAnalysisRuns.videoId, videoIds),
-        isNotNull(videoAnalysisRuns.result),
-      ),
-    );
+    .where(and(inArray(videoAnalysisRuns.videoId, videoIds), isNotNull(videoAnalysisRuns.result)))
 }
 
 // ============================================================================
@@ -140,12 +129,8 @@ export async function getVideoIdsWithAnalysis(videoIds: string[]) {
  */
 export async function getSlideExtractionStatus(videoId: string) {
   return await findOne(
-    db
-      .select()
-      .from(videoSlideExtractions)
-      .where(eq(videoSlideExtractions.videoId, videoId))
-      .limit(1),
-  );
+    db.select().from(videoSlideExtractions).where(eq(videoSlideExtractions.videoId, videoId)).limit(1),
+  )
 }
 
 /**
@@ -161,21 +146,17 @@ export async function getVideoSlides(videoId: string) {
       // First frame data
       firstFrameImageUrl: videoSlides.firstFrameImageUrl,
       firstFrameIsDuplicate: videoSlides.firstFrameIsDuplicate,
-      firstFrameDuplicateOfSlideNumber:
-        videoSlides.firstFrameDuplicateOfSlideNumber,
-      firstFrameDuplicateOfFramePosition:
-        videoSlides.firstFrameDuplicateOfFramePosition,
+      firstFrameDuplicateOfSlideNumber: videoSlides.firstFrameDuplicateOfSlideNumber,
+      firstFrameDuplicateOfFramePosition: videoSlides.firstFrameDuplicateOfFramePosition,
       // Last frame data
       lastFrameImageUrl: videoSlides.lastFrameImageUrl,
       lastFrameIsDuplicate: videoSlides.lastFrameIsDuplicate,
-      lastFrameDuplicateOfSlideNumber:
-        videoSlides.lastFrameDuplicateOfSlideNumber,
-      lastFrameDuplicateOfFramePosition:
-        videoSlides.lastFrameDuplicateOfFramePosition,
+      lastFrameDuplicateOfSlideNumber: videoSlides.lastFrameDuplicateOfSlideNumber,
+      lastFrameDuplicateOfFramePosition: videoSlides.lastFrameDuplicateOfFramePosition,
     })
     .from(videoSlides)
     .where(eq(videoSlides.videoId, videoId))
-    .orderBy(asc(videoSlides.slideNumber));
+    .orderBy(asc(videoSlides.slideNumber))
 }
 
 /**
@@ -194,20 +175,14 @@ export async function updateSlideExtractionStatus(
       totalSlides: totalSlides ?? null,
       errorMessage: errorMessage ?? null,
     })
-    .where(eq(videoSlideExtractions.videoId, videoId));
+    .where(eq(videoSlideExtractions.videoId, videoId))
 }
 
 /**
  * Updates slide extraction runId.
  */
-export async function updateSlideExtractionRunId(
-  videoId: string,
-  runId: string,
-) {
-  await db
-    .update(videoSlideExtractions)
-    .set({ runId })
-    .where(eq(videoSlideExtractions.videoId, videoId));
+export async function updateSlideExtractionRunId(videoId: string, runId: string) {
+  await db.update(videoSlideExtractions).set({ runId }).where(eq(videoSlideExtractions.videoId, videoId))
 }
 
 /**
@@ -229,23 +204,21 @@ export async function upsertSlideExtraction(
         status,
         errorMessage: null,
       },
-    });
+    })
 }
 
 /**
  * Deletes all slides for a video.
  */
 export async function deleteVideoSlides(videoId: string) {
-  await db.delete(videoSlides).where(eq(videoSlides.videoId, videoId));
+  await db.delete(videoSlides).where(eq(videoSlides.videoId, videoId))
 }
 
 /**
  * Deletes slide extraction record.
  */
 export async function deleteSlideExtraction(videoId: string) {
-  await db
-    .delete(videoSlideExtractions)
-    .where(eq(videoSlideExtractions.videoId, videoId));
+  await db.delete(videoSlideExtractions).where(eq(videoSlideExtractions.videoId, videoId))
 }
 
 /**
@@ -258,7 +231,7 @@ export async function insertVideoSlide(videoId: string, slideData: SlideData) {
       videoId,
       ...slideData,
     })
-    .onConflictDoNothing();
+    .onConflictDoNothing()
 }
 
 // ============================================================================
@@ -278,19 +251,14 @@ export async function getCompletedAnalysis(videoId: string) {
       })
       .from(videoAnalysisRuns)
       .where(eq(videoAnalysisRuns.videoId, videoId)),
-  );
+  )
 }
 
 /**
  * Gets workflow record for a video.
  */
 export async function getWorkflowRecord(videoId: string) {
-  return await findOne(
-    db
-      .select()
-      .from(videoAnalysisWorkflowIds)
-      .where(eq(videoAnalysisWorkflowIds.videoId, videoId)),
-  );
+  return await findOne(db.select().from(videoAnalysisWorkflowIds).where(eq(videoAnalysisWorkflowIds.videoId, videoId)))
 }
 
 /**
@@ -309,16 +277,13 @@ export async function storeWorkflowId(videoId: string, workflowId: string) {
         workflowId,
         createdAt: new Date(),
       },
-    });
+    })
 }
 
 /**
  * Saves transcript AI analysis result.
  */
-export async function saveTranscriptAnalysis(
-  videoId: string,
-  result: Record<string, unknown>,
-) {
+export async function saveTranscriptAnalysis(videoId: string, result: Record<string, unknown>) {
   await db
     .insert(videoAnalysisRuns)
     .values({
@@ -330,7 +295,7 @@ export async function saveTranscriptAnalysis(
       set: {
         result,
       },
-    });
+    })
 }
 
 // ============================================================================
@@ -341,23 +306,16 @@ export async function saveTranscriptAnalysis(
  * Checks if a video exists.
  */
 export async function videoExists(videoId: string) {
-  const [video] = await db
-    .select({ videoId: videos.videoId })
-    .from(videos)
-    .where(eq(videos.videoId, videoId))
-    .limit(1);
+  const [video] = await db.select({ videoId: videos.videoId }).from(videos).where(eq(videos.videoId, videoId)).limit(1)
 
-  return !!video;
+  return !!video
 }
 
 /**
  * Gets all slide feedback for a video.
  */
 export async function getSlideFeedback(videoId: string) {
-  return await db
-    .select()
-    .from(slideFeedback)
-    .where(eq(slideFeedback.videoId, videoId));
+  return await db.select().from(slideFeedback).where(eq(slideFeedback.videoId, videoId))
 }
 
 /**
@@ -366,12 +324,14 @@ export async function getSlideFeedback(videoId: string) {
 export async function upsertSlideFeedback(
   videoId: string,
   feedback: {
-    slideNumber: number;
-    firstFrameIsDuplicateValidated?: boolean | null;
-    lastFrameIsDuplicateValidated?: boolean | null;
-    framesSameness?: "same" | "different" | null;
-    isFirstFramePicked?: boolean;
-    isLastFramePicked?: boolean;
+    slideNumber: number
+    firstFrameIsDuplicateValidated?: boolean | null
+    lastFrameIsDuplicateValidated?: boolean | null
+    framesSameness?: "same" | "different" | null
+    isFirstFramePicked?: boolean
+    isLastFramePicked?: boolean
+    stackGroupId?: string | null
+    stackOrder?: number | null
   },
 ) {
   await db
@@ -385,7 +345,46 @@ export async function upsertSlideFeedback(
       set: {
         ...feedback,
       },
-    });
+    })
+}
+
+/**
+ * Gets all stack groups for a video
+ */
+export async function getStackGroups(videoId: string) {
+  const feedback = await db
+    .select()
+    .from(slideFeedback)
+    .where(and(eq(slideFeedback.videoId, videoId), isNotNull(slideFeedback.stackGroupId)))
+    .orderBy(asc(slideFeedback.stackOrder))
+
+  // Group by stackGroupId
+  const groups = new Map<string, number[]>()
+  for (const item of feedback) {
+    if (item.stackGroupId) {
+      const existing = groups.get(item.stackGroupId) || []
+      existing.push(item.slideNumber)
+      groups.set(item.stackGroupId, existing)
+    }
+  }
+
+  return Array.from(groups.entries()).map(([groupId, slideNumbers]) => ({
+    groupId,
+    slideNumbers,
+  }))
+}
+
+/**
+ * Removes a slide from its stack group
+ */
+export async function removeFromStackGroup(videoId: string, slideNumber: number) {
+  await db
+    .update(slideFeedback)
+    .set({
+      stackGroupId: null,
+      stackOrder: null,
+    })
+    .where(and(eq(slideFeedback.videoId, videoId), eq(slideFeedback.slideNumber, slideNumber)))
 }
 
 // ============================================================================
@@ -396,20 +395,20 @@ export async function upsertSlideFeedback(
  * Saves transcript data to the database.
  */
 export async function saveTranscriptToDb(data: {
-  videoId: string;
-  url: string;
-  title: string;
-  date: string;
-  channelId: string;
-  channelName: string;
-  description: string;
-  numberOfSubscribers: number;
-  viewCount: number;
-  likes: number;
-  duration: string;
-  isAutoGenerated: boolean;
-  thumbnailUrl: string;
-  transcript: TranscriptSegment[];
+  videoId: string
+  url: string
+  title: string
+  date: string
+  channelId: string
+  channelName: string
+  description: string
+  numberOfSubscribers: number
+  viewCount: number
+  likes: number
+  duration: string
+  isAutoGenerated: boolean
+  thumbnailUrl: string
+  transcript: TranscriptSegment[]
 }) {
   await db
     .insert(channels)
@@ -420,7 +419,7 @@ export async function saveTranscriptToDb(data: {
     .onConflictDoUpdate({
       target: channels.channelId,
       set: { channelName: data.channelName },
-    });
+    })
 
   await db
     .insert(videos)
@@ -437,7 +436,7 @@ export async function saveTranscriptToDb(data: {
         title: data.title,
         url: data.url,
       },
-    });
+    })
 
   await db
     .insert(scrapTranscriptV1)
@@ -466,17 +465,17 @@ export async function saveTranscriptToDb(data: {
         thumbnail: data.thumbnailUrl,
         transcript: data.transcript,
       },
-    });
+    })
 }
 
 // Helper function for duration parsing (moved from save-transcript.ts)
 function parseDuration(duration: string): number {
-  const match = duration.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
-  if (!match) return 0;
+  const match = duration.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/)
+  if (!match) return 0
 
-  const hours = parseInt(match[1] || "0", 10);
-  const minutes = parseInt(match[2] || "0", 10);
-  const seconds = parseInt(match[3] || "0", 10);
+  const hours = Number.parseInt(match[1] || "0", 10)
+  const minutes = Number.parseInt(match[2] || "0", 10)
+  const seconds = Number.parseInt(match[3] || "0", 10)
 
-  return hours * 3600 + minutes * 60 + seconds;
+  return hours * 3600 + minutes * 60 + seconds
 }

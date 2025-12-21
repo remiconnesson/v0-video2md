@@ -11,37 +11,27 @@ import {
   timestamp,
   unique,
   varchar,
-} from "drizzle-orm/pg-core";
+} from "drizzle-orm/pg-core"
 
 // ============================================================================
 // Enums
 // ============================================================================
 
-export const extractionStatusEnum = pgEnum("extraction_status", [
-  "pending",
-  "in_progress",
-  "completed",
-  "failed",
-]);
+export const extractionStatusEnum = pgEnum("extraction_status", ["pending", "in_progress", "completed", "failed"])
 
-export type ExtractionStatus = (typeof extractionStatusEnum.enumValues)[number];
+export type ExtractionStatus = (typeof extractionStatusEnum.enumValues)[number]
 
-export const analysisStatusEnum = pgEnum("analysis_status", [
-  "pending",
-  "streaming",
-  "completed",
-  "failed",
-]);
+export const analysisStatusEnum = pgEnum("analysis_status", ["pending", "streaming", "completed", "failed"])
 
-export type AnalysisStatus = (typeof analysisStatusEnum.enumValues)[number];
+export type AnalysisStatus = (typeof analysisStatusEnum.enumValues)[number]
 
-export const framePositionEnum = pgEnum("frame_position", ["first", "last"]);
+export const framePositionEnum = pgEnum("frame_position", ["first", "last"])
 
-export type FramePosition = (typeof framePositionEnum.enumValues)[number];
+export type FramePosition = (typeof framePositionEnum.enumValues)[number]
 
-export const samenessEnum = pgEnum("sameness", ["same", "different"]);
+export const samenessEnum = pgEnum("sameness", ["same", "different"])
 
-export type Sameness = (typeof samenessEnum.enumValues)[number];
+export type Sameness = (typeof samenessEnum.enumValues)[number]
 
 // ============================================================================
 // Core Video Tables
@@ -50,7 +40,7 @@ export type Sameness = (typeof samenessEnum.enumValues)[number];
 export const channels = pgTable("channels", {
   channelId: varchar("channel_id", { length: 64 }).primaryKey(),
   channelName: text("channel_name").notNull(),
-});
+})
 
 export const videos = pgTable(
   "videos",
@@ -67,12 +57,12 @@ export const videos = pgTable(
       }),
   },
   (table) => [index("videos_channel_id_idx").on(table.channelId)],
-);
+)
 
 const videoIdColumn = () =>
   varchar("video_id", { length: 32 })
     .notNull()
-    .references(() => videos.videoId, { onDelete: "cascade" });
+    .references(() => videos.videoId, { onDelete: "cascade" })
 
 export const scrapTranscriptV1 = pgTable(
   "scrap_transcript_v1",
@@ -93,19 +83,19 @@ export const scrapTranscriptV1 = pgTable(
     createdAt: timestamp("created_at").defaultNow(),
   },
   (table) => [unique("unique_video_transcript").on(table.videoId)],
-);
+)
 
-export type ScrapedTranscript = typeof scrapTranscriptV1.$inferSelect;
-export type NewScrapedTranscript = typeof scrapTranscriptV1.$inferInsert;
+export type ScrapedTranscript = typeof scrapTranscriptV1.$inferSelect
+export type NewScrapedTranscript = typeof scrapTranscriptV1.$inferInsert
 
 export const videoAnalysisRuns = pgTable("video_analysis_runs", {
   videoId: videoIdColumn().primaryKey(),
   result: jsonb("result").$type<Record<string, unknown>>(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+})
 
-export type VideoAnalysisRun = typeof videoAnalysisRuns.$inferSelect;
-export type NewVideoAnalysisRun = typeof videoAnalysisRuns.$inferInsert;
+export type VideoAnalysisRun = typeof videoAnalysisRuns.$inferSelect
+export type NewVideoAnalysisRun = typeof videoAnalysisRuns.$inferInsert
 
 export const videoAnalysisWorkflowIds = pgTable(
   "video_analysis_workflow_ids",
@@ -114,15 +104,11 @@ export const videoAnalysisWorkflowIds = pgTable(
     workflowId: varchar("workflow_id", { length: 100 }).notNull(),
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
-  (table) => [
-    index("video_analysis_workflow_ids_video_id_idx").on(table.workflowId),
-  ],
-);
+  (table) => [index("video_analysis_workflow_ids_video_id_idx").on(table.workflowId)],
+)
 
-export type VideoAnalysisWorkflowId =
-  typeof videoAnalysisWorkflowIds.$inferSelect;
-export type NewVideoAnalysisWorkflowId =
-  typeof videoAnalysisWorkflowIds.$inferInsert;
+export type VideoAnalysisWorkflowId = typeof videoAnalysisWorkflowIds.$inferSelect
+export type NewVideoAnalysisWorkflowId = typeof videoAnalysisWorkflowIds.$inferInsert
 
 // ============================================================================
 // Slides Tables
@@ -143,9 +129,9 @@ export const videoSlideExtractions = pgTable(
     index("video_slide_extractions_video_idx").on(table.videoId),
     unique("video_slide_extractions_video_unique").on(table.videoId),
   ],
-);
+)
 
-export type VideoSlideExtraction = typeof videoSlideExtractions.$inferSelect;
+export type VideoSlideExtraction = typeof videoSlideExtractions.$inferSelect
 
 export const videoSlides = pgTable(
   "video_slides",
@@ -161,27 +147,15 @@ export const videoSlides = pgTable(
 
     // First frame data
     firstFrameImageUrl: text("first_frame_image_url"),
-    firstFrameIsDuplicate: boolean("first_frame_is_duplicate")
-      .default(false)
-      .notNull(),
-    firstFrameDuplicateOfSlideNumber: integer(
-      "first_frame_duplicate_of_segment_id",
-    ),
-    firstFrameDuplicateOfFramePosition: framePositionEnum(
-      "first_frame_duplicate_of_frame_position",
-    ),
+    firstFrameIsDuplicate: boolean("first_frame_is_duplicate").default(false).notNull(),
+    firstFrameDuplicateOfSlideNumber: integer("first_frame_duplicate_of_segment_id"),
+    firstFrameDuplicateOfFramePosition: framePositionEnum("first_frame_duplicate_of_frame_position"),
 
     // Last frame data
     lastFrameImageUrl: text("last_frame_image_url"),
-    lastFrameIsDuplicate: boolean("last_frame_is_duplicate")
-      .default(false)
-      .notNull(),
-    lastFrameDuplicateOfSlideNumber: integer(
-      "last_frame_duplicate_of_segment_id",
-    ),
-    lastFrameDuplicateOfFramePosition: framePositionEnum(
-      "last_frame_duplicate_of_frame_position",
-    ),
+    lastFrameIsDuplicate: boolean("last_frame_is_duplicate").default(false).notNull(),
+    lastFrameDuplicateOfSlideNumber: integer("last_frame_duplicate_of_segment_id"),
+    lastFrameDuplicateOfFramePosition: framePositionEnum("last_frame_duplicate_of_frame_position"),
 
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
@@ -189,10 +163,10 @@ export const videoSlides = pgTable(
     index("video_slides_video_idx").on(table.videoId),
     unique("video_slides_video_index").on(table.videoId, table.slideNumber),
   ],
-);
+)
 
-export type VideoSlide = typeof videoSlides.$inferSelect;
-export type NewVideoSlide = typeof videoSlides.$inferInsert;
+export type VideoSlide = typeof videoSlides.$inferSelect
+export type NewVideoSlide = typeof videoSlides.$inferInsert
 
 /**
  * Feedback on individual slides - validation of frame annotations and sameness
@@ -205,9 +179,7 @@ export const slideFeedback = pgTable(
     slideNumber: integer("slide_index").notNull(),
 
     // First frame validation
-    firstFrameIsDuplicateValidated: boolean(
-      "first_frame_is_duplicate_validated",
-    ),
+    firstFrameIsDuplicateValidated: boolean("first_frame_is_duplicate_validated"),
 
     // Last frame validation
     lastFrameIsDuplicateValidated: boolean("last_frame_is_duplicate_validated"),
@@ -216,18 +188,20 @@ export const slideFeedback = pgTable(
     framesSameness: samenessEnum("frames_sameness"),
 
     // Frame selection - whether individual frames are picked for export
-    isFirstFramePicked: boolean("is_first_frame_picked")
-      .default(true)
-      .notNull(),
+    isFirstFramePicked: boolean("is_first_frame_picked").default(true).notNull(),
     isLastFramePicked: boolean("is_last_frame_picked").default(false).notNull(),
+
+    stackGroupId: varchar("stack_group_id", { length: 36 }),
+    stackOrder: integer("stack_order"),
 
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
   (table) => [
     index("slide_feedback_video_idx").on(table.videoId),
+    index("slide_feedback_stack_group_idx").on(table.stackGroupId),
     unique("slide_feedback_video_slide").on(table.videoId, table.slideNumber),
   ],
-);
+)
 
-export type SlideFeedback = typeof slideFeedback.$inferSelect;
-export type NewSlideFeedback = typeof slideFeedback.$inferInsert;
+export type SlideFeedback = typeof slideFeedback.$inferSelect
+export type NewSlideFeedback = typeof slideFeedback.$inferInsert
