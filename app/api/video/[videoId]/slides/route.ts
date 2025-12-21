@@ -135,14 +135,10 @@ export async function GET(
 // ============================================================================
 
 export async function POST(
-  request: Request,
+  _request: Request,
   { params }: { params: Promise<{ videoId: string }> },
 ) {
   const { videoId } = await params;
-
-  // Check if force re-extraction is requested
-  const url = new URL(request.url);
-  const force = url.searchParams.get("force") === "true";
 
   // Check for existing extraction
   const [existing] = await db
@@ -151,27 +147,24 @@ export async function POST(
     .where(eq(videoSlideExtractions.videoId, videoId))
     .limit(1);
 
-  // If force is not set, check for conflicts
-  if (!force) {
-    // If already completed, return existing data
-    if (existing?.status === "completed") {
-      return NextResponse.json(
-        { error: "Slides already extracted", status: "completed" },
-        { status: 409 },
-      );
-    }
-
-    // If in progress, return conflict
-    if (existing?.status === "in_progress") {
-      return NextResponse.json(
-        { error: "Extraction already in progress", runId: existing.runId },
-        { status: 409 },
-      );
-    }
+  // If already completed, return existing data
+  if (existing?.status === "completed") {
+    return NextResponse.json(
+      { error: "Slides already extracted", status: "completed" },
+      { status: 409 },
+    );
   }
 
-  // If forcing re-extraction or retrying after failure, delete existing slides first
-  if (force || existing?.status === "failed") {
+  // If in progress, return conflict
+  if (existing?.status === "in_progress") {
+    return NextResponse.json(
+      { error: "Extraction already in progress", runId: existing.runId },
+      { status: 409 },
+    );
+  }
+
+  // If retrying after failure, delete existing slides first
+  if (existing?.status === "failed") {
     await db.delete(videoSlides).where(eq(videoSlides.videoId, videoId));
   }
 
