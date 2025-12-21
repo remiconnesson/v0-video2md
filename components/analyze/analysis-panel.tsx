@@ -411,7 +411,7 @@ function ObjectSection({ data }: { data: Record<string, unknown> }) {
         return (
           <div key={key} className="relative flex flex-col gap-3 group">
             <div className="flex items-center gap-3">
-              <dt className="text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground/50 select-none flex-none break-all">
+              <dt className="text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground/50 select-text flex-none break-all">
                 {formattedKey}
               </dt>
               <div className="h-px flex-1 bg-border/40 group-hover:bg-primary/20 transition-colors" />
