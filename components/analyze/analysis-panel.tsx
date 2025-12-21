@@ -1,6 +1,7 @@
 "use client";
 
-import { Check, Copy } from "lucide-react";
+import { Check, Copy, ExternalLink } from "lucide-react";
+import Image from "next/image";
 import { createParser, useQueryState } from "nuqs";
 import {
   useCallback,
@@ -12,6 +13,7 @@ import {
 import { Streamdown } from "streamdown";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   analysisToMarkdown,
   formatSectionTitle,
@@ -23,6 +25,8 @@ import type { AnalysisStreamEvent } from "@/workflows/steps/transcript-analysis"
 
 interface AnalysisPanelProps {
   videoId: string;
+  title: string;
+  channelName: string;
 }
 
 const parseAsSectionId = createParser<string>({
@@ -30,7 +34,11 @@ const parseAsSectionId = createParser<string>({
   serialize: (value) => value ?? "",
 });
 
-export function AnalysisPanel({ videoId }: AnalysisPanelProps) {
+export function AnalysisPanel({
+  videoId,
+  title,
+  channelName,
+}: AnalysisPanelProps) {
   const [activeSection, setActiveSection] = useQueryState(
     "section",
     parseAsSectionId,
@@ -216,12 +224,6 @@ export function AnalysisPanel({ videoId }: AnalysisPanelProps) {
 
   return (
     <div className="space-y-4">
-      <CopyButton
-        copied={copied}
-        onCopy={handleCopyMarkdown}
-        disabled={!hasContent}
-      />
-
       {statusMessage ? (
         <p className="text-sm text-muted-foreground">{statusMessage}</p>
       ) : null}
@@ -234,11 +236,17 @@ export function AnalysisPanel({ videoId }: AnalysisPanelProps) {
         <p className="text-sm text-muted-foreground">Loading analysis...</p>
       ) : null}
 
-      <div className="grid gap-6 lg:grid-cols-[220px_minmax(0,1fr)]">
+      <div className="grid gap-6 lg:grid-cols-[240px_minmax(0,1fr)]">
         <AnalysisSidebar
           sections={sections}
           activeSection={activeSection ?? undefined}
           onSectionClick={handleSectionClick}
+          videoId={videoId}
+          title={title}
+          channelName={channelName}
+          onCopyMarkdown={handleCopyMarkdown}
+          copyDisabled={!hasContent}
+          copied={copied}
         />
 
         <div className="space-y-4">
@@ -267,40 +275,6 @@ export function AnalysisPanel({ videoId }: AnalysisPanelProps) {
 // Sub-components
 // ============================================================================
 
-function CopyButton({
-  copied,
-  onCopy,
-  disabled,
-}: {
-  copied: boolean;
-  onCopy: () => void;
-  disabled?: boolean;
-}) {
-  return (
-    <div className="flex justify-end">
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={onCopy}
-        className="gap-2"
-        disabled={disabled}
-      >
-        {copied ? (
-          <>
-            <Check className="h-4 w-4" />
-            Copied!
-          </>
-        ) : (
-          <>
-            <Copy className="h-4 w-4" />
-            Copy Markdown
-          </>
-        )}
-      </Button>
-    </div>
-  );
-}
-
 function SectionContent({ content }: { content: unknown }): React.ReactNode {
   if (content === null || content === undefined || content === "") {
     return <p className="text-muted-foreground italic">No content</p>;
@@ -308,7 +282,7 @@ function SectionContent({ content }: { content: unknown }): React.ReactNode {
 
   if (typeof content === "string") {
     return (
-      <div className="prose prose-sm dark:prose-invert max-w-none">
+      <div className="prose text-sm dark:prose-invert max-w-none prose-p:leading-relaxed prose-p:text-muted-foreground/90">
         <Streamdown>{content || ""}</Streamdown>
       </div>
     );
@@ -316,21 +290,23 @@ function SectionContent({ content }: { content: unknown }): React.ReactNode {
 
   if (Array.isArray(content)) {
     if (content.length === 0) {
-      return <p className="text-muted-foreground italic">No items</p>;
+      return <p className="text-muted-foreground italic text-sm">No items</p>;
     }
     return (
-      <Streamdown>
-        {content
-          .map((item) =>
-            typeof item === "string"
-              ? // Check if already starts with - * or numbered list (1. 2. etc.) or 1), 2), if so, don't add a -
-                item.trim().match(/^\s*[-*]\s+|^\s*\d+\.\s+|^\s*\d+\)\s+/)
-                ? item
-                : `- ${item}`
-              : `\n\`\`\`json\n${JSON.stringify(item, null, 2)}\n\`\`\`\n`,
-          )
-          .join("\n")}
-      </Streamdown>
+      <div className="prose text-sm dark:prose-invert max-w-none prose-p:leading-relaxed prose-p:text-muted-foreground/90">
+        <Streamdown>
+          {content
+            .map((item) =>
+              typeof item === "string"
+                ? // Check if already starts with - * or numbered list (1. 2. etc.) or 1), 2), if so, don't add a -
+                  item.trim().match(/^\s*[-*]\s+|^\s*\d+\.\s+|^\s*\d+\)\s+/)
+                  ? item
+                  : `- ${item}`
+                : `\n\`\`\`json\n${JSON.stringify(item, null, 2)}\n\`\`\`\n`,
+            )
+            .join("\n")}
+        </Streamdown>
+      </div>
     );
   }
 
@@ -391,13 +367,15 @@ function SectionHeader({
   return (
     <div className="flex items-start justify-between gap-4">
       <div>
-        <CardTitle className="text-base">{title}</CardTitle>
+        <CardTitle className="text-2xl font-bold tracking-tight">
+          {title}
+        </CardTitle>
       </div>
       <Button
         variant="ghost"
         size="sm"
         onClick={onCopy}
-        className="gap-2 shrink-0"
+        className="gap-2 shrink-0 text-muted-foreground hover:text-foreground"
       >
         {copied ? (
           <>
@@ -415,10 +393,11 @@ function SectionHeader({
   );
 }
 
-export function ObjectSection({ data }: { data: Record<string, unknown> }) {
+function ObjectSection({ data }: { data: Record<string, unknown> }) {
   return (
-    <dl className="divide-y divide-border/60">
+    <div className="space-y-8 mt-2">
       {Object.entries(data).map(([key, value]) => {
+        const formattedKey = formatSectionTitle(key);
         const markdown =
           typeof value === "string"
             ? value || ""
@@ -427,18 +406,22 @@ export function ObjectSection({ data }: { data: Record<string, unknown> }) {
               }\n\`\`\``;
 
         return (
-          <div
-            key={key}
-            className="px-4 py-6 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0"
-          >
-            <dt className="text-sm/6 font-medium text-foreground">{key}</dt>
-            <dd className="mt-1 text-sm/6 text-muted-foreground sm:col-span-2 sm:mt-0">
-              <Streamdown>{markdown}</Streamdown>
+          <div key={key} className="relative flex flex-col gap-3 group">
+            <div className="flex items-center gap-3">
+              <dt className="text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground/50 select-none flex-none break-all">
+                {formattedKey}
+              </dt>
+              <div className="h-px flex-1 bg-border/40 group-hover:bg-primary/20 transition-colors" />
+            </div>
+            <dd className="pl-4 border-l-2 border-border/20 group-hover:border-primary/20 transition-colors">
+              <div className="prose text-sm dark:prose-invert max-w-none prose-p:leading-relaxed prose-p:text-muted-foreground/90 prose-pre:bg-muted/50">
+                <Streamdown>{markdown}</Streamdown>
+              </div>
             </dd>
           </div>
         );
       })}
-    </dl>
+    </div>
   );
 }
 
@@ -446,43 +429,158 @@ function AnalysisSidebar({
   sections,
   activeSection,
   onSectionClick,
+  videoId,
+  title,
+  channelName,
+  onCopyMarkdown,
+  copyDisabled,
+  copied,
 }: {
   sections: Array<{ id: string; title: string }>;
   activeSection?: string;
   onSectionClick: (sectionId: string) => void;
+  videoId: string;
+  title: string;
+  channelName: string;
+  onCopyMarkdown: () => void;
+  copyDisabled: boolean;
+  copied: boolean;
 }) {
   return (
-    <aside className="hidden lg:block">
-      <div className="sticky top-24 space-y-3">
-        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+    <aside className="hidden lg:flex flex-col sticky top-6 self-start h-[calc(100vh-3.5rem)] min-w-0 group/sidebar">
+      <div className="shrink-0 mb-6 pr-2">
+        <VideoInfoCard
+          videoId={videoId}
+          title={title}
+          channelName={channelName}
+          onCopyMarkdown={onCopyMarkdown}
+          copyDisabled={copyDisabled}
+          copied={copied}
+        />
+      </div>
+
+      <div className="flex flex-col flex-1 min-h-0 min-w-0 pr-2">
+        <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70 px-1 mb-3 shrink-0">
           Sections
         </p>
-        {sections.length === 0 ? (
-          <p className="text-sm text-muted-foreground">Waiting for sections…</p>
-        ) : (
-          <nav className="space-y-1">
-            {sections.map((section) => {
-              const isActive = section.id === activeSection;
 
-              return (
-                <button
-                  key={section.id}
-                  type="button"
-                  onClick={() => onSectionClick(section.id)}
-                  className={`w-full rounded-md px-2 py-1 text-left text-sm transition hover:bg-muted ${
-                    isActive
-                      ? "bg-muted text-foreground"
-                      : "text-muted-foreground"
-                  }`}
-                >
-                  {section.title}
-                </button>
-              );
-            })}
-          </nav>
-        )}
+        <div className="flex-1 min-h-0 relative">
+          <ScrollArea type="scroll" className="h-full pr-3">
+            <nav className="space-y-1 pb-8">
+              {sections.length === 0 ? (
+                <p className="text-sm text-muted-foreground px-1">
+                  Waiting for sections…
+                </p>
+              ) : (
+                sections.map((section) => {
+                  const isActive = section.id === activeSection;
+
+                  return (
+                    <button
+                      key={section.id}
+                      type="button"
+                      onClick={() => onSectionClick(section.id)}
+                      className={`w-full rounded-md px-2 py-1.5 text-left text-sm transition hover:bg-muted ${
+                        isActive
+                          ? "bg-muted text-foreground font-medium"
+                          : "text-muted-foreground"
+                      }`}
+                    >
+                      {section.title}
+                    </button>
+                  );
+                })
+              )}
+            </nav>
+          </ScrollArea>
+
+          {/* Fades for indicating more content */}
+          <div className="absolute top-0 left-0 right-0 h-4 bg-gradient-to-b from-background to-transparent pointer-events-none z-10" />
+          <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-background to-transparent pointer-events-none z-10" />
+        </div>
       </div>
     </aside>
+  );
+}
+
+function VideoInfoCard({
+  videoId,
+  title,
+  channelName,
+  onCopyMarkdown,
+  copyDisabled,
+  copied,
+}: {
+  videoId: string;
+  title: string;
+  channelName: string;
+  onCopyMarkdown: () => void;
+  copyDisabled: boolean;
+  copied: boolean;
+}) {
+  const thumbnailUrl = `https://i.ytimg.com/vi/${videoId}/mqdefault.jpg`;
+
+  return (
+    <div className="space-y-3">
+      <div className="group relative">
+        <ThumbnailCell src={thumbnailUrl} alt={title} />
+        <a
+          href={`https://www.youtube.com/watch?v=${videoId}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="absolute inset-0 flex items-center justify-center bg-black/0 transition-colors group-hover:bg-black/20 rounded-md"
+          aria-label="Watch Video"
+        >
+          <div className="opacity-0 transition-opacity group-hover:opacity-100 bg-background/90 p-1.5 rounded-full shadow-sm text-foreground">
+            <ExternalLink className="h-4 w-4" />
+          </div>
+        </a>
+      </div>
+
+      <div className="space-y-1 px-1">
+        <h3 className="font-bold text-sm line-clamp-2 leading-tight tracking-tight">
+          {title}
+        </h3>
+        <p className="text-xs text-muted-foreground line-clamp-1">
+          {channelName}
+        </p>
+      </div>
+
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={onCopyMarkdown}
+        className="w-full h-9 text-xs gap-2 shadow-none border-muted-foreground/20 hover:bg-muted"
+        disabled={copyDisabled}
+      >
+        {copied ? (
+          <>
+            <Check className="h-3.5 w-3.5" />
+            Copied!
+          </>
+        ) : (
+          <>
+            <Copy className="h-3.5 w-3.5" />
+            Copy Markdown
+          </>
+        )}
+      </Button>
+    </div>
+  );
+}
+
+function ThumbnailCell({ src, alt }: { src?: string; alt?: string }) {
+  return (
+    <div className="aspect-video relative overflow-hidden rounded-md">
+      <Image
+        src={src || "/placeholder.svg?height=90&width=160"}
+        alt={alt || "Video thumbnail"}
+        fill
+        sizes="(max-width: 240px) 100vw, 240px"
+        className="object-cover"
+        unoptimized
+      />
+    </div>
   );
 }
 

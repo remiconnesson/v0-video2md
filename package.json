@@ -35,7 +35,7 @@
     "@radix-ui/react-popover": "latest",
     "@radix-ui/react-progress": "latest",
     "@radix-ui/react-radio-group": "latest",
-    "@radix-ui/react-scroll-area": "latest",
+    "@radix-ui/react-scroll-area": "^1.2.10",
     "@radix-ui/react-select": "latest",
     "@radix-ui/react-separator": "^1.1.8",
     "@radix-ui/react-slider": "latest",
