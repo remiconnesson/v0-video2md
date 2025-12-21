@@ -2,7 +2,7 @@
 
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { ImageIcon, Loader2 } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StepIndicator } from "@/components/ui/step-indicator";
@@ -36,6 +36,7 @@ export function SlidesPanel({ videoId, view = "curation" }: SlidesPanelProps) {
   const [feedbackMap, setFeedbackMap] = useState<
     Map<number, SlideFeedbackData>
   >(new Map());
+  const [isUnpickingAll, setIsUnpickingAll] = useState(false);
 
   const loadSlidesState = useCallback(async () => {
     setSlidesState((prev) => ({
@@ -176,6 +177,48 @@ export function SlidesPanel({ videoId, view = "curation" }: SlidesPanelProps) {
     [videoId, loadFeedback],
   );
 
+  const handleUnpickAll = useCallback(async () => {
+    if (slidesState.slides.length === 0) return;
+
+    setIsUnpickingAll(true);
+    try {
+      const updates = slidesState.slides.map((slide) => {
+        const existing = feedbackMap.get(slide.slideNumber);
+        const base = {
+          slideNumber: slide.slideNumber,
+          firstFrameHasUsefulContent: null,
+          lastFrameHasUsefulContent: null,
+          framesSameness: null,
+          isFirstFramePicked: true,
+          isLastFramePicked: false,
+          ...existing,
+        };
+
+        return {
+          ...base,
+          isFirstFramePicked: false,
+          isLastFramePicked: false,
+        };
+      });
+
+      await Promise.all(updates.map((feedback) => submitFeedback(feedback)));
+    } finally {
+      setIsUnpickingAll(false);
+    }
+  }, [feedbackMap, slidesState.slides, submitFeedback]);
+
+  const hasPickedFrames = useMemo(
+    () =>
+      slidesState.slides.some((slide) => {
+        const feedback = feedbackMap.get(slide.slideNumber);
+        const isFirstPicked = feedback?.isFirstFramePicked ?? true;
+        const isLastPicked = feedback?.isLastFramePicked ?? false;
+
+        return isFirstPicked || isLastPicked;
+      }),
+    [feedbackMap, slidesState.slides],
+  );
+
   const startExtraction = useCallback(async () => {
     // Set state to extracting
     setSlidesState((prev) => ({
@@ -312,6 +355,9 @@ export function SlidesPanel({ videoId, view = "curation" }: SlidesPanelProps) {
       feedbackMap={feedbackMap}
       onSubmitFeedback={submitFeedback}
       view={view}
+      onUnpickAll={handleUnpickAll}
+      isUnpickingAll={isUnpickingAll}
+      hasPickedFrames={hasPickedFrames}
     />
   );
 }
@@ -369,7 +415,6 @@ function ExtractingState({
             </p>
             <SlideGrid
               slides={slides}
-              allSlides={slides}
               feedbackMap={feedbackMap}
               onSubmitFeedback={onSubmitFeedback}
             />
@@ -407,12 +452,18 @@ function CompletedState({
   feedbackMap,
   onSubmitFeedback,
   view,
+  onUnpickAll,
+  isUnpickingAll,
+  hasPickedFrames,
 }: {
   slidesCount: number;
   slides: SlideData[];
   feedbackMap: Map<number, SlideFeedbackData>;
   onSubmitFeedback: (feedback: SlideFeedbackData) => Promise<void>;
   view: SlidesPanelView;
+  onUnpickAll: () => Promise<void>;
+  isUnpickingAll: boolean;
+  hasPickedFrames: boolean;
 }) {
   return (
     <Card>
@@ -422,6 +473,16 @@ function CompletedState({
             <ImageIcon className="h-5 w-5" />
             Slides ({slidesCount})
           </span>
+          {view === "curation" && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onUnpickAll}
+              disabled={!hasPickedFrames || isUnpickingAll}
+            >
+              {isUnpickingAll ? "Unpicking..." : "Unpick all frames"}
+            </Button>
+          )}
         </CardTitle>
       </CardHeader>
 
@@ -429,7 +490,6 @@ function CompletedState({
         {view === "curation" ? (
           <SlideGrid
             slides={slides}
-            allSlides={slides}
             feedbackMap={feedbackMap}
             onSubmitFeedback={onSubmitFeedback}
           />
@@ -447,12 +507,10 @@ function CompletedState({
 
 function SlideGrid({
   slides,
-  allSlides,
   feedbackMap,
   onSubmitFeedback,
 }: {
   slides: SlideData[];
-  allSlides: SlideData[];
   feedbackMap: Map<number, SlideFeedbackData>;
   onSubmitFeedback: (feedback: SlideFeedbackData) => Promise<void>;
 }) {
@@ -498,7 +556,6 @@ function SlideGrid({
               <div className="pb-6">
                 <SlideCard
                   slide={slide}
-                  allSlides={allSlides}
                   initialFeedback={feedbackMap.get(slide.slideNumber)}
                   onSubmitFeedback={onSubmitFeedback}
                 />
