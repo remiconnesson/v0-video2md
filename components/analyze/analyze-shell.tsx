@@ -98,7 +98,7 @@ export function AnalyzeShell({
           isDark={isDark}
           onToggleTheme={() => setTheme(isDark ? "light" : "dark")}
         />
-        <SidebarInset className="flex flex-col overflow-auto">
+        <SidebarInset className="flex flex-col">
           <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-6 py-6">
             <VideoInfoDisplay
               title={title}
