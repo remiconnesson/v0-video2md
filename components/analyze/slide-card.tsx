@@ -53,7 +53,7 @@ function FrameCard({
         >
           {imageUrl ? (
             <Image
-              src={imageUrl || "/placeholder.svg"}
+              src={imageUrl}
               alt={`${label} frame`}
               width={384}
               height={216}

@@ -9,7 +9,7 @@ import {
   getPaginationRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import { FileVideo, Search } from "lucide-react";
+import { FileVideo, Image as ImageIcon, Search } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -111,14 +111,18 @@ export interface VideoData {
 
 function ThumbnailCell({ src, alt }: { src?: string; alt?: string }) {
   return (
-    <div className="h-[54px] w-[96px] overflow-hidden rounded-md border bg-muted/20">
-      <Image
-        src={src || "/placeholder.svg?height=90&width=160"}
-        alt={alt || "Video thumbnail"}
-        width={96}
-        height={54}
-        className="h-full w-full object-cover"
-      />
+    <div className="h-[54px] w-[96px] overflow-hidden rounded-md border bg-muted flex items-center justify-center shrink-0">
+      {src ? (
+        <Image
+          src={src}
+          alt={alt || "Video thumbnail"}
+          width={96}
+          height={54}
+          className="h-full w-full object-cover"
+        />
+      ) : (
+        <ImageIcon className="h-6 w-6 text-muted-foreground/20" />
+      )}
     </div>
   );
 }

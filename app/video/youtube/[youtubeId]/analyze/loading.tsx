@@ -1,11 +1,11 @@
 "use client";
 
-import { AnalyzeSidebar } from "@/components/analyze/analyze-shell";
-import { AnalysisSidebar } from "@/components/analyze/analysis-panel";
-import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Copy } from "lucide-react";
+import { AnalysisSidebar } from "@/components/analyze/analysis-panel";
+import { AnalyzeSidebar } from "@/components/analyze/analyze-shell";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function AnalyzeLoading() {
   return (

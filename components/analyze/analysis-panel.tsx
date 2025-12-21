@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, Copy, ExternalLink } from "lucide-react";
+import { Check, Copy, ExternalLink, Image as ImageIcon } from "lucide-react";
 import Image from "next/image";
 import { createParser, useQueryState } from "nuqs";
 import {
@@ -50,7 +50,6 @@ export function AnalysisPanel({
   const [status, setStatus] = useState<
     "idle" | "loading" | "streaming" | "ready" | "error"
   >("idle");
-  const [statusMessage, setStatusMessage] = useState<string>("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
@@ -613,15 +612,19 @@ export function VideoInfoCard({
 
 function ThumbnailCell({ src, alt }: { src?: string; alt?: string }) {
   return (
-    <div className="aspect-video relative overflow-hidden rounded-md">
-      <Image
-        src={src || "/placeholder.svg?height=90&width=160"}
-        alt={alt || "Video thumbnail"}
-        fill
-        sizes="(max-width: 240px) 100vw, 240px"
-        className="object-cover"
-        unoptimized
-      />
+    <div className="aspect-video relative overflow-hidden rounded-md bg-muted flex items-center justify-center">
+      {src ? (
+        <Image
+          src={src}
+          alt={alt || "Video thumbnail"}
+          fill
+          sizes="(max-width: 240px) 100vw, 240px"
+          className="object-cover"
+          unoptimized
+        />
+      ) : (
+        <ImageIcon className="h-8 w-8 text-muted-foreground/20" />
+      )}
     </div>
   );
 }
