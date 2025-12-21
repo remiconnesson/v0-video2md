@@ -282,7 +282,7 @@ function SectionContent({ content }: { content: unknown }): React.ReactNode {
 
   if (typeof content === "string") {
     return (
-      <div className="prose prose-sm dark:prose-invert max-w-none">
+      <div className="prose text-sm dark:prose-invert max-w-none prose-p:leading-relaxed prose-p:text-muted-foreground/90">
         <Streamdown>{content || ""}</Streamdown>
       </div>
     );
@@ -290,10 +290,10 @@ function SectionContent({ content }: { content: unknown }): React.ReactNode {
 
   if (Array.isArray(content)) {
     if (content.length === 0) {
-      return <p className="text-muted-foreground italic">No items</p>;
+      return <p className="text-muted-foreground italic text-sm">No items</p>;
     }
     return (
-      <div className="prose prose-sm dark:prose-invert max-w-none prose-p:leading-relaxed">
+      <div className="prose text-sm dark:prose-invert max-w-none prose-p:leading-relaxed prose-p:text-muted-foreground/90">
         <Streamdown>
           {content
             .map((item) =>
@@ -367,13 +367,15 @@ function SectionHeader({
   return (
     <div className="flex items-start justify-between gap-4">
       <div>
-        <CardTitle className="text-base">{title}</CardTitle>
+        <CardTitle className="text-2xl font-bold tracking-tight">
+          {title}
+        </CardTitle>
       </div>
       <Button
         variant="ghost"
         size="sm"
         onClick={onCopy}
-        className="gap-2 shrink-0"
+        className="gap-2 shrink-0 text-muted-foreground hover:text-foreground"
       >
         {copied ? (
           <>
@@ -406,13 +408,13 @@ function ObjectSection({ data }: { data: Record<string, unknown> }) {
         return (
           <div key={key} className="relative flex flex-col gap-3 group">
             <div className="flex items-center gap-3">
-              <dt className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 select-none flex-none break-all">
+              <dt className="text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground/50 select-none flex-none break-all">
                 {formattedKey}
               </dt>
-              <div className="h-px flex-1 bg-border/50 group-hover:bg-primary/20 transition-colors" />
+              <div className="h-px flex-1 bg-border/40 group-hover:bg-primary/20 transition-colors" />
             </div>
-            <dd className="pl-4 border-l-2 border-border/30 group-hover:border-primary/20 transition-colors">
-              <div className="prose prose-sm dark:prose-invert max-w-none prose-p:leading-relaxed prose-pre:bg-muted/50">
+            <dd className="pl-4 border-l-2 border-border/20 group-hover:border-primary/20 transition-colors">
+              <div className="prose text-sm dark:prose-invert max-w-none prose-p:leading-relaxed prose-p:text-muted-foreground/90 prose-pre:bg-muted/50">
                 <Streamdown>{markdown}</Streamdown>
               </div>
             </dd>
