@@ -213,7 +213,7 @@ export const slideFeedback = pgTable(
 
     // Frame selection - whether individual frames are picked for export
     isFirstFramePicked: boolean("is_first_frame_picked")
-      .default(true)
+      .default(false)
       .notNull(),
     isLastFramePicked: boolean("is_last_frame_picked").default(false).notNull(),
 
