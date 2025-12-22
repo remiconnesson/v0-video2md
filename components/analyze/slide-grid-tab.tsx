@@ -1,9 +1,10 @@
 "use client";
 
-import { ImageIcon, ZoomIn } from "lucide-react";
+import { ImageIcon, Loader2, ZoomIn } from "lucide-react";
 import Image from "next/image";
 import { createParser, useQueryStates } from "nuqs";
 import { useEffect, useMemo, useState } from "react";
+import { Button } from "@/components/ui/button";
 
 const parseAsPresence = createParser<boolean>({
   parse: (value) =>
@@ -26,6 +27,7 @@ import {
 } from "@/components/ui/card";
 import type {
   PickedSlide,
+  SlideAnalysisState,
   SlideData,
   SlideFeedbackData,
 } from "@/lib/slides-types";
@@ -39,13 +41,24 @@ import { ZoomDialog } from "./zoom-dialog";
 interface SlideGridTabProps {
   slides: SlideData[];
   feedbackMap: Map<number, SlideFeedbackData>;
+  onAnalyzeSelectedSlides: () => Promise<void>;
+  analysisState: SlideAnalysisState;
+  hasAnalysisResults: boolean;
+  pickedCount: number;
 }
 
 // ============================================================================
 // Main Component
 // ============================================================================
 
-export function SlideGridTab({ slides, feedbackMap }: SlideGridTabProps) {
+export function SlideGridTab({
+  slides,
+  feedbackMap,
+  onAnalyzeSelectedSlides,
+  analysisState,
+  hasAnalysisResults,
+  pickedCount,
+}: SlideGridTabProps) {
   const [slidesConfirmed, setSlidesConfirmed] = useState(false);
 
   // Compute picked slides from the slides and feedback
@@ -86,7 +99,10 @@ export function SlideGridTab({ slides, feedbackMap }: SlideGridTabProps) {
       <ConfirmationCard
         slidesConfirmed={slidesConfirmed}
         onSlidesConfirmedChange={setSlidesConfirmed}
-        pickedCount={pickedSlides.length}
+        pickedCount={pickedCount}
+        onAnalyzeSelectedSlides={onAnalyzeSelectedSlides}
+        analysisState={analysisState}
+        hasAnalysisResults={hasAnalysisResults}
       />
 
       <PickedSlidesGrid slides={pickedSlides} />
@@ -102,10 +118,16 @@ function ConfirmationCard({
   slidesConfirmed,
   onSlidesConfirmedChange,
   pickedCount,
+  onAnalyzeSelectedSlides,
+  analysisState,
+  hasAnalysisResults,
 }: {
   slidesConfirmed: boolean;
   onSlidesConfirmedChange: (confirmed: boolean) => void;
   pickedCount: number;
+  onAnalyzeSelectedSlides: () => Promise<void>;
+  analysisState: SlideAnalysisState;
+  hasAnalysisResults: boolean;
 }) {
   const [, setQueryState] = useQueryStates(tabQueryConfig);
 
@@ -139,6 +161,25 @@ function ConfirmationCard({
             Yes, these {pickedCount} slides look good to me
           </span>
         </label>
+
+        <Button
+          variant="default"
+          size="sm"
+          onClick={onAnalyzeSelectedSlides}
+          disabled={!slidesConfirmed || analysisState.status === "streaming"}
+          className="w-full"
+        >
+          {analysisState.status === "streaming" ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Analyzing...
+            </>
+          ) : hasAnalysisResults ? (
+            "Re-analyze Selected"
+          ) : (
+            "Analyze Selected Slides"
+          )}
+        </Button>
       </CardContent>
     </Card>
   );

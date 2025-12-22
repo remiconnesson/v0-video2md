@@ -672,23 +672,6 @@ function CompletedState({
                 </Button>
               </>
             )}
-            <Button
-              variant="default"
-              size="sm"
-              onClick={onAnalyzeSelectedSlides}
-              disabled={!hasPickedFrames || isAnalyzing}
-            >
-              {isAnalyzing ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Analyzing...
-                </>
-              ) : hasAnalysisResults ? (
-                "Re-analyze Selected"
-              ) : (
-                "Analyze Selected Slides"
-              )}
-            </Button>
           </div>
         </CardTitle>
       </CardHeader>
@@ -804,7 +787,14 @@ function CompletedState({
             onSubmitFeedback={onSubmitFeedback}
           />
         ) : (
-          <SlideGridTab slides={slides} feedbackMap={feedbackMap} />
+          <SlideGridTab
+            slides={slides}
+            feedbackMap={feedbackMap}
+            onAnalyzeSelectedSlides={onAnalyzeSelectedSlides}
+            analysisState={analysisState}
+            hasAnalysisResults={hasAnalysisResults}
+            pickedCount={pickedFramesCount}
+          />
         )}
       </CardContent>
     </Card>
