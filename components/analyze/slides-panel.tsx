@@ -15,6 +15,7 @@ import {
 import { useQueryStates } from "nuqs";
 import type { CSSProperties } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -38,6 +39,11 @@ import { consumeSSE } from "@/lib/sse";
 import { SlideAnalysisStatus, SlidesStatus } from "@/lib/status-types";
 import { cn } from "@/lib/utils";
 import { SlideCard } from "./slide-card";
+import {
+  useSlidesQuery,
+  useSlideFeedbackQuery,
+  useSaveSlideFeedbackMutation,
+} from "@/lib/use-slide-queries";
 
 // Type for storing analysis results per slide/frame
 interface SlideAnalysisResultData {
@@ -51,6 +57,7 @@ interface SlidesPanelProps {
 }
 
 export function SlidesPanel({ videoId }: SlidesPanelProps) {
+  const queryClient = useQueryClient();
   const [slidesState, setSlidesState] = useState<SlidesState>({
     status: SlidesStatus.LOADING,
     step: 1,
@@ -60,9 +67,6 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
     slides: [],
   });
 
-  const [feedbackMap, setFeedbackMap] = useState<
-    Map<number, SlideFeedbackData>
-  >(new Map());
   const [isUnpickingAll, setIsUnpickingAll] = useState(false);
 
   // Slide analysis state
@@ -76,26 +80,59 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
     Map<string, SlideAnalysisResultData>
   >(new Map());
 
-  const loadSlidesState = useCallback(async () => {
-    setSlidesState((prev) => ({
-      ...prev,
-      status: SlidesStatus.LOADING,
-      message: "Loading slides...",
-      error: null,
-    }));
+  // Use TanStack Query for data loading
+  const {
+    data: slidesData,
+    isLoading: isSlidesLoading,
+    error: slidesError,
+  } = useSlidesQuery(videoId);
 
-    try {
-      const response = await fetch(`/api/video/${videoId}/slides`);
+  const {
+    data: feedbackData,
+    isLoading: isFeedbackLoading,
+    error: feedbackError,
+  } = useSlideFeedbackQuery(videoId);
 
-      if (!response.ok) {
-        throw new Error("Failed to load slides state");
-      }
+  const saveFeedbackMutation = useSaveSlideFeedbackMutation(videoId);
 
-      const data = (await response.json()) as SlidesResponse;
-      const slides = data.slides;
-      const slidesMessage = `Extracted ${data.totalSlides ?? slides.length} slides`;
+  // Derived state from query results
+  const feedbackMap = useMemo(() => {
+    if (!feedbackData?.feedback) return new Map<number, SlideFeedbackData>();
+    return new Map<number, SlideFeedbackData>(
+      feedbackData.feedback.map((fb) => [fb.slideNumber, fb])
+    );
+  }, [feedbackData]);
 
-      switch (data.status) {
+  // Load slides state from query data
+  useEffect(() => {
+    if (isSlidesLoading) {
+      setSlidesState((prev) => ({
+        ...prev,
+        status: SlidesStatus.LOADING,
+        message: "Loading slides...",
+        error: null,
+      }));
+      return;
+    }
+
+    if (slidesError) {
+      setSlidesState((prev) => ({
+        ...prev,
+        status: SlidesStatus.ERROR,
+        step: 1,
+        totalSteps: 4,
+        message: "",
+        error: slidesError.message,
+        slides: [],
+      }));
+      return;
+    }
+
+    if (slidesData) {
+      const slides = slidesData.slides;
+      const slidesMessage = `Extracted ${slidesData.totalSlides ?? slides.length} slides`;
+
+      switch (slidesData.status) {
         case "completed": {
           setSlidesState({
             status: SlidesStatus.COMPLETED,
@@ -136,7 +173,7 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
             totalSteps: 4,
             message: "",
             error:
-              data.errorMessage ?? "Slide extraction failed. Please try again.",
+              slidesData.errorMessage ?? "Slide extraction failed. Please try again.",
             slides,
           });
           return;
@@ -153,67 +190,23 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
           });
         }
       }
-    } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : "Failed to load slides.";
-
-      setSlidesState({
-        status: SlidesStatus.ERROR,
-        step: 1,
-        totalSteps: 4,
-        message: "",
-        error: errorMessage,
-        slides: [],
-      });
     }
-  }, [videoId]);
-
-  const loadFeedback = useCallback(async () => {
-    try {
-      const response = await fetch(`/api/video/${videoId}/slides/feedback`);
-      if (!response.ok) return;
-
-      const data = (await response.json()) as SlideFeedbackResponse;
-      const newMap = new Map<number, SlideFeedbackData>();
-
-      data.feedback.forEach((fb) => {
-        newMap.set(fb.slideNumber, fb);
-      });
-
-      setFeedbackMap(newMap);
-    } catch (error) {
-      console.error("Failed to load slide feedback:", error);
-    }
-  }, [videoId]);
+  }, [isSlidesLoading, slidesError, slidesData]);
 
   const submitFeedback = useCallback(
     async (feedback: SlideFeedbackData) => {
       try {
+        // Use TanStack Query mutation
+        await saveFeedbackMutation.mutateAsync(feedback);
+        
         // Optimistically update local state
-        setFeedbackMap((prev) => {
-          const next = new Map(prev);
-          next.set(feedback.slideNumber, feedback);
-          return next;
-        });
-
-        const response = await fetch(`/api/video/${videoId}/slides/feedback`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(feedback),
-        });
-
-        if (!response.ok) {
-          console.error("Failed to save slide feedback");
-          // Reload to sync state
-          await loadFeedback();
-        }
+        // The mutation will automatically invalidate and refetch the feedback query
       } catch (error) {
         console.error("Failed to save slide feedback:", error);
-        // Reload to sync state
-        await loadFeedback();
+        // Query will be automatically refetched by TanStack Query
       }
     },
-    [videoId, loadFeedback],
+    [saveFeedbackMutation],
   );
 
   const handleUnpickAll = useCallback(async () => {
@@ -463,12 +456,11 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
     }
   }, [videoId]);
 
-  // Load feedback and analysis on mount
+  // TanStack Query handles automatic data loading
+  // loadAnalysisResults is still needed for analysis data
   useEffect(() => {
-    loadSlidesState();
-    loadFeedback();
     loadAnalysisResults();
-  }, [loadFeedback, loadSlidesState, loadAnalysisResults]);
+  }, [loadAnalysisResults]);
 
   // Auto-trigger extraction when in idle state
   useEffect(() => {
