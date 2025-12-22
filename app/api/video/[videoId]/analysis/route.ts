@@ -7,7 +7,10 @@ import {
 } from "@/db/queries";
 import { createSSEResponse, errorResponse, logError } from "@/lib/api-utils";
 import { createWorkflowRouteHandler } from "@/lib/workflow-route-utils";
-import { isValidYouTubeVideoId } from "@/lib/youtube-utils";
+import {
+  isValidYouTubeVideoId,
+  type YouTubeVideoId,
+} from "@/lib/youtube-utils";
 import { analyzeTranscriptWorkflow } from "@/workflows/analyze-transcript";
 
 const handleAnalysisWorkflow = createWorkflowRouteHandler({
@@ -35,7 +38,7 @@ export async function GET(
 }
 
 async function startNewAnalysisWorkflow(
-  videoId: string,
+  videoId: YouTubeVideoId,
 ): Promise<NextResponse> {
   try {
     // Start the transcript analysis workflow

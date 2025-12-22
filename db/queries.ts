@@ -11,6 +11,7 @@ import {
 import { getTableConfig } from "drizzle-orm/pg-core";
 import type { SlideData } from "@/lib/slides-types";
 import type { TranscriptSegment } from "@/lib/transcript-format";
+import type { YouTubeVideoId } from "@/lib/youtube-utils";
 import { db } from "./index";
 import {
   channels,
@@ -401,7 +402,7 @@ export async function insertVideoSlide(videoId: string, slideData: SlideData) {
 /**
  * Gets completed analysis for a video.
  */
-export async function getCompletedAnalysis(videoId: string) {
+export async function getCompletedAnalysis(videoId: YouTubeVideoId) {
   return await findOne(
     db
       .select({
@@ -417,7 +418,7 @@ export async function getCompletedAnalysis(videoId: string) {
 /**
  * Gets workflow record for a video.
  */
-export async function getWorkflowRecord(videoId: string) {
+export async function getWorkflowRecord(videoId: YouTubeVideoId) {
   return await findOne(
     db
       .select()
@@ -429,7 +430,10 @@ export async function getWorkflowRecord(videoId: string) {
 /**
  * Stores workflow ID for a video.
  */
-export async function storeWorkflowId(videoId: string, workflowId: string) {
+export async function storeWorkflowId(
+  videoId: YouTubeVideoId,
+  workflowId: string,
+) {
   await db
     .insert(videoAnalysisWorkflowIds)
     .values({
