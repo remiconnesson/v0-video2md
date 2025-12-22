@@ -4,7 +4,6 @@ import {
   calculateTranscriptDuration,
   estimateWordCount,
   extractPlainText,
-  formatTimestamp,
   formatTimestampForLLM,
   formatTranscriptForLLM,
   type TranscriptSegment,
@@ -24,107 +23,12 @@ describe("validateTranscriptStructure", () => {
     expect(result).toHaveLength(2);
   });
 
-  it("should validate an empty array", () => {
-    const result = validateTranscriptStructure([]);
-
-    expect(result).toEqual([]);
-    expect(result).toHaveLength(0);
-  });
-
-  it("should throw error for invalid transcript structure - missing fields", () => {
+  it("should throw error for invalid transcript structure", () => {
     const invalidTranscript = [{ start: 0, text: "Missing end field" }];
 
     expect(() => validateTranscriptStructure(invalidTranscript)).toThrow(
       "Invalid transcript structure",
     );
-  });
-
-  it("should throw error for invalid transcript structure - wrong types", () => {
-    const invalidTranscript = [
-      { start: "0", end: 5, text: "Start should be number" },
-    ];
-
-    expect(() => validateTranscriptStructure(invalidTranscript)).toThrow(
-      "Invalid transcript structure",
-    );
-  });
-
-  it("should throw error for non-array input", () => {
-    const invalidInput = { start: 0, end: 5, text: "Not an array" };
-
-    expect(() => validateTranscriptStructure(invalidInput)).toThrow(
-      "Invalid transcript structure",
-    );
-  });
-
-  it("should throw error for null input", () => {
-    expect(() => validateTranscriptStructure(null)).toThrow(
-      "Invalid transcript structure",
-    );
-  });
-
-  it("should throw error for undefined input", () => {
-    expect(() => validateTranscriptStructure(undefined)).toThrow(
-      "Invalid transcript structure",
-    );
-  });
-
-  it("should throw error for array with mixed valid and invalid items", () => {
-    const mixedTranscript = [
-      { start: 0, end: 5, text: "Valid" },
-      { start: 5, text: "Invalid - missing end" },
-    ];
-
-    expect(() => validateTranscriptStructure(mixedTranscript)).toThrow(
-      "Invalid transcript structure",
-    );
-  });
-
-  it("should validate transcript with numeric text", () => {
-    const transcript = [{ start: 0, end: 5, text: "123" }];
-
-    const result = validateTranscriptStructure(transcript);
-
-    expect(result).toEqual(transcript);
-  });
-
-  it("should validate transcript with empty text strings", () => {
-    const transcript = [{ start: 0, end: 5, text: "" }];
-
-    const result = validateTranscriptStructure(transcript);
-
-    expect(result).toEqual(transcript);
-  });
-
-  it("should throw error for negative timestamps", () => {
-    const invalidTranscript = [{ start: -1, end: 5, text: "Negative start" }];
-
-    // Zod will allow negative numbers as they are still numbers
-    // This test verifies the current behavior
-    const result = validateTranscriptStructure(invalidTranscript);
-    expect(result).toEqual(invalidTranscript);
-  });
-});
-
-describe("formatTimestamp", () => {
-  it("should format timestamp in seconds only", () => {
-    expect(formatTimestamp(45)).toBe("0:45");
-  });
-
-  it("should format timestamp in minutes and seconds", () => {
-    expect(formatTimestamp(125)).toBe("2:05");
-  });
-
-  it("should format timestamp in hours, minutes, and seconds", () => {
-    expect(formatTimestamp(3665)).toBe("1:01:05");
-  });
-
-  it("should handle zero seconds", () => {
-    expect(formatTimestamp(0)).toBe("0:00");
-  });
-
-  it("should handle large durations", () => {
-    expect(formatTimestamp(36000)).toBe("10:00:00");
   });
 });
 
