@@ -1,22 +1,7 @@
-import { z } from "zod";
 import { streamDynamicAnalysis } from "@/ai/dynamic-analysis";
 import { getVideoWithTranscript, saveTranscriptAnalysis } from "@/db/queries";
 import { emit } from "@/lib/stream-utils";
-import { formatTranscriptForLLM } from "@/lib/transcript-format";
-
-// ============================================================================
-// Transcript Schema (for validation)
-// ============================================================================
-
-const TranscriptSegmentSchema = z.object({
-  start: z.number(),
-  end: z.number(),
-  text: z.string(),
-});
-type TranscriptSegment = z.infer<typeof TranscriptSegmentSchema>;
-function validateTranscriptStructure(data: unknown): TranscriptSegment[] {
-  return z.array(TranscriptSegmentSchema).parse(data);
-}
+import { formatTranscriptForLLM, validateTranscriptStructure } from "@/lib/transcript-format";
 
 // ============================================================================
 // Transcript Data Interface

@@ -6,6 +6,7 @@ import {
   formatTimestamp,
   formatTimestampForLLM,
   formatTranscriptForLLM,
+  validateTranscriptStructure,
 } from "./transcript-format";
 
 describe("formatTimestamp", () => {
@@ -48,8 +49,8 @@ describe("formatTimestampForLLM", () => {
 describe("formatTranscriptForLLM", () => {
   it("should format segments with timestamps", () => {
     const segments = [
-      { start: 0, text: "Hello" },
-      { start: 5, text: "World" },
+      { start: 0, end: 5, text: "Hello" },
+      { start: 5, end: 10, text: "World" },
     ];
     expect(formatTranscriptForLLM(segments)).toBe("[0:00] Hello\n[0:05] World");
   });
@@ -59,7 +60,7 @@ describe("formatTranscriptForLLM", () => {
   });
 
   it("should handle long timestamps", () => {
-    const segments = [{ start: 3665, text: "Long video" }];
+    const segments = [{ start: 3665, end: 3670, text: "Long video" }];
     expect(formatTranscriptForLLM(segments)).toBe("[1:01:05] Long video");
   });
 });
@@ -69,7 +70,7 @@ describe("calculateTranscriptDuration", () => {
     expect(calculateTranscriptDuration([])).toBe(0);
   });
 
-  it("should use end time of last segment if available", () => {
+  it("should use end time of last segment", () => {
     const segments = [
       { start: 0, end: 5, text: "First" },
       { start: 5, end: 15, text: "Last" },
@@ -77,10 +78,10 @@ describe("calculateTranscriptDuration", () => {
     expect(calculateTranscriptDuration(segments)).toBe(15);
   });
 
-  it("should fallback to start time if no end", () => {
+  it("should use end time of last segment when end equals start", () => {
     const segments = [
-      { start: 0, text: "First" },
-      { start: 10, text: "Last" },
+      { start: 0, end: 5, text: "First" },
+      { start: 10, end: 10, text: "Last" },
     ];
     expect(calculateTranscriptDuration(segments)).toBe(10);
   });
@@ -89,8 +90,8 @@ describe("calculateTranscriptDuration", () => {
 describe("extractPlainText", () => {
   it("should concatenate all text with spaces", () => {
     const segments = [
-      { start: 0, text: "Hello" },
-      { start: 5, text: "World" },
+      { start: 0, end: 5, text: "Hello" },
+      { start: 5, end: 10, text: "World" },
     ];
     expect(extractPlainText(segments)).toBe("Hello World");
   });
@@ -103,8 +104,8 @@ describe("extractPlainText", () => {
 describe("estimateWordCount", () => {
   it("should count words in transcript", () => {
     const segments = [
-      { start: 0, text: "Hello world" },
-      { start: 5, text: "This is a test" },
+      { start: 0, end: 5, text: "Hello world" },
+      { start: 5, end: 10, text: "This is a test" },
     ];
     expect(estimateWordCount(segments)).toBe(6);
   });
@@ -114,7 +115,48 @@ describe("estimateWordCount", () => {
   });
 
   it("should handle multiple spaces", () => {
-    const segments = [{ start: 0, text: "Hello   world" }];
+    const segments = [{ start: 0, end: 5, text: "Hello   world" }];
     expect(estimateWordCount(segments)).toBe(2);
+  });
+});
+
+describe("validateTranscriptStructure", () => {
+  it("should validate valid transcript segments", () => {
+    const validData = [
+      { start: 0, end: 5, text: "Hello world" },
+      { start: 5, end: 10, text: "This is a test" },
+    ];
+    expect(validateTranscriptStructure(validData)).toEqual(validData);
+  });
+
+  it("should handle empty array", () => {
+    expect(validateTranscriptStructure([])).toEqual([]);
+  });
+
+  it("should throw error for invalid structure - missing end", () => {
+    const invalidData = [{ start: 0, text: "Hello world" }] as any;
+    expect(() => validateTranscriptStructure(invalidData)).toThrow(
+      "Invalid transcript structure",
+    );
+  });
+
+  it("should throw error for invalid structure - wrong types", () => {
+    const invalidData = [{ start: "0", end: 5, text: "Hello world" }] as any;
+    expect(() => validateTranscriptStructure(invalidData)).toThrow(
+      "Invalid transcript structure",
+    );
+  });
+
+  it("should throw error for invalid structure - missing text", () => {
+    const invalidData = [{ start: 0, end: 5 }] as any;
+    expect(() => validateTranscriptStructure(invalidData)).toThrow(
+      "Invalid transcript structure",
+    );
+  });
+
+  it("should throw error for non-array input", () => {
+    expect(() => validateTranscriptStructure("not an array" as any)).toThrow(
+      "Invalid transcript structure",
+    );
   });
 });
