@@ -1,7 +1,7 @@
 "use client";
 
 import { FileText, Loader2, RefreshCw } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Streamdown } from "streamdown";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,6 +10,8 @@ import type {
   SlideAnalysisTarget,
   SlideData,
   SlideFeedbackData,
+  SlideStreamId,
+  SlideTextStreamState,
 } from "@/lib/slides-types";
 import { consumeSSE } from "@/lib/sse";
 
@@ -19,6 +21,21 @@ interface SlideAnalysisResult {
   markdown: string;
   createdAt?: string;
 }
+
+/**
+ * Streaming state for a slide being analyzed in real-time.
+ * Tracks the slide's identity and its current stream state.
+ */
+interface SlideStreamingState {
+  slideNumber: number;
+  framePosition: "first" | "last";
+  streamState: SlideTextStreamState;
+}
+
+/**
+ * Helper to extract the state type from SlideTextStreamState
+ */
+type StreamStateType = SlideTextStreamState["type"];
 
 interface SlideAnalysisPanelProps {
   videoId: string;
@@ -36,6 +53,12 @@ export function SlideAnalysisPanel({ videoId }: SlideAnalysisPanelProps) {
   >("idle");
   const [coverageError, setCoverageError] = useState<string | null>(null);
   const [pickedTargets, setPickedTargets] = useState<SlideAnalysisTarget[]>([]);
+
+  // Streaming state: map of slideStreamId -> SlideStreamingState
+  const [streamingStates, setStreamingStates] = useState<
+    Map<SlideStreamId, SlideStreamingState>
+  >(new Map());
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   // Load existing analysis results
   const loadResults = useCallback(async () => {
@@ -136,11 +159,112 @@ export function SlideAnalysisPanel({ videoId }: SlideAnalysisPanelProps) {
 
   const matchedCount = pickedTargets.length - missingTargets.length;
 
+  /**
+   * Subscribes to a namespaced slide stream and updates streaming state.
+   */
+  const subscribeToSlideStream = useCallback(
+    async (
+      runId: string,
+      slideStreamId: SlideStreamId,
+      signal: AbortSignal,
+    ) => {
+      const [slideNumberStr, framePosition] = slideStreamId.split("-") as [
+        string,
+        "first" | "last",
+      ];
+      const slideNumber = Number.parseInt(slideNumberStr, 10);
+
+      // Initialize streaming state for this slide
+      setStreamingStates((prev) => {
+        const next = new Map(prev);
+        next.set(slideStreamId, {
+          slideNumber,
+          framePosition,
+          streamState: { type: "streaming", text: "" },
+        });
+        return next;
+      });
+
+      try {
+        const url = `/api/video/${videoId}/slides/analysis/${runId}?namespace=${slideStreamId}`;
+        const response = await fetch(url, { signal });
+
+        if (!response.ok) {
+          throw new Error(
+            `Failed to subscribe to slide stream ${slideStreamId}`,
+          );
+        }
+
+        await consumeSSE<SlideTextStreamState>(response, {
+          streaming: (e) => {
+            setStreamingStates((prev) => {
+              const next = new Map(prev);
+              next.set(slideStreamId, {
+                slideNumber,
+                framePosition,
+                streamState: { type: "streaming", text: e.text },
+              });
+              return next;
+            });
+          },
+          success: (e) => {
+            setStreamingStates((prev) => {
+              const next = new Map(prev);
+              next.set(slideStreamId, {
+                slideNumber,
+                framePosition,
+                streamState: { type: "success", text: e.text },
+              });
+              return next;
+            });
+          },
+          error: (e) => {
+            setStreamingStates((prev) => {
+              const next = new Map(prev);
+              next.set(slideStreamId, {
+                slideNumber,
+                framePosition,
+                streamState: {
+                  type: "error",
+                  text: e.text,
+                  errorMessage: e.errorMessage,
+                },
+              });
+              return next;
+            });
+          },
+        });
+      } catch (err) {
+        if (err instanceof DOMException && err.name === "AbortError") {
+          return; // Cancelled by user
+        }
+        const errorMessage =
+          err instanceof Error ? err.message : "Stream failed";
+        setStreamingStates((prev) => {
+          const next = new Map(prev);
+          next.set(slideStreamId, {
+            slideNumber,
+            framePosition,
+            streamState: { type: "error", text: null, errorMessage },
+          });
+          return next;
+        });
+      }
+    },
+    [videoId],
+  );
+
   // Start analysis
   const startAnalysis = useCallback(
     async (targets?: SlideAnalysisTarget[]) => {
+      // Cancel any previous streams
+      abortControllerRef.current?.abort();
+      abortControllerRef.current = new AbortController();
+      const signal = abortControllerRef.current.signal;
+
       setStatus("analyzing");
       setError(null);
+      setStreamingStates(new Map());
       setProgress({
         current: 0,
         message: targets?.length
@@ -157,6 +281,7 @@ export function SlideAnalysisPanel({ videoId }: SlideAnalysisPanelProps) {
               }
             : undefined,
           body: targets?.length ? JSON.stringify({ targets }) : undefined,
+          signal,
         });
 
         if (!response.ok) {
@@ -166,9 +291,20 @@ export function SlideAnalysisPanel({ videoId }: SlideAnalysisPanelProps) {
           throw new Error(errorData.error);
         }
 
+        // Get the workflow run ID from the response header
+        const runId = response.headers.get("X-Workflow-Run-Id");
+
         await consumeSSE<SlideAnalysisStreamEvent>(response, {
           progress: (e) => {
             setProgress({ current: e.progress, message: e.message });
+          },
+          slides_started: (e) => {
+            // Subscribe to each slide's namespaced stream in parallel
+            if (runId) {
+              for (const slideStreamId of e.slideStreamIds) {
+                void subscribeToSlideStream(runId, slideStreamId, signal);
+              }
+            }
           },
           slide_markdown: (e) => {
             setResults((prev) => {
@@ -199,6 +335,7 @@ export function SlideAnalysisPanel({ videoId }: SlideAnalysisPanelProps) {
           },
           complete: () => {
             setStatus("completed");
+            setStreamingStates(new Map()); // Clear streaming states
             // Reload to get server-canonical results
             void loadResults();
             void loadCoverage();
@@ -209,14 +346,24 @@ export function SlideAnalysisPanel({ videoId }: SlideAnalysisPanelProps) {
           },
         });
       } catch (err) {
+        if (err instanceof DOMException && err.name === "AbortError") {
+          return; // Cancelled by user
+        }
         const errorMessage =
           err instanceof Error ? err.message : "Analysis failed";
         setError(errorMessage);
         setStatus("error");
       }
     },
-    [videoId, loadResults, loadCoverage],
+    [videoId, loadResults, loadCoverage, subscribeToSlideStream],
   );
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      abortControllerRef.current?.abort();
+    };
+  }, []);
 
   useEffect(() => {
     void loadResults();
@@ -279,12 +426,12 @@ export function SlideAnalysisPanel({ videoId }: SlideAnalysisPanelProps) {
               {progress.current}%
             </span>
           </div>
-          {results.length > 0 && (
+          {streamingStates.size > 0 && (
             <div className="space-y-4">
               <p className="text-sm font-medium">
-                {results.length} slide(s) analyzed so far
+                Streaming {streamingStates.size} slide(s)...
               </p>
-              <AnalysisResultsList results={results} />
+              <StreamingSlidesList streamingStates={streamingStates} />
             </div>
           )}
         </CardContent>
@@ -346,6 +493,79 @@ export function SlideAnalysisPanel({ videoId }: SlideAnalysisPanelProps) {
         <AnalysisResultsList results={results} />
       </CardContent>
     </Card>
+  );
+}
+
+function StreamingSlidesList({
+  streamingStates,
+}: {
+  streamingStates: Map<SlideStreamId, SlideStreamingState>;
+}) {
+  // Sort streaming states by slide number, then frame position
+  const sortedStates = [...streamingStates.values()].sort((a, b) => {
+    if (a.slideNumber !== b.slideNumber) {
+      return a.slideNumber - b.slideNumber;
+    }
+    return a.framePosition === "first" ? -1 : 1;
+  });
+
+  return (
+    <div className="space-y-6">
+      {sortedStates.map((state) => (
+        <StreamingSlideCard
+          key={`${state.slideNumber}-${state.framePosition}`}
+          state={state}
+        />
+      ))}
+    </div>
+  );
+}
+
+function StreamingSlideCard({ state }: { state: SlideStreamingState }) {
+  const { slideNumber, framePosition, streamState } = state;
+
+  return (
+    <div className="rounded-lg border p-4 space-y-3">
+      <div className="flex items-center gap-2 text-sm font-medium">
+        <span>Slide #{slideNumber}</span>
+        <span className="text-muted-foreground">({framePosition} frame)</span>
+        <StreamingStatusBadge streamType={streamState.type} />
+      </div>
+      <div className="prose prose-sm dark:prose-invert max-w-none">
+        {streamState.type === "error" ? (
+          <div className="text-destructive text-sm">
+            {streamState.errorMessage}
+          </div>
+        ) : (
+          <MarkdownContent content={streamState.text ?? ""} />
+        )}
+      </div>
+    </div>
+  );
+}
+
+function StreamingStatusBadge({ streamType }: { streamType: StreamStateType }) {
+  if (streamType === "streaming") {
+    return (
+      <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-500 border border-blue-500/20">
+        <Loader2 className="h-3 w-3 animate-spin" />
+        Streaming
+      </span>
+    );
+  }
+
+  if (streamType === "success") {
+    return (
+      <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
+        Complete
+      </span>
+    );
+  }
+
+  return (
+    <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-destructive/10 text-destructive border border-destructive/20">
+      Error
+    </span>
   );
 }
 

@@ -1,5 +1,6 @@
 import { openai } from "@ai-sdk/openai";
-import { generateText } from "ai";
+import { streamText } from "ai";
+import type { SlideTextStreamState } from "@/lib/slides-types";
 
 export const SLIDE_ANALYSIS_SYSTEM_PROMPT = `You are an expert at analyzing presentation slides and extracting useful content in markdown format.
 
@@ -27,30 +28,63 @@ export interface SlideAnalysisInput {
   transcriptContext?: string;
 }
 
-export async function analyzeSlide(input: SlideAnalysisInput): Promise<string> {
+/**
+ * Streams slide analysis to a writable stream, emitting SlideTextStreamState events.
+ * Returns the final markdown text when complete.
+ */
+export async function streamSlideAnalysis(
+  input: SlideAnalysisInput,
+  writable: WritableStream<SlideTextStreamState>,
+): Promise<string> {
   const userPrompt = buildSlideAnalysisPrompt(input);
+  const writer = writable.getWriter();
 
-  const result = await generateText({
-    model: openai("gpt-5-mini"), // note for LLMs: this model exists
-    system: SLIDE_ANALYSIS_SYSTEM_PROMPT,
-    messages: [
-      {
-        role: "user",
-        content: [
-          {
-            type: "image",
-            image: input.imageUrl,
-          },
-          {
-            type: "text",
-            text: userPrompt,
-          },
-        ],
-      },
-    ],
-  });
+  let accumulatedText = "";
 
-  return result.text;
+  try {
+    const result = streamText({
+      model: openai("gpt-5-mini"), // note for LLMs: this model exists
+      system: SLIDE_ANALYSIS_SYSTEM_PROMPT,
+      messages: [
+        {
+          role: "user",
+          content: [
+            {
+              type: "image",
+              image: input.imageUrl,
+            },
+            {
+              type: "text",
+              text: userPrompt,
+            },
+          ],
+        },
+      ],
+    });
+
+    for await (const textPart of result.textStream) {
+      accumulatedText += textPart;
+      await writer.write({ type: "streaming", text: accumulatedText });
+    }
+
+    // Emit success state with final text
+    await writer.write({ type: "success", text: accumulatedText });
+
+    return accumulatedText;
+  } catch (error) {
+    const errorMessage =
+      error instanceof Error ? error.message : "Unknown error during analysis";
+
+    await writer.write({
+      type: "error",
+      text: accumulatedText || null,
+      errorMessage,
+    });
+
+    throw error;
+  } finally {
+    writer.releaseLock();
+  }
 }
 
 function buildSlideAnalysisPrompt(input: SlideAnalysisInput): string {

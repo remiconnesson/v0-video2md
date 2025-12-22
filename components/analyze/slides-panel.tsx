@@ -323,6 +323,9 @@ export function SlidesPanel({ videoId, view = "curation" }: SlidesPanelProps) {
             message: e.message,
           }));
         },
+        slides_started: () => {
+          // Slides started event - handled by SlideAnalysisPanel for detailed streaming
+        },
         slide_markdown: (e) => {
           setAnalysisResults((prev) => {
             const next = new Map(prev);
