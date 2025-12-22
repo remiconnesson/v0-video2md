@@ -67,7 +67,7 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
 
   // Slide analysis state
   const [analysisState, setAnalysisState] = useState<SlideAnalysisState>({
-    status: SlidesStatus.IDLE,
+    status: SlideAnalysisStatus.IDLE,
     progress: 0,
     message: "",
     error: null,
