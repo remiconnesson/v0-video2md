@@ -14,6 +14,7 @@ import { Streamdown } from "streamdown";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useCopyToClipboard } from "@/hooks/use-copy-to-clipboard";
 import { UI } from "@/lib/constants";
 import { useStreamingFetch } from "@/lib/use-streaming-fetch";
 
@@ -126,8 +127,7 @@ export function SuperAnalysisPanel({
   title,
   channelName,
 }: SuperAnalysisPanelProps) {
-  const [copied, setCopied] = useState(false);
-  const [copiedSection, setCopiedSection] = useState(false);
+  const { copied, copy: copyToClipboard } = useCopyToClipboard();
   const [triggerCount, setTriggerCount] = useState(0);
 
   const url =
@@ -166,13 +166,7 @@ export function SuperAnalysisPanel({
   };
 
   const handleCopyMarkdown = async () => {
-    try {
-      await navigator.clipboard.writeText(analysis || "");
-      setCopied(true);
-      setTimeout(() => setCopied(false), UI.COPY_FEEDBACK_DURATION_MS);
-    } catch (err) {
-      console.error("Failed to copy:", err);
-    }
+    await copyToClipboard(analysis || "");
   };
 
   const hasContent = (analysis || "").trim().length > 0;
@@ -224,18 +218,11 @@ export function SuperAnalysisPanel({
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => {
-                      void handleCopyMarkdown();
-                      setCopiedSection(true);
-                      setTimeout(
-                        () => setCopiedSection(false),
-                        UI.COPY_FEEDBACK_DURATION_MS,
-                      );
-                    }}
+                    onClick={handleCopyMarkdown}
                     aria-label="Copy super analysis markdown"
                     className="gap-2 shrink-0 text-muted-foreground hover:text-foreground"
                   >
-                    {copiedSection ? (
+                    {copied ? (
                       <>
                         <Check className="h-4 w-4" />
                         Copied!
