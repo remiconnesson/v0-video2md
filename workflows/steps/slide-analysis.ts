@@ -1,4 +1,3 @@
-import { z } from "zod";
 import { analyzeSlide } from "@/ai/slide-analysis";
 import {
   getSlideFeedback,
@@ -7,27 +6,10 @@ import {
   saveSlideAnalysisResult,
 } from "@/db/queries";
 import type { SlideAnalysisTarget } from "@/lib/slides-types";
-
-// ============================================================================
-// Transcript Schema (for validation)
-// ============================================================================
-
-const TranscriptSegmentSchema = z.object({
-  start: z.number(),
-  end: z.number(),
-  text: z.string(),
-});
-
-type TranscriptSegment = z.infer<typeof TranscriptSegmentSchema>;
-
-function validateTranscriptStructure(data: unknown): TranscriptSegment[] {
-  const result = z.array(TranscriptSegmentSchema).safeParse(data);
-  if (!result.success) {
-    console.error("Transcript validation failed:", result.error.format());
-    throw new Error(`Invalid transcript structure: ${result.error.message}`);
-  }
-  return result.data;
-}
+import {
+  type TranscriptSegment,
+  validateTranscriptStructure,
+} from "@/lib/transcript-format";
 
 // ============================================================================
 // Picked Slide Info Interface

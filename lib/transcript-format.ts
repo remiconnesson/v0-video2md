@@ -3,12 +3,36 @@
  * Extracted from workflow steps for testability and reuse.
  */
 
+import { z } from "zod";
 import { formatDuration, toClockParts } from "./time-utils";
+
+export const TranscriptSegmentSchema = z.object({
+  start: z.number(),
+  end: z.number(),
+  text: z.string(),
+});
 
 export interface TranscriptSegment {
   start: number;
-  end?: number;
+  end: number;
   text: string;
+}
+
+/**
+ * Validates that the provided data is an array of transcript segments.
+ * @param data - The data to validate
+ * @returns Array of validated transcript segments
+ * @throws Error if validation fails
+ */
+export function validateTranscriptStructure(
+  data: unknown,
+): TranscriptSegment[] {
+  const result = z.array(TranscriptSegmentSchema).safeParse(data);
+  if (!result.success) {
+    console.error("Transcript validation failed:", result.error.format());
+    throw new Error(`Invalid transcript structure: ${result.error.message}`);
+  }
+  return result.data;
 }
 
 /**
