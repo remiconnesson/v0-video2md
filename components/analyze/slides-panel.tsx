@@ -3,8 +3,21 @@
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useLocalStorage } from "@uidotdev/usehooks";
 import { HelpCircle, ImageIcon, Loader2, X } from "lucide-react";
-import Link from "next/link";
+import { createParser, useQueryStates } from "nuqs";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+
+const parseAsPresence = createParser<boolean>({
+  parse: (value) =>
+    value === "" || value.toLowerCase() === "true" ? true : null,
+  serialize: () => "",
+});
+
+const tabQueryConfig = {
+  analyze: parseAsPresence,
+  slides: parseAsPresence,
+  slidesGrid: parseAsPresence,
+};
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StepIndicator } from "@/components/ui/step-indicator";
@@ -489,6 +502,7 @@ function CompletedState({
     "video2md-slides-tutorial",
     true,
   );
+  const [, setQueryState] = useQueryStates(tabQueryConfig);
   const slidesLabel =
     view === "curation"
       ? `Frames (${pickedFramesCount}/${totalFramesCount})`
@@ -571,12 +585,19 @@ function CompletedState({
                 <ol className="list-decimal space-y-2 pl-5">
                   <li>
                     Pick the best slides (shown in the{" "}
-                    <Link
-                      href="?slidesGrid="
-                      className="text-primary underline underline-offset-4"
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setQueryState({
+                          slidesGrid: true,
+                          slides: null,
+                          analyze: null,
+                        })
+                      }
+                      className="text-primary underline underline-offset-4 cursor-pointer"
                     >
                       Slide Curation tab
-                    </Link>
+                    </button>
                     ) that will be used for AI slide-to-markdown extraction.
                   </li>
                   <li>

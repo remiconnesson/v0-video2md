@@ -2,8 +2,21 @@
 
 import { ImageIcon, ZoomIn } from "lucide-react";
 import Image from "next/image";
-import Link from "next/link";
+import { createParser, useQueryStates } from "nuqs";
 import { useEffect, useMemo, useState } from "react";
+
+const parseAsPresence = createParser<boolean>({
+  parse: (value) =>
+    value === "" || value.toLowerCase() === "true" ? true : null,
+  serialize: () => "",
+});
+
+const tabQueryConfig = {
+  analyze: parseAsPresence,
+  slides: parseAsPresence,
+  slidesGrid: parseAsPresence,
+};
+
 import {
   Card,
   CardContent,
@@ -94,18 +107,23 @@ function ConfirmationCard({
   onSlidesConfirmedChange: (confirmed: boolean) => void;
   pickedCount: number;
 }) {
+  const [, setQueryState] = useQueryStates(tabQueryConfig);
+
   return (
     <Card>
       <CardHeader>
         <CardTitle>Slide Review</CardTitle>
         <CardDescription>
           Review the curated slides below. You can go to the{" "}
-          <Link
-            href="?slides="
-            className="text-primary underline underline-offset-4"
+          <button
+            type="button"
+            onClick={() =>
+              setQueryState({ slides: true, slidesGrid: null, analyze: null })
+            }
+            className="text-primary underline underline-offset-4 cursor-pointer"
           >
             Slide Curation
-          </Link>{" "}
+          </button>{" "}
           tab to select exactly the slides that are useful and not redundant.
         </CardDescription>
       </CardHeader>
