@@ -45,6 +45,7 @@ import { SlideCard } from "./slide-card";
 // Super Analysis state for tracking progress
 interface SuperAnalysisState {
   status: "idle" | "running" | "completed" | "error";
+  phase: "slide_analysis" | "super_analysis";
   slideProgress: SlideAnalysisProgress[];
   completedCount: number;
   totalCount: number;
@@ -77,6 +78,7 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
   const [superAnalysisState, setSuperAnalysisState] =
     useState<SuperAnalysisState>({
       status: "idle",
+      phase: "slide_analysis",
       slideProgress: [],
       completedCount: 0,
       totalCount: 0,
@@ -789,10 +791,11 @@ function StickyActionsFooter({
   const handleStartSuperAnalysis = useCallback(async () => {
     setSuperAnalysisState({
       status: "running",
+      phase: "slide_analysis",
       slideProgress: [],
       completedCount: 0,
       totalCount: 0,
-      message: "Starting super analysis...",
+      message: "Starting slide analysis...",
     });
 
     // Navigate to super analysis tab which will trigger the workflow
@@ -804,28 +807,74 @@ function StickyActionsFooter({
     });
   }, [setSuperAnalysisState, setQueryState]);
 
-  // Show super analysis progress when running
+  // Show progress when super analysis workflow is running
   if (isSuperAnalyzing) {
+    const isSlideAnalysisPhase = superAnalysisState.phase === "slide_analysis";
+
     return (
       <div className="fixed bottom-0 left-0 right-0 z-50 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
         <div className="mx-auto max-w-5xl px-4 py-3 md:px-6">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            {/* Left side - Progress info */}
-            <div className="flex items-center gap-3">
-              <Loader2 className="h-4 w-4 animate-spin text-primary" />
-              <span className="text-sm">
-                {superAnalysisState.message || "Super analysis in progress..."}
-              </span>
-            </div>
-
-            {/* Right side - Progress and view button */}
-            <div className="flex items-center gap-3">
-              {superAnalysisState.totalCount > 0 && (
-                <span className="text-sm text-muted-foreground">
-                  Slides: {superAnalysisState.completedCount}/
-                  {superAnalysisState.totalCount}
-                </span>
+          {isSlideAnalysisPhase ? (
+            // Slide analysis phase - show emoji grid
+            <>
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-3">
+                  <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                  <span className="text-sm font-medium">
+                    Analyzing slides...
+                  </span>
+                  {superAnalysisState.totalCount > 0 && (
+                    <span className="text-sm text-muted-foreground">
+                      ({superAnalysisState.completedCount}/
+                      {superAnalysisState.totalCount})
+                    </span>
+                  )}
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={onNavigateToSuperAnalysis}
+                  className="gap-2"
+                >
+                  View Progress
+                  <ArrowRight className="h-4 w-4" />
+                </Button>
+              </div>
+              {/* Slide emoji grid */}
+              {superAnalysisState.slideProgress.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {superAnalysisState.slideProgress.map((slide) => (
+                    <div
+                      key={`${slide.slideNumber}-${slide.framePosition}`}
+                      className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-muted/40 text-sm"
+                      title={
+                        slide.error ??
+                        `Slide ${slide.slideNumber} (${slide.framePosition})`
+                      }
+                    >
+                      <span className="text-base">
+                        {getSlideStatusEmoji(slide.status)}
+                      </span>
+                      <span className="text-muted-foreground font-medium">
+                        #{slide.slideNumber}
+                      </span>
+                      <span className="text-muted-foreground/60 text-xs">
+                        {slide.framePosition === "first" ? "F" : "L"}
+                      </span>
+                    </div>
+                  ))}
+                </div>
               )}
+            </>
+          ) : (
+            // Super analysis synthesis phase
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                <span className="text-sm">
+                  {superAnalysisState.message || "Generating super analysis..."}
+                </span>
+              </div>
               <Button
                 size="sm"
                 variant="outline"
@@ -835,27 +884,6 @@ function StickyActionsFooter({
                 View Progress
                 <ArrowRight className="h-4 w-4" />
               </Button>
-            </div>
-          </div>
-
-          {/* Slide progress indicators */}
-          {superAnalysisState.slideProgress.length > 0 && (
-            <div className="flex flex-wrap gap-1.5 mt-3 pt-3 border-t border-border/50">
-              {superAnalysisState.slideProgress.map((slide) => (
-                <div
-                  key={`${slide.slideNumber}-${slide.framePosition}`}
-                  className="flex items-center gap-1 px-2 py-0.5 rounded bg-muted/50 text-xs"
-                  title={
-                    slide.error ??
-                    `Slide ${slide.slideNumber} (${slide.framePosition})`
-                  }
-                >
-                  <span>{getSlideStatusEmoji(slide.status)}</span>
-                  <span className="text-muted-foreground">
-                    #{slide.slideNumber}
-                  </span>
-                </div>
-              ))}
             </div>
           )}
         </div>

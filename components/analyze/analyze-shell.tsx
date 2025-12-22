@@ -97,11 +97,11 @@ export function AnalyzeShell({
   const { resolvedTheme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const isDark = resolvedTheme === "dark";
-  // Hide slide-analysis tab - it's now part of super analysis workflow
-  // The tab is kept in the tabs array for potential debug access
+  // Hide slide-analysis tab until super analysis is complete (for reviewing slide extraction results)
+  // Hide super-analysis from tab bar (accessed via slides panel button)
   const visibleTabs = tabs.filter((tab) => {
     if (tab.id === "super-analysis") return false;
-    if (tab.id === "slide-analysis") return false;
+    if (tab.id === "slide-analysis") return hasSuperAnalysis;
     return true;
   });
 
