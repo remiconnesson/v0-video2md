@@ -3,9 +3,8 @@ import type { SlideAnalysisStreamEvent } from "@/lib/slides-types";
 import { emit } from "@/lib/stream-utils";
 import { isValidYouTubeVideoId } from "@/lib/youtube-utils";
 import {
-  analyzePickedSlide,
+  analyzeAndSaveSlide,
   getPickedSlidesWithContext,
-  saveSlideAnalysis,
 } from "./steps/slide-analysis";
 
 // ============================================================================
@@ -42,55 +41,47 @@ export async function analyzeSelectedSlidesWorkflow(videoId: string) {
       throw new FatalError("No slides selected for analysis");
     }
 
-    // Step 2: Analyze each slide
+    // Step 2: Analyze all slides in parallel
     currentStep = "analyzing slides";
     const totalSlides = pickedSlides.length;
-    let analyzedCount = 0;
 
-    for (const slideInfo of pickedSlides) {
-      await emit<SlideAnalysisStreamEvent>(
-        {
-          type: "progress",
-          status: "analyzing",
-          progress: Math.round((analyzedCount / totalSlides) * 100),
-          message: `Analyzing slide ${slideInfo.slideNumber} (${slideInfo.framePosition} frame)...`,
-        },
-        writable,
-      );
+    await emit<SlideAnalysisStreamEvent>(
+      {
+        type: "progress",
+        status: "analyzing",
+        progress: 10,
+        message: `Analyzing ${totalSlides} slides in parallel...`,
+      },
+      writable,
+    );
 
-      const markdown = await analyzePickedSlide(slideInfo);
+    // Run all analyses in parallel
+    const results = await Promise.all(
+      pickedSlides.map((slideInfo) => analyzeAndSaveSlide(videoId, slideInfo)),
+    );
 
-      // Save to database
-      await saveSlideAnalysis(
-        videoId,
-        slideInfo.slideNumber,
-        slideInfo.framePosition,
-        markdown,
-      );
-
-      // Emit the result
+    // Emit all results
+    for (const result of results) {
       await emit<SlideAnalysisStreamEvent>(
         {
           type: "slide_markdown",
-          slideNumber: slideInfo.slideNumber,
-          framePosition: slideInfo.framePosition,
-          markdown,
+          slideNumber: result.slideNumber,
+          framePosition: result.framePosition,
+          markdown: result.markdown,
         },
         writable,
       );
-
-      analyzedCount++;
     }
 
     // Step 3: Complete
     currentStep = "completing";
     await emit<SlideAnalysisStreamEvent>(
-      { type: "complete", totalSlides: analyzedCount },
+      { type: "complete", totalSlides: results.length },
       writable,
       true,
     );
 
-    return { success: true, analyzedCount };
+    return { success: true, analyzedCount: results.length };
   } catch (error) {
     console.error(
       `analyzeSelectedSlidesWorkflow: Failed at step: ${currentStep}`,

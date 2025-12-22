@@ -6,7 +6,6 @@ import {
   getVideoWithTranscript,
   saveSlideAnalysisResult,
 } from "@/db/queries";
-import type { FramePosition } from "@/db/schema";
 
 // ============================================================================
 // Transcript Schema (for validation)
@@ -141,15 +140,27 @@ function getTranscriptContextForSlide(
 }
 
 // ============================================================================
-// Step: Analyze a single picked slide
+// Result type for parallel analysis
 // ============================================================================
 
-export async function analyzePickedSlide(
+export interface SlideAnalysisResultInfo {
+  slideNumber: number;
+  framePosition: "first" | "last";
+  markdown: string;
+}
+
+// ============================================================================
+// Step: Analyze and save a single slide (combined for parallelization)
+// ============================================================================
+
+export async function analyzeAndSaveSlide(
+  videoId: string,
   slideInfo: PickedSlideInfo,
-): Promise<string> {
+): Promise<SlideAnalysisResultInfo> {
   "use step";
 
-  const result = await analyzeSlide({
+  // Analyze the slide
+  const markdown = await analyzeSlide({
     videoTitle: slideInfo.videoTitle,
     slideNumber: slideInfo.slideNumber,
     framePosition: slideInfo.framePosition,
@@ -157,25 +168,17 @@ export async function analyzePickedSlide(
     transcriptContext: slideInfo.transcriptContext || undefined,
   });
 
-  return result;
-}
-
-// ============================================================================
-// Step: Save slide analysis to database
-// ============================================================================
-
-export async function saveSlideAnalysis(
-  videoId: string,
-  slideNumber: number,
-  framePosition: FramePosition,
-  markdownContent: string,
-): Promise<void> {
-  "use step";
-
+  // Save to database
   await saveSlideAnalysisResult(
     videoId,
-    slideNumber,
-    framePosition,
-    markdownContent,
+    slideInfo.slideNumber,
+    slideInfo.framePosition,
+    markdown,
   );
+
+  return {
+    slideNumber: slideInfo.slideNumber,
+    framePosition: slideInfo.framePosition,
+    markdown,
+  };
 }
