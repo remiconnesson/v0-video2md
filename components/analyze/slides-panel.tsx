@@ -1,18 +1,43 @@
 "use client";
 
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { ImageIcon, Loader2 } from "lucide-react";
+import { useLocalStorage } from "@uidotdev/usehooks";
+import { HelpCircle, ImageIcon, Loader2, X } from "lucide-react";
+import { createParser, useQueryStates } from "nuqs";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+
+const parseAsPresence = createParser<boolean>({
+  parse: (value) =>
+    value === "" || value.toLowerCase() === "true" ? true : null,
+  serialize: () => "",
+});
+
+const tabQueryConfig = {
+  analyze: parseAsPresence,
+  slides: parseAsPresence,
+  slidesGrid: parseAsPresence,
+};
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StepIndicator } from "@/components/ui/step-indicator";
 import type {
+  SlideAnalysisState,
+  SlideAnalysisStreamEvent,
   SlideData,
   SlideFeedbackData,
   SlideStreamEvent,
   SlidesState,
 } from "@/lib/slides-types";
 import { consumeSSE } from "@/lib/sse";
+
+// Type for storing analysis results per slide/frame
+interface SlideAnalysisResultData {
+  slideNumber: number;
+  framePosition: "first" | "last";
+  markdown: string;
+}
+
 import { SlideCard } from "./slide-card";
 import { SlideGridTab } from "./slide-grid-tab";
 
@@ -37,6 +62,17 @@ export function SlidesPanel({ videoId, view = "curation" }: SlidesPanelProps) {
     Map<number, SlideFeedbackData>
   >(new Map());
   const [isUnpickingAll, setIsUnpickingAll] = useState(false);
+
+  // Slide analysis state
+  const [analysisState, setAnalysisState] = useState<SlideAnalysisState>({
+    status: "idle",
+    progress: 0,
+    message: "",
+    error: null,
+  });
+  const [analysisResults, setAnalysisResults] = useState<
+    Map<string, SlideAnalysisResultData>
+  >(new Map());
 
   const loadSlidesState = useCallback(async () => {
     setSlidesState((prev) => ({
@@ -238,17 +274,113 @@ export function SlidesPanel({ videoId, view = "curation" }: SlidesPanelProps) {
     [feedbackMap, slidesState.slides],
   );
 
-  const pickedSlidesCount = useMemo(
+  const pickedFramesCount = useMemo(
     () =>
-      slidesState.slides.filter((slide) => {
+      slidesState.slides.reduce((acc, slide) => {
         const feedback = feedbackMap.get(slide.slideNumber);
         const isFirstPicked = feedback?.isFirstFramePicked ?? true;
         const isLastPicked = feedback?.isLastFramePicked ?? false;
 
-        return isFirstPicked || isLastPicked;
-      }).length,
+        let count = 0;
+        if (isFirstPicked) count++;
+        if (isLastPicked) count++;
+        return acc + count;
+      }, 0),
     [feedbackMap, slidesState.slides],
   );
+
+  // Load existing analysis results
+  const loadAnalysisResults = useCallback(async () => {
+    try {
+      const response = await fetch(`/api/video/${videoId}/slides/analysis`);
+      if (!response.ok) return;
+
+      const data = await response.json();
+      const resultsMap = new Map<string, SlideAnalysisResultData>();
+
+      for (const result of data.results as SlideAnalysisResultData[]) {
+        const key = `${result.slideNumber}-${result.framePosition}`;
+        resultsMap.set(key, result);
+      }
+
+      setAnalysisResults(resultsMap);
+    } catch (error) {
+      console.error("Failed to load slide analysis results:", error);
+    }
+  }, [videoId]);
+
+  // Start slide analysis
+  const handleAnalyzeSelectedSlides = useCallback(async () => {
+    if (!hasPickedFrames) return;
+
+    setAnalysisState({
+      status: "streaming",
+      progress: 0,
+      message: "Starting analysis...",
+      error: null,
+    });
+
+    try {
+      const response = await fetch(`/api/video/${videoId}/slides/analysis`, {
+        method: "POST",
+      });
+
+      if (!response.ok) {
+        const errorData = await response
+          .json()
+          .catch(() => ({ error: "Failed to start analysis" }));
+        throw new Error(errorData.error);
+      }
+
+      // Consume SSE stream
+      await consumeSSE<SlideAnalysisStreamEvent>(response, {
+        progress: (e) => {
+          setAnalysisState((prev) => ({
+            ...prev,
+            status: "streaming",
+            progress: e.progress,
+            message: e.message,
+          }));
+        },
+        slide_markdown: (e) => {
+          setAnalysisResults((prev) => {
+            const next = new Map(prev);
+            const key = `${e.slideNumber}-${e.framePosition}`;
+            next.set(key, {
+              slideNumber: e.slideNumber,
+              framePosition: e.framePosition,
+              markdown: e.markdown,
+            });
+            return next;
+          });
+        },
+        complete: () => {
+          setAnalysisState({
+            status: "completed",
+            progress: 100,
+            message: "Analysis complete",
+            error: null,
+          });
+        },
+        error: (e) => {
+          setAnalysisState((prev) => ({
+            ...prev,
+            status: "error",
+            error: e.message,
+          }));
+        },
+      });
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Failed to analyze slides.";
+
+      setAnalysisState((prev) => ({
+        ...prev,
+        status: "error",
+        error: errorMessage,
+      }));
+    }
+  }, [videoId, hasPickedFrames]);
 
   const startExtraction = useCallback(async () => {
     // Set state to extracting
@@ -327,11 +459,12 @@ export function SlidesPanel({ videoId, view = "curation" }: SlidesPanelProps) {
     }
   }, [videoId]);
 
-  // Load feedback on mount
+  // Load feedback and analysis on mount
   useEffect(() => {
     loadSlidesState();
     loadFeedback();
-  }, [loadFeedback, loadSlidesState]);
+    loadAnalysisResults();
+  }, [loadFeedback, loadSlidesState, loadAnalysisResults]);
 
   // Auto-trigger extraction when in idle state
   useEffect(() => {
@@ -381,8 +514,9 @@ export function SlidesPanel({ videoId, view = "curation" }: SlidesPanelProps) {
   // Completed state - show slides
   return (
     <CompletedState
-      slidesCount={slidesState.slides.length}
-      pickedSlidesCount={pickedSlidesCount}
+      videoId={videoId}
+      totalFramesCount={slidesState.slides.length * 2}
+      pickedFramesCount={pickedFramesCount}
       slides={slidesState.slides}
       feedbackMap={feedbackMap}
       onSubmitFeedback={submitFeedback}
@@ -390,6 +524,9 @@ export function SlidesPanel({ videoId, view = "curation" }: SlidesPanelProps) {
       onUnpickAll={handleUnpickAll}
       isUnpickingAll={isUnpickingAll}
       hasPickedFrames={hasPickedFrames}
+      onAnalyzeSelectedSlides={handleAnalyzeSelectedSlides}
+      analysisState={analysisState}
+      hasAnalysisResults={analysisResults.size > 0}
     />
   );
 }
@@ -443,7 +580,7 @@ function ExtractingState({
         {hasSlidesFound && (
           <div className="mt-6">
             <p className="text-sm font-medium mb-3">
-              {slides.length} slides found so far
+              {slides.length * 2} frames found so far
             </p>
             <SlideGrid
               slides={slides}
@@ -479,8 +616,9 @@ function ErrorState({
 }
 
 function CompletedState({
-  slidesCount,
-  pickedSlidesCount,
+  videoId,
+  totalFramesCount,
+  pickedFramesCount,
   slides,
   feedbackMap,
   onSubmitFeedback,
@@ -488,9 +626,13 @@ function CompletedState({
   onUnpickAll,
   isUnpickingAll,
   hasPickedFrames,
+  onAnalyzeSelectedSlides,
+  analysisState,
+  hasAnalysisResults,
 }: {
-  slidesCount: number;
-  pickedSlidesCount: number;
+  videoId: string;
+  totalFramesCount: number;
+  pickedFramesCount: number;
   slides: SlideData[];
   feedbackMap: Map<number, SlideFeedbackData>;
   onSubmitFeedback: (feedback: SlideFeedbackData) => Promise<void>;
@@ -498,11 +640,24 @@ function CompletedState({
   onUnpickAll: () => Promise<void>;
   isUnpickingAll: boolean;
   hasPickedFrames: boolean;
+  onAnalyzeSelectedSlides: () => Promise<void>;
+  analysisState: SlideAnalysisState;
+  hasAnalysisResults: boolean;
 }) {
+  const [showTutorial, setShowTutorial] = useLocalStorage(
+    "video2md-slides-tutorial",
+    true,
+  );
+  const [, setQueryState] = useQueryStates(tabQueryConfig);
+  // Suppress unused variable warning - videoId is passed for potential future use
+  void videoId;
+
   const slidesLabel =
     view === "curation"
-      ? `Slides (${pickedSlidesCount}/${slidesCount})`
-      : `Slides (${slidesCount})`;
+      ? `Frames (${pickedFramesCount}/${totalFramesCount})`
+      : `Picked Frames (${pickedFramesCount})`;
+
+  const isAnalyzing = analysisState.status === "streaming";
 
   return (
     <Card>
@@ -512,20 +667,155 @@ function CompletedState({
             <ImageIcon className="h-5 w-5" />
             {slidesLabel}
           </span>
-          {view === "curation" && (
+          <div className="flex flex-wrap items-center gap-2">
+            {view === "curation" && (
+              <>
+                {!showTutorial && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                    onClick={() => setShowTutorial(true)}
+                    title="Show tutorial"
+                  >
+                    <HelpCircle className="h-4 w-4" />
+                  </Button>
+                )}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={onUnpickAll}
+                  disabled={!hasPickedFrames || isUnpickingAll || isAnalyzing}
+                >
+                  {isUnpickingAll ? "Unpicking..." : "Unpick all frames"}
+                </Button>
+              </>
+            )}
             <Button
-              variant="outline"
+              variant="default"
               size="sm"
-              onClick={onUnpickAll}
-              disabled={!hasPickedFrames || isUnpickingAll}
+              onClick={onAnalyzeSelectedSlides}
+              disabled={!hasPickedFrames || isAnalyzing}
             >
-              {isUnpickingAll ? "Unpicking..." : "Unpick all frames"}
+              {isAnalyzing ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Analyzing...
+                </>
+              ) : hasAnalysisResults ? (
+                "Re-analyze Selected"
+              ) : (
+                "Analyze Selected Slides"
+              )}
             </Button>
-          )}
+          </div>
         </CardTitle>
       </CardHeader>
 
-      <CardContent>
+      {/* Analysis progress indicator */}
+      {isAnalyzing && (
+        <CardContent className="pt-0 pb-4">
+          <div className="flex items-center gap-3 p-3 bg-muted/30 rounded-md">
+            <Loader2 className="h-4 w-4 animate-spin text-primary" />
+            <span className="text-sm">{analysisState.message}</span>
+            <span className="text-sm text-muted-foreground ml-auto">
+              {analysisState.progress}%
+            </span>
+          </div>
+        </CardContent>
+      )}
+
+      {/* Analysis error indicator */}
+      {analysisState.status === "error" && analysisState.error && (
+        <CardContent className="pt-0 pb-4">
+          <div className="p-3 bg-destructive/10 text-destructive rounded-md text-sm">
+            {analysisState.error}
+          </div>
+        </CardContent>
+      )}
+
+      <CardContent
+        className={
+          isAnalyzing || analysisState.status === "error" ? "pt-0" : ""
+        }
+      >
+        {view === "curation" && showTutorial && (
+          <Card className="mb-6 bg-primary/[0.02] border-primary/20 shadow-none relative overflow-hidden">
+            <div className="absolute top-2 right-2">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 text-muted-foreground hover:text-foreground hover:bg-primary/10"
+                onClick={() => setShowTutorial(false)}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2 text-primary">
+                <HelpCircle className="h-4 w-4" />
+                How this page works
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4 text-sm text-muted-foreground">
+              <p>
+                In this page you can select which slides you&apos;d like to keep
+                for this video. Interactions immediately save the choice in the
+                database (there&apos;s no save button).
+              </p>
+              <p>
+                You can also help build a dataset to improve the service. If a
+                frame doesn&apos;t have useful content you can mark it as such
+                (or the opposite) to label images for training and dev purposes.
+              </p>
+              <p>
+                We&apos;re improving the slide detection algorithm, so we show
+                the first and last frame of each segment. If the algorithm were
+                perfect, the first and last frame would be identical in terms of
+                useful content. By indicating whether they contain useful
+                content and how similar they are, you help us close that gap.
+              </p>
+              <p>You don&apos;t need to annotate everything—10% is enough.</p>
+              <div className="space-y-2">
+                <p className="font-medium text-foreground">Order of priority</p>
+                <ol className="list-decimal space-y-2 pl-5">
+                  <li>
+                    Pick the best slides (shown in the{" "}
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setQueryState({
+                          slidesGrid: true,
+                          slides: null,
+                          analyze: null,
+                        })
+                      }
+                      className="text-primary underline underline-offset-4 cursor-pointer"
+                    >
+                      Slide Grid tab
+                    </button>
+                    ) that will be used for AI slide-to-markdown extraction.
+                  </li>
+                  <li>
+                    Annotate some slides so we can build a dataset to improve
+                    slide detection quality and eventually remove the need for
+                    manual selection.
+                  </li>
+                </ol>
+              </div>
+              <div className="pt-2 flex justify-end">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setShowTutorial(false)}
+                  className="text-xs h-8"
+                >
+                  Hide tutorial
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
         {view === "curation" ? (
           <SlideGrid
             slides={slides}

@@ -4,7 +4,10 @@ import type { TranscriptSegment } from "@/lib/transcript-format";
 import { db } from "./index";
 import {
   channels,
+  type FramePosition,
   scrapTranscriptV1,
+  slideAnalysisResults,
+  slideFeedback,
   videoAnalysisRuns,
   videoAnalysisWorkflowIds,
   videoSlideExtractions,
@@ -702,4 +705,61 @@ function parseDuration(duration: string): number {
   const seconds = parseInt(match[3] || "0", 10);
 
   return hours * 3600 + minutes * 60 + seconds;
+}
+
+// ============================================================================
+// Slide Analysis Queries
+// ============================================================================
+
+/**
+ * Gets all slide analysis results for a video.
+ */
+export async function getSlideAnalysisResults(videoId: string) {
+  return await db
+    .select()
+    .from(slideAnalysisResults)
+    .where(eq(slideAnalysisResults.videoId, videoId))
+    .orderBy(
+      asc(slideAnalysisResults.slideNumber),
+      asc(slideAnalysisResults.framePosition),
+    );
+}
+
+/**
+ * Saves or updates a slide analysis result.
+ */
+export async function saveSlideAnalysisResult(
+  videoId: string,
+  slideNumber: number,
+  framePosition: FramePosition,
+  markdownContent: string,
+) {
+  await db
+    .insert(slideAnalysisResults)
+    .values({
+      videoId,
+      slideNumber,
+      framePosition,
+      markdownContent,
+    })
+    .onConflictDoUpdate({
+      target: [
+        slideAnalysisResults.videoId,
+        slideAnalysisResults.slideNumber,
+        slideAnalysisResults.framePosition,
+      ],
+      set: {
+        markdownContent,
+        createdAt: new Date(),
+      },
+    });
+}
+
+/**
+ * Deletes all slide analysis results for a video.
+ */
+export async function deleteSlideAnalysisResults(videoId: string) {
+  await db
+    .delete(slideAnalysisResults)
+    .where(eq(slideAnalysisResults.videoId, videoId));
 }
