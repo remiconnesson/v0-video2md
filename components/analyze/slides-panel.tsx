@@ -596,7 +596,7 @@ function CompletedState({
                       }
                       className="text-primary underline underline-offset-4 cursor-pointer"
                     >
-                      Slide Curation tab
+                      Slide Grid tab
                     </button>
                     ) that will be used for AI slide-to-markdown extraction.
                   </li>
