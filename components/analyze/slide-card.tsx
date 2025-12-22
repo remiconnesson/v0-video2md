@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import type { SlideData, SlideFeedbackData } from "@/lib/slides-types";
 import { formatDuration } from "@/lib/time-utils";
+import { cn } from "@/lib/utils";
 import { ZoomDialog } from "./zoom-dialog";
 
 // ============================================================================
@@ -29,15 +30,22 @@ function FrameCard({
 }: FrameCardProps) {
   return (
     <div className="flex flex-col gap-3">
-      {/* Frame header with checkbox */}
-      <label className="flex items-center gap-2 cursor-pointer">
+      {/* Frame header with prominent checkbox */}
+      <label
+        className={cn(
+          "flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all",
+          isPicked
+            ? "bg-primary/10 border-primary shadow-sm"
+            : "bg-muted/30 border-muted hover:border-primary/50 hover:bg-primary/5",
+        )}
+      >
         <input
           type="checkbox"
           checked={isPicked}
           onChange={(e) => onPickedChange(e.target.checked)}
-          className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-2 focus:ring-primary"
+          className="h-5 w-5 rounded border-gray-300 text-primary focus:ring-2 focus:ring-primary"
         />
-        <span className="text-sm font-medium">{label} Frame</span>
+        <span className="text-base font-semibold">Pick {label} Frame</span>
       </label>
 
       {/* Image container - preserves aspect ratio */}
@@ -183,18 +191,16 @@ export function SlideCard({
           />
         </div>
 
-        {/* Slide-level annotations */}
-        <div className="space-y-3">
-          <div className="flex items-center justify-between p-3 rounded-md bg-muted/30 border">
-            <span className="text-sm font-medium">
+        {/* Slide-level annotations - less prominent */}
+        <div className="space-y-3 pt-2">
+          <div className="flex items-center justify-between p-2 rounded-md bg-muted/20 text-sm">
+            <span className="text-muted-foreground">
               Report first and last frame having different useful content?
             </span>
             <div className="flex items-center gap-2">
               <Button
                 variant={
-                  feedback.framesSameness === "different"
-                    ? "default"
-                    : "outline"
+                  feedback.framesSameness === "different" ? "default" : "ghost"
                 }
                 size="sm"
                 onClick={() =>
