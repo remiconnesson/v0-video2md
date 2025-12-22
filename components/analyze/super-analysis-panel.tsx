@@ -1,6 +1,5 @@
 "use client";
 
-import { useCopyToClipboard } from "@uidotdev/usehooks";
 import {
   Check,
   Copy,
@@ -10,11 +9,12 @@ import {
   Stars,
 } from "lucide-react";
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Streamdown } from "streamdown";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useCopyWithFeedback } from "@/hooks/use-copy-with-feedback";
 import { useStreamingFetch } from "@/lib/use-streaming-fetch";
 
 // Mobile-only header with video info for super analysis
@@ -126,19 +126,8 @@ export function SuperAnalysisPanel({
   title,
   channelName,
 }: SuperAnalysisPanelProps) {
-  const [copiedText, copyToClipboard] = useCopyToClipboard();
-  const [copied, setCopied] = useState(false);
+  const [copied, copy] = useCopyWithFeedback();
   const [triggerCount, setTriggerCount] = useState(0);
-
-  // Reset copied state after 2 seconds
-  useEffect(() => {
-    if (copied) {
-      const timer = setTimeout(() => {
-        setCopied(false);
-      }, 2000);
-      return () => clearTimeout(timer);
-    }
-  }, [copied]);
 
   const url =
     triggerCount > 0
@@ -174,8 +163,7 @@ export function SuperAnalysisPanel({
   };
 
   const handleCopyMarkdown = () => {
-    copyToClipboard(analysis || "");
-    setCopied(true);
+    copy(analysis || "");
   };
 
   const hasContent = (analysis || "").trim().length > 0;
