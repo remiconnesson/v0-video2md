@@ -12,6 +12,12 @@ import type {
   SlideFeedbackData,
 } from "@/lib/slides-types";
 import { consumeSSE } from "@/lib/sse";
+import {
+  CoverageStatus,
+  type CoverageStatusType,
+  SlideAnalysisStatus,
+  type SlideAnalysisStatusType,
+} from "@/lib/status-types";
 
 interface SlideAnalysisResult {
   slideNumber: number;
@@ -24,22 +30,22 @@ interface SlideAnalysisPanelProps {
   videoId: string;
 }
 
-type AnalysisStatus = "idle" | "loading" | "analyzing" | "completed" | "error";
+type AnalysisStatus = SlideAnalysisStatusType;
 
 export function SlideAnalysisPanel({ videoId }: SlideAnalysisPanelProps) {
   const [status, setStatus] = useState<AnalysisStatus>("loading");
   const [results, setResults] = useState<SlideAnalysisResult[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [progress, setProgress] = useState({ current: 0, message: "" });
-  const [coverageStatus, setCoverageStatus] = useState<
-    "idle" | "loading" | "ready" | "error"
-  >("idle");
+  const [coverageStatus, setCoverageStatus] = useState<CoverageStatusType>(
+    CoverageStatus.IDLE,
+  );
   const [coverageError, setCoverageError] = useState<string | null>(null);
   const [pickedTargets, setPickedTargets] = useState<SlideAnalysisTarget[]>([]);
 
   // Load existing analysis results
   const loadResults = useCallback(async () => {
-    setStatus("loading");
+    setStatus(SlideAnalysisStatus.LOADING);
     setError(null);
 
     try {
@@ -50,17 +56,21 @@ export function SlideAnalysisPanel({ videoId }: SlideAnalysisPanelProps) {
 
       const data = await response.json();
       setResults(data.results);
-      setStatus(data.results.length > 0 ? "completed" : "idle");
+      setStatus(
+        data.results.length > 0
+          ? SlideAnalysisStatus.COMPLETED
+          : SlideAnalysisStatus.IDLE,
+      );
     } catch (err) {
       const errorMessage =
         err instanceof Error ? err.message : "Failed to load results";
       setError(errorMessage);
-      setStatus("error");
+      setStatus(SlideAnalysisStatus.ERROR);
     }
   }, [videoId]);
 
   const loadCoverage = useCallback(async () => {
-    setCoverageStatus("loading");
+    setCoverageStatus(CoverageStatus.LOADING);
     setCoverageError(null);
 
     try {
@@ -108,12 +118,12 @@ export function SlideAnalysisPanel({ videoId }: SlideAnalysisPanelProps) {
       }
 
       setPickedTargets(targets);
-      setCoverageStatus("ready");
+      setCoverageStatus(CoverageStatus.READY);
     } catch (err) {
       const errorMessage =
         err instanceof Error ? err.message : "Failed to load slide coverage";
       setCoverageError(errorMessage);
-      setCoverageStatus("error");
+      setCoverageStatus(CoverageStatus.ERROR);
     }
   }, [videoId]);
 
@@ -139,7 +149,7 @@ export function SlideAnalysisPanel({ videoId }: SlideAnalysisPanelProps) {
   // Start analysis
   const startAnalysis = useCallback(
     async (targets?: SlideAnalysisTarget[]) => {
-      setStatus("analyzing");
+      setStatus(SlideAnalysisStatus.ANALYZING);
       setError(null);
       setProgress({
         current: 0,
@@ -198,21 +208,21 @@ export function SlideAnalysisPanel({ videoId }: SlideAnalysisPanelProps) {
             });
           },
           complete: () => {
-            setStatus("completed");
+            setStatus(SlideAnalysisStatus.COMPLETED);
             // Reload to get server-canonical results
             void loadResults();
             void loadCoverage();
           },
           error: (e) => {
             setError(e.message);
-            setStatus("error");
+            setStatus(SlideAnalysisStatus.ERROR);
           },
         });
       } catch (err) {
         const errorMessage =
           err instanceof Error ? err.message : "Analysis failed";
         setError(errorMessage);
-        setStatus("error");
+        setStatus(SlideAnalysisStatus.ERROR);
       }
     },
     [videoId, loadResults, loadCoverage],
@@ -224,7 +234,7 @@ export function SlideAnalysisPanel({ videoId }: SlideAnalysisPanelProps) {
   }, [loadResults, loadCoverage]);
 
   // Loading state
-  if (status === "loading") {
+  if (status === CoverageStatus.LOADING) {
     return (
       <Card>
         <CardContent className="py-12">
@@ -238,7 +248,7 @@ export function SlideAnalysisPanel({ videoId }: SlideAnalysisPanelProps) {
   }
 
   // Idle state - no results yet
-  if (status === "idle" && results.length === 0) {
+  if (status === SlideAnalysisStatus.IDLE && results.length === 0) {
     return (
       <Card>
         <CardHeader>
@@ -263,7 +273,7 @@ export function SlideAnalysisPanel({ videoId }: SlideAnalysisPanelProps) {
   }
 
   // Analyzing state
-  if (status === "analyzing") {
+  if (status === SlideAnalysisStatus.ANALYZING) {
     return (
       <Card>
         <CardHeader>
@@ -293,7 +303,7 @@ export function SlideAnalysisPanel({ videoId }: SlideAnalysisPanelProps) {
   }
 
   // Error state
-  if (status === "error") {
+  if (status === SlideAnalysisStatus.ERROR) {
     return (
       <Card>
         <CardHeader>
@@ -395,7 +405,7 @@ function SlideCoverageSummary({
   onRetry,
   onAnalyzeMissing,
 }: {
-  status: "idle" | "loading" | "ready" | "error";
+  status: CoverageStatusType;
   error: string | null;
   totalPicked: number;
   matchedCount: number;
@@ -407,7 +417,7 @@ function SlideCoverageSummary({
     return null;
   }
 
-  if (status === "loading") {
+  if (status === CoverageStatus.LOADING) {
     return (
       <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
         Checking for missing slides...
@@ -415,7 +425,7 @@ function SlideCoverageSummary({
     );
   }
 
-  if (status === "error") {
+  if (status === CoverageStatus.ERROR) {
     return (
       <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-4 text-sm">
         <p className="text-destructive">
@@ -428,7 +438,7 @@ function SlideCoverageSummary({
     );
   }
 
-  if (status === "ready" && totalPicked === 0) {
+  if (status === CoverageStatus.READY && totalPicked === 0) {
     return (
       <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
         No picked slides found. Go to Slide Curation to select frames for

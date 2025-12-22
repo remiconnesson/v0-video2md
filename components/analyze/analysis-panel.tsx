@@ -31,6 +31,7 @@ import {
   formatSectionTitle,
   sectionToMarkdown,
 } from "@/lib/analysis-format";
+import { LoadingStatus } from "@/lib/status-types";
 import { isRecord } from "@/lib/type-utils";
 import { useStreamingFetch } from "@/lib/use-streaming-fetch";
 import { cn } from "@/lib/utils";
@@ -186,7 +187,8 @@ export function AnalysisPanel({
                   copied={copiedSection === key}
                 />
               ))
-            ) : status === "loading" || status === "streaming" ? (
+            ) : status === LoadingStatus.LOADING ||
+              status === LoadingStatus.STREAMING ? (
               <div className="space-y-6">
                 {[1, 2, 3].map((i) => (
                   <Card key={i} className="animate-pulse border-muted/30">
@@ -209,7 +211,7 @@ export function AnalysisPanel({
                   </Card>
                 ))}
               </div>
-            ) : status === "ready" && !errorMessage ? (
+            ) : status === LoadingStatus.READY && !errorMessage ? (
               <p className="text-muted-foreground italic">
                 No analysis available.
               </p>
