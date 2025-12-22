@@ -2,7 +2,21 @@
 
 import { ImageIcon, ZoomIn } from "lucide-react";
 import Image from "next/image";
+import { createParser, useQueryStates } from "nuqs";
 import { useEffect, useMemo, useState } from "react";
+
+const parseAsPresence = createParser<boolean>({
+  parse: (value) =>
+    value === "" || value.toLowerCase() === "true" ? true : null,
+  serialize: () => "",
+});
+
+const tabQueryConfig = {
+  analyze: parseAsPresence,
+  slides: parseAsPresence,
+  slidesGrid: parseAsPresence,
+};
+
 import {
   Card,
   CardContent,
@@ -93,14 +107,24 @@ function ConfirmationCard({
   onSlidesConfirmedChange: (confirmed: boolean) => void;
   pickedCount: number;
 }) {
+  const [, setQueryState] = useQueryStates(tabQueryConfig);
+
   return (
     <Card>
       <CardHeader>
         <CardTitle>Slide Review</CardTitle>
         <CardDescription>
           Review the curated slides below. You can go to the{" "}
-          <strong>Slide Curation</strong> tab to select exactly the slides that
-          are useful and not redundant.
+          <button
+            type="button"
+            onClick={() =>
+              setQueryState({ slides: true, slidesGrid: null, analyze: null })
+            }
+            className="text-primary underline underline-offset-4 cursor-pointer"
+          >
+            Slide Curation
+          </button>{" "}
+          tab to select exactly the slides that are useful and not redundant.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -174,7 +198,7 @@ function PickedSlidesGrid({ slides }: { slides: PickedSlide[] }) {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <ImageIcon className="h-5 w-5" />
-            Picked Slides ({slides.length})
+            Picked Frames ({slides.length})
           </CardTitle>
         </CardHeader>
         <CardContent>

@@ -1,8 +1,23 @@
 "use client";
 
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { ImageIcon, Loader2 } from "lucide-react";
+import { useLocalStorage } from "@uidotdev/usehooks";
+import { HelpCircle, ImageIcon, Loader2, X } from "lucide-react";
+import { createParser, useQueryStates } from "nuqs";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+
+const parseAsPresence = createParser<boolean>({
+  parse: (value) =>
+    value === "" || value.toLowerCase() === "true" ? true : null,
+  serialize: () => "",
+});
+
+const tabQueryConfig = {
+  analyze: parseAsPresence,
+  slides: parseAsPresence,
+  slidesGrid: parseAsPresence,
+};
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StepIndicator } from "@/components/ui/step-indicator";
@@ -219,15 +234,18 @@ export function SlidesPanel({ videoId, view = "curation" }: SlidesPanelProps) {
     [feedbackMap, slidesState.slides],
   );
 
-  const pickedSlidesCount = useMemo(
+  const pickedFramesCount = useMemo(
     () =>
-      slidesState.slides.filter((slide) => {
+      slidesState.slides.reduce((acc, slide) => {
         const feedback = feedbackMap.get(slide.slideNumber);
         const isFirstPicked = feedback?.isFirstFramePicked ?? true;
         const isLastPicked = feedback?.isLastFramePicked ?? false;
 
-        return isFirstPicked || isLastPicked;
-      }).length,
+        let count = 0;
+        if (isFirstPicked) count++;
+        if (isLastPicked) count++;
+        return acc + count;
+      }, 0),
     [feedbackMap, slidesState.slides],
   );
 
@@ -362,8 +380,8 @@ export function SlidesPanel({ videoId, view = "curation" }: SlidesPanelProps) {
   // Completed state - show slides
   return (
     <CompletedState
-      slidesCount={slidesState.slides.length}
-      pickedSlidesCount={pickedSlidesCount}
+      totalFramesCount={slidesState.slides.length * 2}
+      pickedFramesCount={pickedFramesCount}
       slides={slidesState.slides}
       feedbackMap={feedbackMap}
       onSubmitFeedback={submitFeedback}
@@ -424,7 +442,7 @@ function ExtractingState({
         {hasSlidesFound && (
           <div className="mt-6">
             <p className="text-sm font-medium mb-3">
-              {slides.length} slides found so far
+              {slides.length * 2} frames found so far
             </p>
             <SlideGrid
               slides={slides}
@@ -460,8 +478,8 @@ function ErrorState({
 }
 
 function CompletedState({
-  slidesCount,
-  pickedSlidesCount,
+  totalFramesCount,
+  pickedFramesCount,
   slides,
   feedbackMap,
   onSubmitFeedback,
@@ -470,8 +488,8 @@ function CompletedState({
   isUnpickingAll,
   hasPickedFrames,
 }: {
-  slidesCount: number;
-  pickedSlidesCount: number;
+  totalFramesCount: number;
+  pickedFramesCount: number;
   slides: SlideData[];
   feedbackMap: Map<number, SlideFeedbackData>;
   onSubmitFeedback: (feedback: SlideFeedbackData) => Promise<void>;
@@ -480,10 +498,15 @@ function CompletedState({
   isUnpickingAll: boolean;
   hasPickedFrames: boolean;
 }) {
+  const [showTutorial, setShowTutorial] = useLocalStorage(
+    "video2md-slides-tutorial",
+    true,
+  );
+  const [, setQueryState] = useQueryStates(tabQueryConfig);
   const slidesLabel =
     view === "curation"
-      ? `Slides (${pickedSlidesCount}/${slidesCount})`
-      : `Slides (${slidesCount})`;
+      ? `Frames (${pickedFramesCount}/${totalFramesCount})`
+      : `Picked Frames (${pickedFramesCount})`;
 
   return (
     <Card>
@@ -494,19 +517,109 @@ function CompletedState({
             {slidesLabel}
           </span>
           {view === "curation" && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onUnpickAll}
-              disabled={!hasPickedFrames || isUnpickingAll}
-            >
-              {isUnpickingAll ? "Unpicking..." : "Unpick all frames"}
-            </Button>
+            <div className="flex flex-wrap items-center gap-2">
+              {!showTutorial && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                  onClick={() => setShowTutorial(true)}
+                  title="Show tutorial"
+                >
+                  <HelpCircle className="h-4 w-4" />
+                </Button>
+              )}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onUnpickAll}
+                disabled={!hasPickedFrames || isUnpickingAll}
+              >
+                {isUnpickingAll ? "Unpicking..." : "Unpick all frames"}
+              </Button>
+            </div>
           )}
         </CardTitle>
       </CardHeader>
 
       <CardContent>
+        {view === "curation" && showTutorial && (
+          <Card className="mb-6 bg-primary/[0.02] border-primary/20 shadow-none relative overflow-hidden">
+            <div className="absolute top-2 right-2">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 text-muted-foreground hover:text-foreground hover:bg-primary/10"
+                onClick={() => setShowTutorial(false)}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2 text-primary">
+                <HelpCircle className="h-4 w-4" />
+                How this page works
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4 text-sm text-muted-foreground">
+              <p>
+                In this page you can select which slides you&apos;d like to keep
+                for this video. Interactions immediately save the choice in the
+                database (there&apos;s no save button).
+              </p>
+              <p>
+                You can also help build a dataset to improve the service. If a
+                frame doesn&apos;t have useful content you can mark it as such
+                (or the opposite) to label images for training and dev purposes.
+              </p>
+              <p>
+                We&apos;re improving the slide detection algorithm, so we show
+                the first and last frame of each segment. If the algorithm were
+                perfect, the first and last frame would be identical in terms of
+                useful content. By indicating whether they contain useful
+                content and how similar they are, you help us close that gap.
+              </p>
+              <p>You don&apos;t need to annotate everything—10% is enough.</p>
+              <div className="space-y-2">
+                <p className="font-medium text-foreground">Order of priority</p>
+                <ol className="list-decimal space-y-2 pl-5">
+                  <li>
+                    Pick the best slides (shown in the{" "}
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setQueryState({
+                          slidesGrid: true,
+                          slides: null,
+                          analyze: null,
+                        })
+                      }
+                      className="text-primary underline underline-offset-4 cursor-pointer"
+                    >
+                      Slide Grid tab
+                    </button>
+                    ) that will be used for AI slide-to-markdown extraction.
+                  </li>
+                  <li>
+                    Annotate some slides so we can build a dataset to improve
+                    slide detection quality and eventually remove the need for
+                    manual selection.
+                  </li>
+                </ol>
+              </div>
+              <div className="pt-2 flex justify-end">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setShowTutorial(false)}
+                  className="text-xs h-8"
+                >
+                  Hide tutorial
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
         {view === "curation" ? (
           <SlideGrid
             slides={slides}
