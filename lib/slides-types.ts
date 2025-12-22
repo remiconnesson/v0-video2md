@@ -148,6 +148,11 @@ export interface SlideAnalysisState {
   error: string | null;
 }
 
+export interface SlideAnalysisTarget {
+  slideNumber: number;
+  framePosition: "first" | "last";
+}
+
 /**
  * Picked slide info - represents a slide frame that was picked for analysis
  */

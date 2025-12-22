@@ -6,6 +6,7 @@ import {
   getVideoWithTranscript,
   saveSlideAnalysisResult,
 } from "@/db/queries";
+import type { SlideAnalysisTarget } from "@/lib/slides-types";
 
 // ============================================================================
 // Transcript Schema (for validation)
@@ -48,6 +49,7 @@ export interface PickedSlideInfo {
 
 export async function getPickedSlidesWithContext(
   videoId: string,
+  targets?: SlideAnalysisTarget[],
 ): Promise<PickedSlideInfo[]> {
   "use step";
 
@@ -112,7 +114,22 @@ export async function getPickedSlidesWithContext(
     }
   }
 
-  return pickedSlides;
+  if (!targets || targets.length === 0) {
+    return pickedSlides;
+  }
+
+  const targetKeys = new Set(
+    targets.map((target) => `${target.slideNumber}-${target.framePosition}`),
+  );
+  const filteredSlides = pickedSlides.filter((slide) =>
+    targetKeys.has(`${slide.slideNumber}-${slide.framePosition}`),
+  );
+
+  if (filteredSlides.length === 0) {
+    throw new Error("No matching slides found for analysis");
+  }
+
+  return filteredSlides;
 }
 
 /**
