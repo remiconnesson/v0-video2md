@@ -13,6 +13,7 @@ import type {
   SuperAnalysisStreamEvent,
 } from "@/lib/super-analysis-types";
 import { validateTranscriptStructure } from "@/lib/transcript-format";
+import type { YouTubeVideoId } from "@/lib/youtube-utils";
 
 export async function getSuperAnalysisInputData(
   videoId: string,
@@ -24,7 +25,9 @@ export async function getSuperAnalysisInputData(
     throw new Error("Video not found or no transcript available");
   }
 
-  const transcriptAnalysisResult = await getCompletedAnalysis(videoId);
+  const transcriptAnalysisResult = await getCompletedAnalysis(
+    videoId as YouTubeVideoId,
+  );
   if (!transcriptAnalysisResult?.result) {
     throw new Error("Transcript analysis not found");
   }

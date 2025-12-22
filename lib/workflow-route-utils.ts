@@ -13,9 +13,13 @@ export type WorkflowStatus =
   | "paused";
 
 export interface WorkflowRouteOptions<TCompletedResult, TWorkflowRecord> {
-  getCompletedResult: (videoId: string) => Promise<TCompletedResult | null>;
-  getWorkflowRecord: (videoId: string) => Promise<TWorkflowRecord | null>;
-  startWorkflow: (videoId: string) => Promise<NextResponse>;
+  getCompletedResult: (
+    videoId: YouTubeVideoId,
+  ) => Promise<TCompletedResult | null>;
+  getWorkflowRecord: (
+    videoId: YouTubeVideoId,
+  ) => Promise<TWorkflowRecord | null>;
+  startWorkflow: (videoId: YouTubeVideoId) => Promise<NextResponse>;
   extractWorkflowId: (record: TWorkflowRecord) => string;
 }
 
