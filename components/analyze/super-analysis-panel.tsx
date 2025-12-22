@@ -14,6 +14,7 @@ import { Streamdown } from "streamdown";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { UI } from "@/lib/constants";
 import { useStreamingFetch } from "@/lib/use-streaming-fetch";
 
 // Mobile-only header with video info for super analysis
@@ -168,7 +169,7 @@ export function SuperAnalysisPanel({
     try {
       await navigator.clipboard.writeText(analysis || "");
       setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      setTimeout(() => setCopied(false), UI.COPY_FEEDBACK_DURATION_MS);
     } catch (err) {
       console.error("Failed to copy:", err);
     }
@@ -226,7 +227,10 @@ export function SuperAnalysisPanel({
                     onClick={() => {
                       void handleCopyMarkdown();
                       setCopiedSection(true);
-                      setTimeout(() => setCopiedSection(false), 2000);
+                      setTimeout(
+                        () => setCopiedSection(false),
+                        UI.COPY_FEEDBACK_DURATION_MS,
+                      );
                     }}
                     aria-label="Copy super analysis markdown"
                     className="gap-2 shrink-0 text-muted-foreground hover:text-foreground"
