@@ -12,25 +12,13 @@ import {
   Loader2,
   X,
 } from "lucide-react";
-import { createParser, useQueryStates } from "nuqs";
+import { useQueryStates } from "nuqs";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-
-const parseAsPresence = createParser<boolean>({
-  parse: (value) =>
-    value === "" || value.toLowerCase() === "true" ? true : null,
-  serialize: () => "",
-});
-
-const tabQueryConfig = {
-  analyze: parseAsPresence,
-  slides: parseAsPresence,
-  slideAnalysis: parseAsPresence,
-  superAnalysis: parseAsPresence,
-};
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StepIndicator } from "@/components/ui/step-indicator";
+import { slidesPanelTabQueryConfig } from "@/lib/query-utils";
 import type {
   SlideAnalysisState,
   SlideAnalysisStreamEvent,
@@ -652,7 +640,7 @@ function CompletedState({
   );
   const [showOnlyPicked, setShowOnlyPicked] = useState(false);
   const [slidesConfirmed, setSlidesConfirmed] = useState(false);
-  const [, setQueryState] = useQueryStates(tabQueryConfig);
+  const [, setQueryState] = useQueryStates(slidesPanelTabQueryConfig);
 
   const isAnalyzing = analysisState.status === "streaming";
   const isAnalysisComplete =
