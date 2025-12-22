@@ -426,17 +426,19 @@ function MobileNavHeader({
   visibleTabs: typeof tabs;
   hasSuperAnalysis: boolean;
 }) {
-  // Get the current tab label
-  const currentTabLabel =
+  // TODO: (Investigate) It seems like there's an assumption here that by default if there's "no active tab", then the transcript analysis tab is the active tab.
+  const currentTab =
     activeTab === "super-analysis"
-      ? "Super Analysis"
-      : visibleTabs.find((t) => t.id === activeTab)?.label || "Analysis";
+      ? {
+          label: "Super Analysis",
+          icon: Wand2,
+        }
+      : (visibleTabs.find((t) => t.id === activeTab) ?? {
+          label: "Analysis",
+          icon: FileText,
+        });
 
-  // Get the current tab icon
-  const CurrentIcon =
-    activeTab === "super-analysis"
-      ? Wand2
-      : visibleTabs.find((t) => t.id === activeTab)?.icon || FileText;
+  const { label: currentTabLabel, icon: CurrentIcon } = currentTab;
 
   return (
     <header className="md:hidden sticky top-0 z-10 flex items-center gap-2 border-b bg-background px-4 py-3">
