@@ -1,4 +1,12 @@
-import { and, asc, desc, eq, inArray, isNotNull } from "drizzle-orm";
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  inArray,
+  isNotNull,
+  type SQL,
+} from "drizzle-orm";
 import type { SlideData } from "@/lib/slides-types";
 import type { TranscriptSegment } from "@/lib/transcript-format";
 import { db } from "./index";
@@ -27,6 +35,50 @@ import {
 async function findOne<T>(query: Promise<T[]>): Promise<T | null> {
   const [result] = await query;
   return result ?? null;
+}
+
+/**
+ * Builds a query to select video IDs from a table with optional conditions.
+ * Handles empty array guard and provides consistent error handling.
+ */
+async function selectVideoIdsFrom(
+  table: any,
+  videoIds: string[],
+  options: {
+    distinct?: boolean;
+    additionalWhere?: SQL<unknown>;
+    withErrorHandling?: boolean;
+  } = {},
+) {
+  if (videoIds.length === 0) return [];
+
+  const {
+    distinct = false,
+    additionalWhere,
+    withErrorHandling = false,
+  } = options;
+
+  const baseQuery = distinct
+    ? db.selectDistinct({ videoId: table.videoId })
+    : db.select({ videoId: table.videoId });
+
+  const whereConditions = [inArray(table.videoId, videoIds)];
+  if (additionalWhere) {
+    whereConditions.push(additionalWhere);
+  }
+
+  const query = baseQuery.from(table).where(and(...whereConditions));
+
+  if (withErrorHandling) {
+    try {
+      return await query;
+    } catch (error) {
+      console.error(`Error querying ${table._.name} for video IDs:`, error);
+      return [];
+    }
+  }
+
+  return await query;
 }
 
 // ============================================================================
@@ -113,27 +165,16 @@ export async function getProcessedVideos() {
  * Gets video IDs that have slides.
  */
 export async function getVideoIdsWithSlides(videoIds: string[]) {
-  if (videoIds.length === 0) return [];
-  return await db
-    .select({ videoId: videoSlides.videoId })
-    .from(videoSlides)
-    .where(inArray(videoSlides.videoId, videoIds));
+  return await selectVideoIdsFrom(videoSlides, videoIds);
 }
 
 /**
  * Gets video IDs that have completed analysis.
  */
 export async function getVideoIdsWithAnalysis(videoIds: string[]) {
-  if (videoIds.length === 0) return [];
-  return await db
-    .select({ videoId: videoAnalysisRuns.videoId })
-    .from(videoAnalysisRuns)
-    .where(
-      and(
-        inArray(videoAnalysisRuns.videoId, videoIds),
-        isNotNull(videoAnalysisRuns.result),
-      ),
-    );
+  return await selectVideoIdsFrom(videoAnalysisRuns, videoIds, {
+    additionalWhere: isNotNull(videoAnalysisRuns.result),
+  });
 }
 
 /**
@@ -155,32 +196,19 @@ export async function hasSlideAnalysisResults(videoId: string) {
  * Gets video IDs that have completed super analysis.
  */
 export async function getVideoIdsWithSuperAnalysis(videoIds: string[]) {
-  if (videoIds.length === 0) return [];
-  try {
-    return await db
-      .select({ videoId: superAnalysisRuns.videoId })
-      .from(superAnalysisRuns)
-      .where(
-        and(
-          inArray(superAnalysisRuns.videoId, videoIds),
-          isNotNull(superAnalysisRuns.result),
-        ),
-      );
-  } catch (error) {
-    console.error("Error querying super_analysis_runs for IDs:", error);
-    return [];
-  }
+  return await selectVideoIdsFrom(superAnalysisRuns, videoIds, {
+    additionalWhere: isNotNull(superAnalysisRuns.result),
+    withErrorHandling: true,
+  });
 }
 
 /**
  * Gets video IDs that have slide analysis results.
  */
 export async function getVideoIdsWithSlideAnalysis(videoIds: string[]) {
-  if (videoIds.length === 0) return [];
-  return await db
-    .selectDistinct({ videoId: slideAnalysisResults.videoId })
-    .from(slideAnalysisResults)
-    .where(inArray(slideAnalysisResults.videoId, videoIds));
+  return await selectVideoIdsFrom(slideAnalysisResults, videoIds, {
+    distinct: true,
+  });
 }
 
 // ============================================================================
