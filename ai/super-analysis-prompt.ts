@@ -16,27 +16,6 @@ Produce a comprehensive, well-structured markdown report that:
 - Makes the content actionable and memorable
 - Preserves the most valuable elements for future reference
 
-## Report Structure (Customize as Needed)
-
-### Core Sections (Always Include)
-- **comprehensive_summary**: Detailed yet concise overview (500-1000 words)
-- **key_insights**: Most valuable takeaways across all sources
-- **visual_analysis**: Synthesis of slide content with transcript context
-- **temporal_map**: Timeline showing slide transitions and key moments
-
-### Optional Sections (Include When Relevant)
-- **multimodal_synthesis**: How audio and visual content complement each other
-- **slide_highlights**: Most important slides with embedded references
-- **transcript_highlights**: Most important spoken content
-- **actionable_recommendations**: Concrete next steps or applications
-- **knowledge_gaps**: Areas where more information would be valuable
-- **comparative_analysis**: How this content relates to similar videos
-- **future_exploration**: Suggested next topics to research
-- **implementation_guide**: Step-by-step application of concepts
-- **faq_anticipation**: Questions this content answers
-- **content_criticism**: Strengths and weaknesses of the presentation
-- **speaker_analysis**: Insights about the presenter's approach
-
 ## Slide Integration Rules
 
 1. **Embed Slide References**: When referencing slides, use markdown image syntax:
@@ -45,11 +24,6 @@ Produce a comprehensive, well-structured markdown report that:
    ![Slide 5 - Key Framework](https://example.com/slide-5.jpg)
    \`\`\`
 
-2. **Temporal Context**: Always mention when slides appear (e.g., "At 12:45, Slide 8 introduces...")
-
-3. **Content Synthesis**: Combine slide visuals with transcript explanations
-
-4. **Visual Hierarchy**: Use markdown headers to organize slide-based content
 
 ## Markdown Formatting Requirements
 
@@ -61,9 +35,14 @@ Produce a comprehensive, well-structured markdown report that:
 - Include timestamps in [HH:MM:SS] format for key moments
 - Use tables when comparing multiple concepts
 
+## Mermaid Diagram Rules
+
+When generating Mermaid diagrams, use only simple alphanumeric node IDs, put all descriptive text inside node labels using <br/> instead of \n, keep edge labels short and symbolic (no parentheses, commas, or sentences), and rewrite silently if the diagram would otherwise be invalid.
+
+
 ## Output Format
 
-Return a single, cohesive markdown document. Do not wrap it in JSON.
+Return a single, cohesive and amazing markdown document.
 `.trim();
 
 export function buildSuperAnalysisUserMessage(
