@@ -28,6 +28,7 @@ import type {
   SlidesState,
 } from "@/lib/slides-types";
 import { consumeSSE } from "@/lib/sse";
+import { SlideAnalysisStatus, SlidesStatus } from "@/lib/status-types";
 import { cn } from "@/lib/utils";
 import { SlideCard } from "./slide-card";
 
@@ -44,7 +45,7 @@ interface SlidesPanelProps {
 
 export function SlidesPanel({ videoId }: SlidesPanelProps) {
   const [slidesState, setSlidesState] = useState<SlidesState>({
-    status: "loading",
+    status: SlidesStatus.LOADING,
     step: 1,
     totalSteps: 4,
     message: "Loading slides...",
@@ -59,7 +60,7 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
 
   // Slide analysis state
   const [analysisState, setAnalysisState] = useState<SlideAnalysisState>({
-    status: "idle",
+    status: SlidesStatus.IDLE,
     progress: 0,
     message: "",
     error: null,
@@ -71,7 +72,7 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
   const loadSlidesState = useCallback(async () => {
     setSlidesState((prev) => ({
       ...prev,
-      status: "loading",
+      status: SlidesStatus.LOADING,
       message: "Loading slides...",
       error: null,
     }));
@@ -90,7 +91,7 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
       switch (data.status) {
         case "completed": {
           setSlidesState({
-            status: "completed",
+            status: SlidesStatus.COMPLETED,
             step: 4,
             totalSteps: 4,
             message: slidesMessage,
@@ -101,7 +102,7 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
         }
         case "in_progress": {
           setSlidesState({
-            status: "extracting",
+            status: SlidesStatus.EXTRACTING,
             step: 2,
             totalSteps: 4,
             message: "Slide extraction in progress...",
@@ -112,7 +113,7 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
         }
         case "pending": {
           setSlidesState({
-            status: "extracting",
+            status: SlidesStatus.EXTRACTING,
             step: 1,
             totalSteps: 4,
             message: "Slide extraction in progress...",
@@ -123,7 +124,7 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
         }
         case "failed": {
           setSlidesState({
-            status: "error",
+            status: SlidesStatus.ERROR,
             step: 1,
             totalSteps: 4,
             message: "",
@@ -135,7 +136,8 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
         }
         default: {
           setSlidesState({
-            status: slides.length > 0 ? "completed" : "idle",
+            status:
+              slides.length > 0 ? SlidesStatus.COMPLETED : SlidesStatus.IDLE,
             step: slides.length > 0 ? 4 : 1,
             totalSteps: 4,
             message: slides.length > 0 ? slidesMessage : "",
@@ -149,7 +151,7 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
         error instanceof Error ? error.message : "Failed to load slides.";
 
       setSlidesState({
-        status: "error",
+        status: SlidesStatus.ERROR,
         step: 1,
         totalSteps: 4,
         message: "",
@@ -289,7 +291,7 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
     if (!hasPickedFrames) return;
 
     setAnalysisState({
-      status: "streaming",
+      status: SlideAnalysisStatus.STREAMING,
       progress: 0,
       message: "Starting analysis...",
       error: null,
@@ -332,7 +334,7 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
         progress: (e) => {
           setAnalysisState((prev) => ({
             ...prev,
-            status: "streaming",
+            status: SlideAnalysisStatus.STREAMING,
             progress: e.progress,
             message: e.message,
           }));
@@ -351,7 +353,7 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
         },
         complete: () => {
           setAnalysisState({
-            status: "completed",
+            status: SlidesStatus.COMPLETED,
             progress: 100,
             message: "Analysis complete",
             error: null,
@@ -360,7 +362,7 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
         error: (e) => {
           setAnalysisState((prev) => ({
             ...prev,
-            status: "error",
+            status: SlidesStatus.ERROR,
             error: e.message,
           }));
         },
@@ -371,7 +373,7 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
 
       setAnalysisState((prev) => ({
         ...prev,
-        status: "error",
+        status: SlidesStatus.ERROR,
         error: errorMessage,
       }));
     }
@@ -406,7 +408,7 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
         progress: (e) => {
           setSlidesState((prev) => ({
             ...prev,
-            status: "extracting",
+            status: SlidesStatus.EXTRACTING,
             step: e.step ?? prev.step,
             totalSteps: e.totalSteps ?? prev.totalSteps,
             message: e.message ?? prev.message,
@@ -421,7 +423,7 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
         complete: (e) => {
           setSlidesState((prev) => ({
             ...prev,
-            status: "completed",
+            status: SlidesStatus.COMPLETED,
             step: 4,
             totalSteps: 4,
             message: `Extracted ${e.totalSlides} slides`,
@@ -431,7 +433,7 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
         error: (e) => {
           setSlidesState((prev) => ({
             ...prev,
-            status: "error",
+            status: SlidesStatus.ERROR,
             step: 1,
             totalSteps: 4,
             message: "",
@@ -445,7 +447,7 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
 
       setSlidesState((prev) => ({
         ...prev,
-        status: "error",
+        status: SlidesStatus.ERROR,
         step: 1,
         totalSteps: 4,
         message: "",
@@ -463,13 +465,13 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
 
   // Auto-trigger extraction when in idle state
   useEffect(() => {
-    if (slidesState.status === "idle") {
+    if (slidesState.status === SlidesStatus.IDLE) {
       startExtraction();
     }
   }, [slidesState.status, startExtraction]);
 
   // Idle state - show loading state while extraction starts
-  if (slidesState.status === "idle") {
+  if (slidesState.status === SlidesStatus.IDLE) {
     return (
       <Card>
         <CardContent className="py-12">
@@ -483,12 +485,12 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
   }
 
   // Loading state
-  if (slidesState.status === "loading") {
+  if (slidesState.status === SlidesStatus.LOADING) {
     return <LoadingState />;
   }
 
   // Extracting state
-  if (slidesState.status === "extracting") {
+  if (slidesState.status === SlidesStatus.EXTRACTING) {
     return (
       <ExtractingState
         step={slidesState.step}
@@ -502,7 +504,7 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
   }
 
   // Error state
-  if (slidesState.status === "error") {
+  if (slidesState.status === SlidesStatus.ERROR) {
     return <ErrorState error={slidesState.error} onRetry={startExtraction} />;
   }
 

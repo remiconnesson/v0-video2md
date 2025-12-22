@@ -1,6 +1,10 @@
 import { createSelectSchema } from "drizzle-zod";
 import { z } from "zod";
 import { slideFeedback, videoSlides } from "@/db/schema";
+import type {
+  SlideAnalysisStatusType,
+  SlidesStatusType,
+} from "@/lib/status-types";
 
 const FrameMetadataSchema = z.object({
   frame_id: z.string(),
@@ -113,7 +117,7 @@ export interface JobUpdate {
 // ============================================================================
 
 export interface SlidesState {
-  status: "idle" | "loading" | "extracting" | "completed" | "error";
+  status: SlidesStatusType;
   step: number;
   totalSteps: number;
   message: string;
@@ -142,7 +146,7 @@ export type SlideAnalysisStreamEvent =
   | { type: "error"; message: string };
 
 export interface SlideAnalysisState {
-  status: "idle" | "loading" | "streaming" | "completed" | "error";
+  status: SlideAnalysisStatusType;
   progress: number;
   message: string;
   error: string | null;
