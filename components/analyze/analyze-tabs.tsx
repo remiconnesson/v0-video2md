@@ -15,7 +15,6 @@ const parseAsPresence = createParser<boolean>({
 const tabQueryConfig = {
   analyze: parseAsPresence,
   slides: parseAsPresence,
-  slidesGrid: parseAsPresence,
   superAnalysis: parseAsPresence,
 };
 
@@ -39,27 +38,14 @@ export function AnalyzeTabs({
   const activeTab =
     queryState.superAnalysis && hasSuperAnalysis
       ? "super-analysis"
-      : queryState.slidesGrid
-        ? "slides-grid"
-        : queryState.slides
-          ? "slides"
-          : "analyze";
+      : queryState.slides
+        ? "slides"
+        : "analyze";
 
   const handleTabChange = (value: string) => {
-    if (value === "slides-grid") {
-      void setQueryState({
-        slidesGrid: true,
-        slides: null,
-        analyze: null,
-        superAnalysis: null,
-      });
-      return;
-    }
-
     if (value === "slides") {
       void setQueryState({
         slides: true,
-        slidesGrid: null,
         analyze: null,
         superAnalysis: null,
       });
@@ -70,7 +56,6 @@ export function AnalyzeTabs({
       if (!hasSuperAnalysis) return;
       void setQueryState({
         superAnalysis: true,
-        slidesGrid: null,
         slides: null,
         analyze: null,
       });
@@ -80,7 +65,6 @@ export function AnalyzeTabs({
     void setQueryState({
       analyze: true,
       slides: null,
-      slidesGrid: null,
       superAnalysis: null,
     });
   };
@@ -96,8 +80,7 @@ export function AnalyzeTabs({
         {hasSuperAnalysis ? (
           <TabsTrigger value="super-analysis">Super Analysis</TabsTrigger>
         ) : null}
-        <TabsTrigger value="slides">Slide Curation</TabsTrigger>
-        <TabsTrigger value="slides-grid">Slides Grid</TabsTrigger>
+        <TabsTrigger value="slides">Slides</TabsTrigger>
       </TabsList>
 
       <TabsContent value="analyze">
@@ -109,11 +92,7 @@ export function AnalyzeTabs({
       </TabsContent>
 
       <TabsContent value="slides">
-        <SlidesPanel videoId={videoId} view="curation" />
-      </TabsContent>
-
-      <TabsContent value="slides-grid">
-        <SlidesPanel videoId={videoId} view="grid" />
+        <SlidesPanel videoId={videoId} />
       </TabsContent>
 
       <TabsContent value="super-analysis">

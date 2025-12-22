@@ -92,12 +92,14 @@ interface SlideCardProps {
   slide: SlideData;
   initialFeedback?: SlideFeedbackData;
   onSubmitFeedback: (feedback: SlideFeedbackData) => Promise<void>;
+  showOnlyPickedFrames?: boolean;
 }
 
 export function SlideCard({
   slide,
   initialFeedback,
   onSubmitFeedback,
+  showOnlyPickedFrames = false,
 }: SlideCardProps) {
   const [zoomOpen, setZoomOpen] = useState(false);
   const [zoomFrame, setZoomFrame] = useState<"first" | "last">("first");
@@ -155,6 +157,11 @@ export function SlideCard({
     },
   ];
 
+  // Determine which frames to show when in "show only picked" mode
+  const showFirstFrame = !showOnlyPickedFrames || feedback.isFirstFramePicked;
+  const showLastFrame = !showOnlyPickedFrames || feedback.isLastFramePicked;
+  const showBothFrames = showFirstFrame && showLastFrame;
+
   return (
     <div className="rounded-lg border bg-card overflow-hidden">
       {/* Header */}
@@ -169,54 +176,69 @@ export function SlideCard({
 
       {/* Content */}
       <div className="p-4 space-y-4">
-        {/* First and Last frames side by side */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <FrameCard
-            label="First"
-            imageUrl={slide.firstFrameImageUrl}
-            onZoom={() => handleZoom("first")}
-            isPicked={feedback.isFirstFramePicked}
-            onPickedChange={(picked) =>
-              updateField("isFirstFramePicked", picked)
-            }
-          />
-          <FrameCard
-            label="Last"
-            imageUrl={slide.lastFrameImageUrl}
-            onZoom={() => handleZoom("last")}
-            isPicked={feedback.isLastFramePicked}
-            onPickedChange={(picked) =>
-              updateField("isLastFramePicked", picked)
-            }
-          />
+        {/* First and Last frames - side by side or single column depending on visibility */}
+        <div
+          className={cn(
+            "grid gap-4",
+            showBothFrames
+              ? "grid-cols-1 md:grid-cols-2"
+              : "grid-cols-1 max-w-md",
+          )}
+        >
+          {showFirstFrame && (
+            <FrameCard
+              label="First"
+              imageUrl={slide.firstFrameImageUrl}
+              onZoom={() => handleZoom("first")}
+              isPicked={feedback.isFirstFramePicked}
+              onPickedChange={(picked) =>
+                updateField("isFirstFramePicked", picked)
+              }
+            />
+          )}
+          {showLastFrame && (
+            <FrameCard
+              label="Last"
+              imageUrl={slide.lastFrameImageUrl}
+              onZoom={() => handleZoom("last")}
+              isPicked={feedback.isLastFramePicked}
+              onPickedChange={(picked) =>
+                updateField("isLastFramePicked", picked)
+              }
+            />
+          )}
         </div>
 
-        {/* Slide-level annotations - less prominent */}
-        <div className="space-y-3 pt-2">
-          <div className="flex items-center justify-between p-2 rounded-md bg-muted/20 text-sm">
-            <span className="text-muted-foreground">
-              Report first and last frame having different useful content?
-            </span>
-            <div className="flex items-center gap-2">
-              <Button
-                variant={
-                  feedback.framesSameness === "different" ? "default" : "ghost"
-                }
-                size="sm"
-                onClick={() =>
-                  updateField(
-                    "framesSameness",
+        {/* Slide-level annotations - only show when not in "show only picked" mode */}
+        {!showOnlyPickedFrames && (
+          <div className="space-y-3 pt-2">
+            <div className="flex items-center justify-between p-2 rounded-md bg-muted/20 text-sm">
+              <span className="text-muted-foreground">
+                Report first and last frame having different useful content?
+              </span>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant={
                     feedback.framesSameness === "different"
-                      ? null
-                      : "different",
-                  )
-                }
-              >
-                Report
-              </Button>
+                      ? "default"
+                      : "ghost"
+                  }
+                  size="sm"
+                  onClick={() =>
+                    updateField(
+                      "framesSameness",
+                      feedback.framesSameness === "different"
+                        ? null
+                        : "different",
+                    )
+                  }
+                >
+                  Report
+                </Button>
+              </div>
             </div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* Zoom Dialog */}
