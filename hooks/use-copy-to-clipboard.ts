@@ -1,6 +1,7 @@
 import { useState } from "react";
+import { UI } from '@lib/constants.ts';
 
-export function useCopyToClipboard(timeout = 2000) {
+export function useCopyToClipboard(timeout = UI.COPY_FEEDBACK_DURATION_MS) {
   const [copied, setCopied] = useState(false);
 
   const copy = async (text: string) => {
