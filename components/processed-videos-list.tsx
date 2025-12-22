@@ -106,6 +106,7 @@ export interface VideoData {
   };
   hasSlides: boolean;
   hasAnalysis: boolean;
+  hasSuperAnalysis: boolean;
   hasSlideAnalysis: boolean;
   completedAt?: string;
 }
@@ -185,6 +186,18 @@ export const columns: ColumnDef<VideoData>[] = [
     ),
   },
   {
+    accessorKey: "hasAnalysis",
+    header: "Transcript Analysis",
+    size: 120,
+    cell: ({ row }) => <StatusBadge value={row.original.hasAnalysis} />,
+    filterFn: (row, _columnId, filterValue: string) => {
+      if (filterValue === "all") return true;
+      return filterValue === "yes"
+        ? row.original.hasAnalysis
+        : !row.original.hasAnalysis;
+    },
+  },
+  {
     accessorKey: "hasSlides",
     header: "Slides",
     size: 120,
@@ -197,20 +210,8 @@ export const columns: ColumnDef<VideoData>[] = [
     },
   },
   {
-    accessorKey: "hasAnalysis",
-    header: "Analysis",
-    size: 120,
-    cell: ({ row }) => <StatusBadge value={row.original.hasAnalysis} />,
-    filterFn: (row, _columnId, filterValue: string) => {
-      if (filterValue === "all") return true;
-      return filterValue === "yes"
-        ? row.original.hasAnalysis
-        : !row.original.hasAnalysis;
-    },
-  },
-  {
     accessorKey: "hasSlideAnalysis",
-    header: "Slide AI",
+    header: "Slide Analysis",
     size: 120,
     cell: ({ row }) => <StatusBadge value={row.original.hasSlideAnalysis} />,
     filterFn: (row, _columnId, filterValue: string) => {
@@ -218,6 +219,18 @@ export const columns: ColumnDef<VideoData>[] = [
       return filterValue === "yes"
         ? row.original.hasSlideAnalysis
         : !row.original.hasSlideAnalysis;
+    },
+  },
+  {
+    accessorKey: "hasSuperAnalysis",
+    header: "Super Analysis",
+    size: 140,
+    cell: ({ row }) => <StatusBadge value={row.original.hasSuperAnalysis} />,
+    filterFn: (row, _columnId, filterValue: string) => {
+      if (filterValue === "all") return true;
+      return filterValue === "yes"
+        ? row.original.hasSuperAnalysis
+        : !row.original.hasSuperAnalysis;
     },
   },
 ];
@@ -265,22 +278,29 @@ export function VideosDataTable({ data }: VideosDataTableProps) {
         </div>
         <div className="flex gap-3 sm:items-center">
           <FilterSelect
-            label="Slides"
-            value={getFilter("hasSlides") || "all"}
-            onValueChange={(v) => setFilter("hasSlides", v === "all" ? "" : v)}
-          />
-          <FilterSelect
-            label="Analysis"
+            label="Transcript Analysis"
             value={getFilter("hasAnalysis") || "all"}
             onValueChange={(v) =>
               setFilter("hasAnalysis", v === "all" ? "" : v)
             }
           />
           <FilterSelect
-            label="Slide AI"
+            label="Slides"
+            value={getFilter("hasSlides") || "all"}
+            onValueChange={(v) => setFilter("hasSlides", v === "all" ? "" : v)}
+          />
+          <FilterSelect
+            label="Slide Analysis"
             value={getFilter("hasSlideAnalysis") || "all"}
             onValueChange={(v) =>
               setFilter("hasSlideAnalysis", v === "all" ? "" : v)
+            }
+          />
+          <FilterSelect
+            label="Super Analysis"
+            value={getFilter("hasSuperAnalysis") || "all"}
+            onValueChange={(v) =>
+              setFilter("hasSuperAnalysis", v === "all" ? "" : v)
             }
           />
         </div>

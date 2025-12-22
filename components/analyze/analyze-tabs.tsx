@@ -3,6 +3,7 @@
 import { createParser, useQueryStates } from "nuqs";
 import { AnalysisPanel } from "@/components/analyze/analysis-panel";
 import { SlidesPanel } from "@/components/analyze/slides-panel";
+import { SuperAnalysisPanel } from "@/components/analyze/super-analysis-panel";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const parseAsPresence = createParser<boolean>({
@@ -15,34 +16,73 @@ const tabQueryConfig = {
   analyze: parseAsPresence,
   slides: parseAsPresence,
   slidesGrid: parseAsPresence,
+  superAnalysis: parseAsPresence,
 };
 
 type AnalyzeTabsProps = {
   videoId: string;
   title: string;
   channelName: string;
+  hasTranscriptAnalysis: boolean;
+  hasSlideAnalysis: boolean;
 };
 
-export function AnalyzeTabs({ videoId, title, channelName }: AnalyzeTabsProps) {
+export function AnalyzeTabs({
+  videoId,
+  title,
+  channelName,
+  hasTranscriptAnalysis,
+  hasSlideAnalysis,
+}: AnalyzeTabsProps) {
   const [queryState, setQueryState] = useQueryStates(tabQueryConfig);
-  const activeTab = queryState.slidesGrid
-    ? "slides-grid"
-    : queryState.slides
-      ? "slides"
-      : "analyze";
+  const hasSuperAnalysis = hasTranscriptAnalysis && hasSlideAnalysis;
+  const activeTab =
+    queryState.superAnalysis && hasSuperAnalysis
+      ? "super-analysis"
+      : queryState.slidesGrid
+        ? "slides-grid"
+        : queryState.slides
+          ? "slides"
+          : "analyze";
 
   const handleTabChange = (value: string) => {
     if (value === "slides-grid") {
-      void setQueryState({ slidesGrid: true, slides: null, analyze: null });
+      void setQueryState({
+        slidesGrid: true,
+        slides: null,
+        analyze: null,
+        superAnalysis: null,
+      });
       return;
     }
 
     if (value === "slides") {
-      void setQueryState({ slides: true, slidesGrid: null, analyze: null });
+      void setQueryState({
+        slides: true,
+        slidesGrid: null,
+        analyze: null,
+        superAnalysis: null,
+      });
       return;
     }
 
-    void setQueryState({ analyze: true, slides: null, slidesGrid: null });
+    if (value === "super-analysis") {
+      if (!hasSuperAnalysis) return;
+      void setQueryState({
+        superAnalysis: true,
+        slidesGrid: null,
+        slides: null,
+        analyze: null,
+      });
+      return;
+    }
+
+    void setQueryState({
+      analyze: true,
+      slides: null,
+      slidesGrid: null,
+      superAnalysis: null,
+    });
   };
 
   return (
@@ -53,6 +93,9 @@ export function AnalyzeTabs({ videoId, title, channelName }: AnalyzeTabsProps) {
     >
       <TabsList>
         <TabsTrigger value="analyze">Analysis</TabsTrigger>
+        {hasSuperAnalysis ? (
+          <TabsTrigger value="super-analysis">Super Analysis</TabsTrigger>
+        ) : null}
         <TabsTrigger value="slides">Slide Curation</TabsTrigger>
         <TabsTrigger value="slides-grid">Slides Grid</TabsTrigger>
       </TabsList>
@@ -71,6 +114,14 @@ export function AnalyzeTabs({ videoId, title, channelName }: AnalyzeTabsProps) {
 
       <TabsContent value="slides-grid">
         <SlidesPanel videoId={videoId} view="grid" />
+      </TabsContent>
+
+      <TabsContent value="super-analysis">
+        <SuperAnalysisPanel
+          videoId={videoId}
+          title={title}
+          channelName={channelName}
+        />
       </TabsContent>
     </Tabs>
   );

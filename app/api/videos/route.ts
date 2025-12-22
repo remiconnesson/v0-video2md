@@ -4,6 +4,7 @@ import {
   getVideoIdsWithAnalysis,
   getVideoIdsWithSlideAnalysis,
   getVideoIdsWithSlides,
+  getVideoIdsWithSuperAnalysis,
 } from "@/db/queries";
 import { formatDuration } from "@/lib/time-utils";
 
@@ -16,14 +17,19 @@ export async function GET() {
   const results = await getProcessedVideos();
   const videoIds = results.map((row) => row.videoId);
 
-  const [slidesRows, analysisRows, slideAnalysisRows] = await Promise.all([
-    getVideoIdsWithSlides(videoIds),
-    getVideoIdsWithAnalysis(videoIds),
-    getVideoIdsWithSlideAnalysis(videoIds),
-  ]);
+  const [slidesRows, analysisRows, slideAnalysisRows, superAnalysisRows] =
+    await Promise.all([
+      getVideoIdsWithSlides(videoIds),
+      getVideoIdsWithAnalysis(videoIds),
+      getVideoIdsWithSlideAnalysis(videoIds),
+      getVideoIdsWithSuperAnalysis(videoIds),
+    ]);
 
   const videosWithSlides = new Set(slidesRows.map((row) => row.videoId));
   const videosWithAnalysis = new Set(analysisRows.map((row) => row.videoId));
+  const videosWithSuperAnalysis = new Set(
+    superAnalysisRows.map((row) => row.videoId),
+  );
   const videosWithSlideAnalysis = new Set(
     slideAnalysisRows.map((row) => row.videoId),
   );
@@ -42,6 +48,7 @@ export async function GET() {
     },
     hasSlides: videosWithSlides.has(row.videoId),
     hasAnalysis: videosWithAnalysis.has(row.videoId),
+    hasSuperAnalysis: videosWithSuperAnalysis.has(row.videoId),
     hasSlideAnalysis: videosWithSlideAnalysis.has(row.videoId),
     completedAt: row.createdAt?.toISOString(),
   }));

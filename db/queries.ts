@@ -8,6 +8,8 @@ import {
   scrapTranscriptV1,
   slideAnalysisResults,
   slideFeedback,
+  superAnalysisRuns,
+  superAnalysisWorkflowIds,
   videoAnalysisRuns,
   videoAnalysisWorkflowIds,
   videoSlideExtractions,
@@ -43,6 +45,7 @@ export async function getVideoWithTranscript(videoId: string) {
         title: videos.title,
         channelName: channels.channelName,
         description: scrapTranscriptV1.description,
+        durationSeconds: scrapTranscriptV1.durationSeconds,
         transcript: scrapTranscriptV1.transcript,
       })
       .from(videos)
@@ -131,6 +134,42 @@ export async function getVideoIdsWithAnalysis(videoIds: string[]) {
         isNotNull(videoAnalysisRuns.result),
       ),
     );
+}
+
+/**
+ * Checks if a video has any slide analysis results.
+ */
+export async function hasSlideAnalysisResults(videoId: string) {
+  const result = await findOne(
+    db
+      .select({ id: slideAnalysisResults.id })
+      .from(slideAnalysisResults)
+      .where(eq(slideAnalysisResults.videoId, videoId))
+      .limit(1),
+  );
+
+  return !!result;
+}
+
+/**
+ * Gets video IDs that have completed super analysis.
+ */
+export async function getVideoIdsWithSuperAnalysis(videoIds: string[]) {
+  if (videoIds.length === 0) return [];
+  try {
+    return await db
+      .select({ videoId: superAnalysisRuns.videoId })
+      .from(superAnalysisRuns)
+      .where(
+        and(
+          inArray(superAnalysisRuns.videoId, videoIds),
+          isNotNull(superAnalysisRuns.result),
+        ),
+      );
+  } catch (error) {
+    console.error("Error querying super_analysis_runs for IDs:", error);
+    return [];
+  }
 }
 
 /**
@@ -342,6 +381,90 @@ export async function saveTranscriptAnalysis(
       target: [videoAnalysisRuns.videoId],
       set: {
         result,
+      },
+    });
+}
+
+// ============================================================================
+// Super Analysis Queries
+// ============================================================================
+
+/**
+ * Gets completed super analysis for a video.
+ */
+export async function getCompletedSuperAnalysis(videoId: string) {
+  try {
+    return await findOne(
+      db
+        .select({
+          videoId: superAnalysisRuns.videoId,
+          result: superAnalysisRuns.result,
+          createdAt: superAnalysisRuns.createdAt,
+        })
+        .from(superAnalysisRuns)
+        .where(eq(superAnalysisRuns.videoId, videoId)),
+    );
+  } catch (error) {
+    // If the table doesn't exist yet, we treat it as no analysis found
+    // This prevents the workflow from crashing if migrations haven't been run
+    console.error("Error querying super_analysis_runs:", error);
+    return null;
+  }
+}
+
+/**
+ * Saves super analysis result.
+ */
+export async function saveSuperAnalysisResult(videoId: string, result: string) {
+  await db
+    .insert(superAnalysisRuns)
+    .values({
+      videoId,
+      result,
+    })
+    .onConflictDoUpdate({
+      target: [superAnalysisRuns.videoId],
+      set: {
+        result,
+      },
+    });
+}
+
+/**
+ * Gets workflow record for super analysis.
+ */
+export async function getSuperAnalysisWorkflowId(videoId: string) {
+  try {
+    return await findOne(
+      db
+        .select()
+        .from(superAnalysisWorkflowIds)
+        .where(eq(superAnalysisWorkflowIds.videoId, videoId)),
+    );
+  } catch (error) {
+    console.error("Error querying super_analysis_workflow_ids:", error);
+    return null;
+  }
+}
+
+/**
+ * Stores workflow ID for super analysis.
+ */
+export async function storeSuperAnalysisWorkflowId(
+  videoId: string,
+  workflowId: string,
+) {
+  await db
+    .insert(superAnalysisWorkflowIds)
+    .values({
+      videoId,
+      workflowId,
+    })
+    .onConflictDoUpdate({
+      target: [superAnalysisWorkflowIds.videoId],
+      set: {
+        workflowId,
+        createdAt: new Date(),
       },
     });
 }

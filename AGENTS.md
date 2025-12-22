@@ -141,6 +141,8 @@ Key tables in PostgreSQL:
 - `videos` - Video metadata (title, URL, published date)
 - `scrap_transcript_v1` - Transcript data with metadata
 - `videoAnalysisRuns` - Cached AI analysis results
+- `superAnalysisRuns` - Unified AI analysis reports (markdown)
+- `superAnalysisWorkflowIds` - Workflow IDs for super analysis
 - `videoSlideExtractions` - Slide extraction jobs
 - `videoSlides` - Extracted slide data with timing
 
