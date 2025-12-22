@@ -2,6 +2,7 @@
 
 import { FileText, Loader2, RefreshCw } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
+import { Streamdown } from "streamdown";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { SlideAnalysisStreamEvent } from "@/lib/slides-types";
@@ -270,11 +271,9 @@ function SlideAnalysisCard({ result }: { result: SlideAnalysisResult }) {
 }
 
 function MarkdownContent({ content }: { content: string }) {
-  // Simple markdown rendering - in production you might want a proper markdown parser
-  // For now, just render as preformatted text with some basic styling
   return (
-    <div className="whitespace-pre-wrap text-sm text-muted-foreground bg-muted/30 p-3 rounded-md overflow-auto max-h-96">
-      {content}
+    <div className="prose text-sm dark:prose-invert max-w-none prose-p:leading-relaxed prose-p:text-muted-foreground/90">
+      <Streamdown>{content || ""}</Streamdown>
     </div>
   );
 }
