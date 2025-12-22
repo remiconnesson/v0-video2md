@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import localFont from "next/font/local";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
 import type React from "react";
+import { Providers } from "./providers";
 import { ThemeProvider } from "@/components/theme-provider";
 import "./globals.css";
 
@@ -48,10 +49,12 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-          <NuqsAdapter>
-            {children}
-            <Analytics />
-          </NuqsAdapter>
+          <Providers>
+            <NuqsAdapter>
+              {children}
+              <Analytics />
+            </NuqsAdapter>
+          </Providers>
         </ThemeProvider>
       </body>
     </html>
