@@ -186,18 +186,6 @@ export const columns: ColumnDef<VideoData>[] = [
     ),
   },
   {
-    accessorKey: "hasAnalysis",
-    header: "Transcript",
-    size: 100,
-    cell: ({ row }) => <StatusBadge value={row.original.hasAnalysis} />,
-    filterFn: (row, _columnId, filterValue: string) => {
-      if (filterValue === "all") return true;
-      return filterValue === "yes"
-        ? row.original.hasAnalysis
-        : !row.original.hasAnalysis;
-    },
-  },
-  {
     accessorKey: "hasSlides",
     header: "Slides",
     size: 90,
