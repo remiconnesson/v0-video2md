@@ -245,10 +245,13 @@ export function AnalyzeSidebar({
             <SidebarMenuButton
               asChild
               tooltip="Home"
-              className="flex items-center justify-center"
+              className="flex items-center"
             >
               <Link href="/">
-                <Home className="size-5" />
+                <Home className="size-5 shrink-0" />
+                <span className="md:hidden ml-2 text-xs font-medium truncate">
+                  Home
+                </span>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
@@ -269,11 +272,14 @@ export function AnalyzeSidebar({
                   isActive={isActive}
                   onClick={() => onTabChange?.(tab.id)}
                   className={cn(
-                    "relative flex items-center justify-center",
+                    "relative flex items-center",
                     isActive && "bg-sidebar-accent",
                   )}
                 >
-                  <Icon className="size-5" />
+                  <Icon className="size-5 shrink-0" />
+                  <span className="md:hidden ml-2 text-xs font-medium truncate">
+                    {tab.label}
+                  </span>
                   {isActive ? (
                     <div className="absolute left-0 top-1/2 h-5 w-1 -translate-y-1/2 rounded-r bg-primary" />
                   ) : null}
@@ -289,7 +295,7 @@ export function AnalyzeSidebar({
                 isActive={activeTab === "super-analysis"}
                 onClick={() => onTabChange?.("super-analysis")}
                 className={cn(
-                  "relative flex items-center justify-center transition-all duration-300",
+                  "relative flex items-center transition-all duration-300",
                   activeTab === "super-analysis"
                     ? "bg-sidebar-accent"
                     : "hover:bg-sidebar-accent/50",
@@ -297,12 +303,15 @@ export function AnalyzeSidebar({
               >
                 <Wand2
                   className={cn(
-                    "size-5 transition-all duration-300",
+                    "size-5 shrink-0 transition-all duration-300",
                     activeTab === "super-analysis"
                       ? "text-amber-500"
                       : "group-hover:text-amber-400",
                   )}
                 />
+                <span className="md:hidden ml-2 text-xs font-medium truncate">
+                  Super Analysis
+                </span>
                 {activeTab === "super-analysis" ? (
                   <div className="absolute left-0 top-1/2 h-5 w-1 -translate-y-1/2 rounded-r bg-amber-500" />
                 ) : null}
@@ -321,13 +330,16 @@ export function AnalyzeSidebar({
                   isDark ? "Switch to light mode" : "Switch to dark mode"
                 }
                 onClick={onToggleTheme}
-                className="flex items-center justify-center"
+                className="flex items-center"
               >
                 {isDark ? (
-                  <Sun className="size-5" />
+                  <Sun className="size-5 shrink-0" />
                 ) : (
-                  <Moon className="size-5" />
+                  <Moon className="size-5 shrink-0" />
                 )}
+                <span className="md:hidden ml-2 text-xs font-medium truncate">
+                  {isDark ? "Light" : "Dark"}
+                </span>
               </SidebarMenuButton>
             ) : (
               <div className="flex items-center justify-center size-9 animate-pulse rounded bg-muted/50">
@@ -435,7 +447,7 @@ function MobileNavHeader({
   const { label: currentTabLabel, icon: CurrentIcon } = currentTab;
 
   return (
-    <header className="md:hidden sticky top-0 z-10 flex items-center gap-2 border-b bg-background px-4 py-3">
+    <header className="md:hidden sticky top-0 z-10 flex items-center gap-2 border-b bg-background px-4 py-2">
       <SidebarTrigger className="-ml-1">
         <Menu className="h-5 w-5" />
         <span className="sr-only">Toggle navigation menu</span>
