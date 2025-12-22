@@ -381,7 +381,7 @@ export function SlidesPanel({ videoId, view = "curation" }: SlidesPanelProps) {
         error: errorMessage,
       }));
     }
-  }, [videoId, hasPickedFrames]);
+  }, [videoId, hasPickedFrames, feedbackMap, slidesState.slides]);
 
   const startExtraction = useCallback(async () => {
     // Set state to extracting
@@ -846,7 +846,7 @@ function SlideGrid({
   return (
     <div
       ref={parentRef}
-      className="h-[600px] overflow-auto"
+      className="h-[400px] md:h-[600px] overflow-auto"
       style={{
         contain: "strict",
       }}

@@ -1,6 +1,12 @@
 "use client";
 
-import { Check, Copy, ExternalLink, Image as ImageIcon } from "lucide-react";
+import {
+  Check,
+  ChevronDown,
+  Copy,
+  ExternalLink,
+  Image as ImageIcon,
+} from "lucide-react";
 import Image from "next/image";
 import { createParser, useQueryState } from "nuqs";
 import {
@@ -13,6 +19,11 @@ import {
 import { Streamdown } from "streamdown";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -225,6 +236,19 @@ export function AnalysisPanel({
 
   return (
     <div className="space-y-4">
+      {/* Mobile video info and sections navigation */}
+      <MobileAnalysisHeader
+        sections={sections}
+        activeSection={activeSection ?? undefined}
+        onSectionClick={handleSectionClick}
+        videoId={videoId}
+        title={title}
+        channelName={channelName}
+        onCopyMarkdown={handleCopyMarkdown}
+        copyDisabled={!hasContent}
+        copied={copied}
+      />
+
       <div className="grid gap-6 lg:grid-cols-[240px_minmax(0,1fr)]">
         <AnalysisSidebar
           sections={sections}
@@ -387,9 +411,9 @@ function SectionHeader({
   copied: boolean;
 }) {
   return (
-    <div className="flex items-start justify-between gap-4">
+    <div className="flex items-start justify-between gap-2 md:gap-4">
       <div>
-        <CardTitle className="text-2xl font-bold tracking-tight">
+        <CardTitle className="text-xl md:text-2xl font-bold tracking-tight">
           {title}
         </CardTitle>
       </div>
@@ -446,6 +470,158 @@ function ObjectSection({ data }: { data: Record<string, unknown> }) {
           </div>
         );
       })}
+    </div>
+  );
+}
+
+// Mobile-only header with video info and collapsible sections navigation
+function MobileAnalysisHeader({
+  sections,
+  activeSection,
+  onSectionClick,
+  videoId,
+  title,
+  channelName,
+  onCopyMarkdown,
+  copyDisabled,
+  copied,
+}: {
+  sections: Array<{ id: string; title: string }>;
+  activeSection?: string;
+  onSectionClick?: (sectionId: string) => void;
+  videoId?: string;
+  title?: string;
+  channelName?: string;
+  onCopyMarkdown?: () => void;
+  copyDisabled?: boolean;
+  copied?: boolean;
+}) {
+  const [sectionsOpen, setSectionsOpen] = useState(false);
+  const thumbnailUrl = videoId
+    ? `https://i.ytimg.com/vi/${videoId}/mqdefault.jpg`
+    : undefined;
+
+  return (
+    <div className="lg:hidden space-y-4">
+      {/* Compact video info card for mobile */}
+      <div className="flex gap-3 items-start">
+        <div className="w-24 shrink-0">
+          <div className="aspect-video relative overflow-hidden rounded-md bg-muted">
+            {thumbnailUrl ? (
+              <Image
+                src={thumbnailUrl}
+                alt={title || "Video thumbnail"}
+                fill
+                sizes="96px"
+                className="object-cover"
+                unoptimized
+              />
+            ) : (
+              <div className="flex items-center justify-center h-full">
+                <ImageIcon className="h-6 w-6 text-muted-foreground/20" />
+              </div>
+            )}
+          </div>
+        </div>
+        <div className="flex-1 min-w-0">
+          {title ? (
+            <h3 className="font-bold text-sm line-clamp-2 leading-tight">
+              {title}
+            </h3>
+          ) : (
+            <Skeleton className="h-4 w-full" />
+          )}
+          {channelName ? (
+            <p className="text-xs text-muted-foreground mt-1">{channelName}</p>
+          ) : (
+            <Skeleton className="h-3 w-1/2 mt-1" />
+          )}
+          <div className="flex gap-2 mt-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onCopyMarkdown}
+              className="h-7 text-xs gap-1.5"
+              disabled={copyDisabled || !onCopyMarkdown}
+            >
+              {copied ? (
+                <>
+                  <Check className="h-3 w-3" />
+                  Copied
+                </>
+              ) : (
+                <>
+                  <Copy className="h-3 w-3" />
+                  Copy
+                </>
+              )}
+            </Button>
+            {videoId && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 text-xs"
+                asChild
+              >
+                <a
+                  href={`https://www.youtube.com/watch?v=${videoId}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="Watch on YouTube"
+                >
+                  <ExternalLink className="h-3 w-3" />
+                </a>
+              </Button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Collapsible sections navigation */}
+      {sections.length > 0 && (
+        <Collapsible open={sectionsOpen} onOpenChange={setSectionsOpen}>
+          <CollapsibleTrigger asChild>
+            <Button
+              variant="outline"
+              className="w-full justify-between h-9 text-sm"
+            >
+              <span>
+                {activeSection
+                  ? sections.find((s) => s.id === activeSection)?.title ||
+                    "Jump to section"
+                  : "Jump to section"}
+              </span>
+              <ChevronDown
+                className={`h-4 w-4 transition-transform ${sectionsOpen ? "rotate-180" : ""}`}
+              />
+            </Button>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="mt-2">
+            <div className="rounded-md border bg-card p-2 space-y-1">
+              {sections.map((section) => {
+                const isActive = section.id === activeSection;
+                return (
+                  <button
+                    key={section.id}
+                    type="button"
+                    onClick={() => {
+                      onSectionClick?.(section.id);
+                      setSectionsOpen(false);
+                    }}
+                    className={`w-full rounded-md px-3 py-2 text-left text-sm transition ${
+                      isActive
+                        ? "bg-primary/10 text-primary font-medium"
+                        : "text-muted-foreground hover:bg-muted"
+                    }`}
+                  >
+                    {section.title}
+                  </button>
+                );
+              })}
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
+      )}
     </div>
   );
 }

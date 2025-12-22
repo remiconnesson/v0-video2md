@@ -6,6 +6,7 @@ import {
   FolderOpen,
   Grid3x3,
   Home,
+  Menu,
   Moon,
   Sparkles,
   Sun,
@@ -19,6 +20,7 @@ import { AnalysisPanel } from "@/components/analyze/analysis-panel";
 import { SlideAnalysisPanel } from "@/components/analyze/slide-analysis-panel";
 import { SlidesPanel } from "@/components/analyze/slides-panel";
 import { SuperAnalysisPanel } from "@/components/analyze/super-analysis-panel";
+import { Button } from "@/components/ui/button";
 import {
   Sidebar,
   SidebarContent,
@@ -30,6 +32,7 @@ import {
   SidebarMenuItem,
   SidebarProvider,
   SidebarSeparator,
+  SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
 
@@ -191,7 +194,10 @@ export function AnalyzeShell({
           hasSuperAnalysis={hasSuperAnalysis}
         />
         <SidebarInset className="flex flex-col">
-          <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-6 py-6">
+          {/* Mobile navigation header */}
+          <MobileNavHeader activeTab={activeTab} visibleTabs={visibleTabs} />
+
+          <div className="mx-auto flex w-full max-w-5xl flex-col gap-4 md:gap-6 px-4 py-4 md:px-6 md:py-6">
             {activeTab !== "analyze" &&
               activeTab !== "slide-analysis" &&
               activeTab !== "super-analysis" && (
@@ -385,21 +391,67 @@ function VideoInfoDisplay({
 }) {
   return (
     <div className="min-w-0">
-      <h1 className="truncate text-2xl font-bold">{title}</h1>
+      <h1 className="truncate text-xl md:text-2xl font-bold">{title}</h1>
 
-      <div className="mt-1 flex items-center gap-3">
-        <span className="text-sm text-muted-foreground">{channelName}</span>
+      <div className="mt-1 flex items-center gap-2 md:gap-3 flex-wrap">
+        <span className="text-xs md:text-sm text-muted-foreground">
+          {channelName}
+        </span>
 
         <a
           href={`https://www.youtube.com/watch?v=${youtubeId}`}
           target="_blank"
           rel="noopener noreferrer"
-          className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+          className="flex items-center gap-1 text-xs md:text-sm text-muted-foreground hover:text-foreground"
         >
           <ExternalLink className="h-3 w-3" />
           Watch
         </a>
       </div>
     </div>
+  );
+}
+
+// Mobile navigation header - visible only on mobile
+function MobileNavHeader({
+  activeTab,
+  visibleTabs,
+}: {
+  activeTab: AnalyzeTabId;
+  visibleTabs: typeof tabs;
+}) {
+  // TODO: (Investigate) It seems like there's an assumption here that by default if there's "no active tab", then the transcript analysis tab is the active tab.
+  const currentTab =
+    activeTab === "super-analysis"
+      ? {
+          label: "Super Analysis",
+          icon: Wand2,
+        }
+      : (visibleTabs.find((t) => t.id === activeTab) ?? {
+          label: "Analysis",
+          icon: FileText,
+        });
+
+  const { label: currentTabLabel, icon: CurrentIcon } = currentTab;
+
+  return (
+    <header className="md:hidden sticky top-0 z-10 flex items-center gap-2 border-b bg-background px-4 py-3">
+      <SidebarTrigger className="-ml-1">
+        <Menu className="h-5 w-5" />
+        <span className="sr-only">Toggle navigation menu</span>
+      </SidebarTrigger>
+
+      <div className="flex items-center gap-2 flex-1 min-w-0">
+        <CurrentIcon className="h-4 w-4 text-muted-foreground shrink-0" />
+        <span className="font-medium text-sm truncate">{currentTabLabel}</span>
+      </div>
+
+      <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" asChild>
+        <Link href="/">
+          <Home className="h-4 w-4" />
+          <span className="sr-only">Go to home</span>
+        </Link>
+      </Button>
+    </header>
   );
 }
