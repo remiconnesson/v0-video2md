@@ -157,6 +157,7 @@ export const columns: ColumnDef<VideoData>[] = [
       <Link
         href={`/video/youtube/${row.original.videoId}`}
         className="line-clamp-2 hover:text-primary font-medium"
+        aria-label={`View video: ${row.original.videoData?.title || "Untitled Video"}`}
       >
         {row.original.videoData?.title || "Untitled Video"}
       </Link>
