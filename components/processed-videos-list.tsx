@@ -187,8 +187,8 @@ export const columns: ColumnDef<VideoData>[] = [
   },
   {
     accessorKey: "hasAnalysis",
-    header: "Transcript Analysis",
-    size: 120,
+    header: "Transcript",
+    size: 100,
     cell: ({ row }) => <StatusBadge value={row.original.hasAnalysis} />,
     filterFn: (row, _columnId, filterValue: string) => {
       if (filterValue === "all") return true;
@@ -200,7 +200,7 @@ export const columns: ColumnDef<VideoData>[] = [
   {
     accessorKey: "hasSlides",
     header: "Slides",
-    size: 120,
+    size: 90,
     cell: ({ row }) => <StatusBadge value={row.original.hasSlides} />,
     filterFn: (row, _columnId, filterValue: string) => {
       if (filterValue === "all") return true;
@@ -211,8 +211,8 @@ export const columns: ColumnDef<VideoData>[] = [
   },
   {
     accessorKey: "hasSlideAnalysis",
-    header: "Slide Analysis",
-    size: 120,
+    header: "Slide AI",
+    size: 100,
     cell: ({ row }) => <StatusBadge value={row.original.hasSlideAnalysis} />,
     filterFn: (row, _columnId, filterValue: string) => {
       if (filterValue === "all") return true;
@@ -223,8 +223,8 @@ export const columns: ColumnDef<VideoData>[] = [
   },
   {
     accessorKey: "hasSuperAnalysis",
-    header: "Super Analysis",
-    size: 140,
+    header: "Super AI",
+    size: 100,
     cell: ({ row }) => <StatusBadge value={row.original.hasSuperAnalysis} />,
     filterFn: (row, _columnId, filterValue: string) => {
       if (filterValue === "all") return true;
@@ -264,40 +264,33 @@ export function VideosDataTable({ data }: VideosDataTableProps) {
   const end = Math.min(totalRows, (pageIndex + 1) * pageSize);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {/* Filters */}
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        <div className="relative w-full lg:max-w-md">
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div className="relative w-full md:max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search by title, channel, or description..."
+            placeholder="Search by title, channel..."
             value={getFilter("videoData.title")}
             onChange={(e) => setFilter("videoData.title", e.target.value)}
-            className="pl-9"
+            className="pl-9 h-9"
           />
         </div>
-        <div className="flex gap-3 sm:items-center">
-          <FilterSelect
-            label="Transcript Analysis"
-            value={getFilter("hasAnalysis") || "all"}
-            onValueChange={(v) =>
-              setFilter("hasAnalysis", v === "all" ? "" : v)
-            }
-          />
+        <div className="flex flex-wrap items-center justify-end gap-2">
           <FilterSelect
             label="Slides"
             value={getFilter("hasSlides") || "all"}
             onValueChange={(v) => setFilter("hasSlides", v === "all" ? "" : v)}
           />
           <FilterSelect
-            label="Slide Analysis"
+            label="Slide AI"
             value={getFilter("hasSlideAnalysis") || "all"}
             onValueChange={(v) =>
               setFilter("hasSlideAnalysis", v === "all" ? "" : v)
             }
           />
           <FilterSelect
-            label="Super Analysis"
+            label="Super AI"
             value={getFilter("hasSuperAnalysis") || "all"}
             onValueChange={(v) =>
               setFilter("hasSuperAnalysis", v === "all" ? "" : v)
@@ -425,18 +418,16 @@ function FilterSelect({
   onValueChange: (v: string) => void;
 }) {
   return (
-    <div className="flex items-center gap-2">
-      <span className="text-sm text-muted-foreground">{label}</span>
-      <Select value={value} onValueChange={onValueChange}>
-        <SelectTrigger className="h-9 w-28">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="all">All</SelectItem>
-          <SelectItem value="yes">Yes</SelectItem>
-          <SelectItem value="no">No</SelectItem>
-        </SelectContent>
-      </Select>
-    </div>
+    <Select value={value} onValueChange={onValueChange}>
+      <SelectTrigger className="h-9 w-fit min-w-[110px] gap-2 text-xs">
+        <span className="text-muted-foreground font-medium">{label}</span>
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="all">All</SelectItem>
+        <SelectItem value="yes">Yes</SelectItem>
+        <SelectItem value="no">No</SelectItem>
+      </SelectContent>
+    </Select>
   );
 }
