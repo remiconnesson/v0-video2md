@@ -225,7 +225,7 @@ export function SlidesPanel({ videoId, view = "curation" }: SlidesPanelProps) {
           firstFrameHasUsefulContent: null,
           lastFrameHasUsefulContent: null,
           framesSameness: null,
-          isFirstFramePicked: true,
+          isFirstFramePicked: false,
           isLastFramePicked: false,
           ...existing,
         };
@@ -302,8 +302,28 @@ export function SlidesPanel({ videoId, view = "curation" }: SlidesPanelProps) {
     });
 
     try {
+      const targets = slidesState.slides.flatMap((slide) => {
+        const feedback = feedbackMap.get(slide.slideNumber);
+        const results = [];
+        if (feedback?.isFirstFramePicked) {
+          results.push({
+            slideNumber: slide.slideNumber,
+            framePosition: "first" as const,
+          });
+        }
+        if (feedback?.isLastFramePicked) {
+          results.push({
+            slideNumber: slide.slideNumber,
+            framePosition: "last" as const,
+          });
+        }
+        return results;
+      });
+
       const response = await fetch(`/api/video/${videoId}/slides/analysis`, {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ targets }),
       });
 
       if (!response.ok) {

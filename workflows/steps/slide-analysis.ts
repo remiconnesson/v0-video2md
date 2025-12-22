@@ -78,8 +78,8 @@ export async function getPickedSlidesWithContext(
   for (const slide of slides) {
     const fb = feedbackMap.get(slide.slideNumber);
 
-    // Default: first frame is picked, last frame is not
-    const isFirstPicked = fb?.isFirstFramePicked ?? true;
+    // Default: no frames are picked by default
+    const isFirstPicked = fb?.isFirstFramePicked ?? false;
     const isLastPicked = fb?.isLastFramePicked ?? false;
 
     // Get transcript context for this slide's time range

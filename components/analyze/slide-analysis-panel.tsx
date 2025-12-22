@@ -89,7 +89,7 @@ export function SlideAnalysisPanel({ videoId }: SlideAnalysisPanelProps) {
       const targets: SlideAnalysisTarget[] = [];
       for (const slide of slides) {
         const entry = feedbackMap.get(slide.slideNumber);
-        const isFirstPicked = entry?.isFirstFramePicked ?? true;
+        const isFirstPicked = entry?.isFirstFramePicked ?? false;
         const isLastPicked = entry?.isLastFramePicked ?? false;
 
         if (isFirstPicked && slide.firstFrameImageUrl) {
