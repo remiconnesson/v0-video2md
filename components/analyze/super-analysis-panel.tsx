@@ -14,7 +14,7 @@ import { Streamdown } from "streamdown";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useCopyToClipboard } from "@/hooks/use-copy-to-clipboard";
+import { useCopyToClipboard } from "@uidotdev/usehooks";
 import { useStreamingFetch } from "@/lib/use-streaming-fetch";
 
 // Mobile-only header with video info for super analysis
@@ -126,7 +126,7 @@ export function SuperAnalysisPanel({
   title,
   channelName,
 }: SuperAnalysisPanelProps) {
-  const { copied, copy: copyToClipboard } = useCopyToClipboard();
+  const [copiedText, copyToClipboard] = useCopyToClipboard();
   const [triggerCount, setTriggerCount] = useState(0);
 
   const url =
@@ -162,8 +162,8 @@ export function SuperAnalysisPanel({
     setTriggerCount((prev) => prev + 1);
   };
 
-  const handleCopyMarkdown = async () => {
-    await copyToClipboard(analysis || "");
+  const handleCopyMarkdown = () => {
+    copyToClipboard(analysis || "");
   };
 
   const hasContent = (analysis || "").trim().length > 0;
@@ -177,7 +177,7 @@ export function SuperAnalysisPanel({
         channelName={channelName}
         onCopyMarkdown={handleCopyMarkdown}
         copyDisabled={!hasContent}
-        copied={copied}
+        copied={Boolean(copiedText)}
       />
 
       <div className="grid gap-6 lg:grid-cols-[240px_minmax(0,1fr)]">
@@ -187,7 +187,7 @@ export function SuperAnalysisPanel({
           channelName={channelName}
           onCopyMarkdown={handleCopyMarkdown}
           copyDisabled={!hasContent}
-          copied={copied}
+          copied={Boolean(copiedText)}
         />
 
         <div className="flex flex-col gap-4">
@@ -219,7 +219,7 @@ export function SuperAnalysisPanel({
                     aria-label="Copy super analysis markdown"
                     className="gap-2 shrink-0 text-muted-foreground hover:text-foreground"
                   >
-                    {copied ? (
+                    {Boolean(copiedText) ? (
                       <>
                         <Check className="h-4 w-4" />
                         Copied!
