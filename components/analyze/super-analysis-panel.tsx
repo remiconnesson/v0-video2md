@@ -1,6 +1,13 @@
 "use client";
 
-import { Check, Copy, ExternalLink, Image as ImageIcon } from "lucide-react";
+import {
+  Check,
+  Copy,
+  ExternalLink,
+  Image as ImageIcon,
+  Sparkles,
+  Stars,
+} from "lucide-react";
 import Image from "next/image";
 import { useEffect, useState } from "react";
 import { Streamdown } from "streamdown";
@@ -29,18 +36,30 @@ export function SuperAnalysisPanel({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [copiedSection, setCopiedSection] = useState(false);
+  const [triggerCount, setTriggerCount] = useState(0);
 
   useEffect(() => {
     const controller = new AbortController();
 
     async function fetchAnalysis() {
       setStatus("loading");
-      setStatusMessage("Fetching super analysis...");
+      setStatusMessage(
+        triggerCount > 0
+          ? "Starting super analysis..."
+          : "Fetching super analysis...",
+      );
       setErrorMessage(null);
-      setAnalysis("");
 
       try {
-        const response = await fetch(`/api/video/${videoId}/super-analysis`, {
+        const url = new URL(
+          `/api/video/${videoId}/super-analysis`,
+          window.location.origin,
+        );
+        if (triggerCount > 0) {
+          url.searchParams.set("trigger", "true");
+        }
+
+        const response = await fetch(url.toString(), {
           signal: controller.signal,
         });
 
@@ -103,6 +122,13 @@ export function SuperAnalysisPanel({
           );
         } else {
           const data = await response.json();
+
+          if (data.status === "not_started") {
+            setStatus("idle");
+            setStatusMessage("");
+            return;
+          }
+
           const result = typeof data?.result === "string" ? data.result : "";
 
           setAnalysis(result);
@@ -127,7 +153,11 @@ export function SuperAnalysisPanel({
     return () => {
       controller.abort();
     };
-  }, [videoId]);
+  }, [videoId, triggerCount]);
+
+  const handleStartAnalysis = () => {
+    setTriggerCount((prev) => prev + 1);
+  };
 
   const handleCopyMarkdown = async () => {
     try {
@@ -226,6 +256,32 @@ export function SuperAnalysisPanel({
                   </Card>
                 ))}
               </div>
+            ) : status === "idle" || status === "error" ? (
+              <Card className="border-dashed border-2 flex flex-col items-center justify-center p-12 text-center">
+                <div className="bg-primary/10 p-4 rounded-full mb-4">
+                  <Stars className="h-8 w-8 text-primary" />
+                </div>
+                <CardTitle className="mb-2">
+                  {status === "error"
+                    ? "Analysis failed"
+                    : "Super Analysis Ready"}
+                </CardTitle>
+                <p className="text-muted-foreground mb-6 max-w-sm">
+                  {status === "error"
+                    ? "There was an error generating the comprehensive analysis. You can try again."
+                    : "Generate a comprehensive analysis combining transcripts and slide content."}
+                </p>
+                <Button
+                  size="lg"
+                  onClick={handleStartAnalysis}
+                  className="gap-2"
+                >
+                  <Sparkles className="h-4 w-4" />
+                  {status === "error"
+                    ? "Retry Analysis"
+                    : "Start Super Analysis"}
+                </Button>
+              </Card>
             ) : status === "ready" && !errorMessage ? (
               <p className="text-muted-foreground italic">
                 No super analysis available.

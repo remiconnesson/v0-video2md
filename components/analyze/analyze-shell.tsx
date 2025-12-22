@@ -328,6 +328,7 @@ function AnalyzeTabContent({
   if (activeTab === "super-analysis") {
     return (
       <SuperAnalysisPanel
+        key={videoId}
         videoId={videoId}
         title={title}
         channelName={channelName}

@@ -12,10 +12,12 @@ import { isValidYouTubeVideoId } from "@/lib/youtube-utils";
 import { superAnalysisWorkflow } from "@/workflows/super-analysis";
 
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   ctx: RouteContext<"/api/video/[videoId]/super-analysis">,
 ) {
   const { videoId } = await ctx.params;
+  const searchParams = req.nextUrl.searchParams;
+  const trigger = searchParams.get("trigger") === "true";
 
   if (!isValidYouTubeVideoId(videoId)) {
     return errorResponse("Invalid YouTube video ID format", 400, {
@@ -37,6 +39,11 @@ export async function GET(
     const status = await run.status;
     const readable = run.readable;
 
+    // If the workflow failed or was cancelled, we allow starting a new one if triggered
+    if ((status === "failed" || status === "cancelled") && trigger) {
+      return startNewSuperAnalysisWorkflow({ videoId });
+    }
+
     return dispatchOngoingWorkflowHandler({
       workflowId,
       videoId,
@@ -45,7 +52,11 @@ export async function GET(
     });
   }
 
-  return startNewSuperAnalysisWorkflow({ videoId });
+  if (trigger) {
+    return startNewSuperAnalysisWorkflow({ videoId });
+  }
+
+  return NextResponse.json({ status: "not_started" });
 }
 
 function dispatchOngoingWorkflowHandler({
