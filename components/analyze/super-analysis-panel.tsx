@@ -5,6 +5,7 @@ import {
   Copy,
   ExternalLink,
   Image as ImageIcon,
+  RefreshCw,
   Sparkles,
   Stars,
 } from "lucide-react";
@@ -145,6 +146,7 @@ export function SuperAnalysisPanel({
     completed: number;
     total: number;
   }>({ completed: 0, total: 0 });
+  const [isRetryingFailed, setIsRetryingFailed] = useState(false);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -274,6 +276,48 @@ export function SuperAnalysisPanel({
     setTriggerCount((prev) => prev + 1);
   };
 
+  const handleRetryFailedSlides = async () => {
+    const failedSlides = slideProgress.filter((s) => s.status === "failed");
+    if (failedSlides.length === 0) return;
+
+    setIsRetryingFailed(true);
+
+    try {
+      // Target only the failed slides
+      const targets = failedSlides.map((s) => ({
+        slideNumber: s.slideNumber,
+        framePosition: s.framePosition,
+      }));
+
+      // Call the slide analysis API for the failed slides
+      const response = await fetch(`/api/video/${videoId}/slides/analysis`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ targets }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to retry slide analysis");
+      }
+
+      // Update the status of failed slides to analyzing
+      setSlideProgress((prev) =>
+        prev.map((s) =>
+          s.status === "failed"
+            ? { ...s, status: "analyzing" as const, error: undefined }
+            : s,
+        ),
+      );
+
+      // Trigger the super analysis again to continue
+      setTriggerCount((prev) => prev + 1);
+    } catch (error) {
+      console.error("Failed to retry failed slides:", error);
+    } finally {
+      setIsRetryingFailed(false);
+    }
+  };
+
   const handleCopyMarkdown = async () => {
     try {
       await navigator.clipboard.writeText(analysis);
@@ -330,6 +374,8 @@ export function SuperAnalysisPanel({
                 slides={slideProgress}
                 completedCount={slideProgressCounts.completed}
                 totalCount={slideProgressCounts.total}
+                onRetryFailed={handleRetryFailedSlides}
+                isRetrying={isRetryingFailed}
               />
             )}
 
@@ -594,13 +640,19 @@ function SlideAnalysisProgressDisplay({
   slides,
   completedCount,
   totalCount,
+  onRetryFailed,
+  isRetrying = false,
 }: {
   slides: SlideAnalysisProgress[];
   completedCount: number;
   totalCount: number;
+  onRetryFailed?: () => void;
+  isRetrying?: boolean;
 }) {
   const failedSlides = slides.filter((s) => s.status === "failed");
   const hasFailures = failedSlides.length > 0;
+  const analyzingSlides = slides.filter((s) => s.status === "analyzing");
+  const isAnalyzing = analyzingSlides.length > 0;
 
   return (
     <Card className="border-muted/50">
@@ -633,11 +685,26 @@ function SlideAnalysisProgressDisplay({
             </div>
           ))}
         </div>
-        {hasFailures && (
-          <p className="mt-3 text-xs text-muted-foreground">
-            {failedSlides.length} slide(s) failed. The analysis will continue
-            with successful slides.
-          </p>
+        {hasFailures && !isAnalyzing && (
+          <div className="mt-3 flex items-center justify-between gap-3">
+            <p className="text-xs text-muted-foreground">
+              {failedSlides.length} slide(s) failed.
+            </p>
+            {onRetryFailed && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={onRetryFailed}
+                disabled={isRetrying}
+                className="gap-1.5 h-7 text-xs"
+              >
+                <RefreshCw
+                  className={`h-3 w-3 ${isRetrying ? "animate-spin" : ""}`}
+                />
+                {isRetrying ? "Retrying..." : "Retry Failed"}
+              </Button>
+            )}
+          </div>
         )}
       </CardContent>
     </Card>

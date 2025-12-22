@@ -38,8 +38,18 @@ import type {
   SlidesState,
 } from "@/lib/slides-types";
 import { consumeSSE } from "@/lib/sse";
+import type { SlideAnalysisProgress } from "@/lib/super-analysis-types";
 import { cn } from "@/lib/utils";
 import { SlideCard } from "./slide-card";
+
+// Super Analysis state for tracking progress
+interface SuperAnalysisState {
+  status: "idle" | "running" | "completed" | "error";
+  slideProgress: SlideAnalysisProgress[];
+  completedCount: number;
+  totalCount: number;
+  message: string;
+}
 
 interface SlidesPanelProps {
   videoId: string;
@@ -62,6 +72,41 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
 
   // Check if there are existing slide analysis results
   const [hasExistingAnalysis, setHasExistingAnalysis] = useState(false);
+
+  // Super Analysis state tracking
+  const [superAnalysisState, setSuperAnalysisState] =
+    useState<SuperAnalysisState>({
+      status: "idle",
+      slideProgress: [],
+      completedCount: 0,
+      totalCount: 0,
+      message: "",
+    });
+
+  const isSuperAnalyzing = superAnalysisState.status === "running";
+
+  // Check super analysis status
+  const checkSuperAnalysisStatus = useCallback(async () => {
+    try {
+      const response = await fetch(`/api/video/${videoId}/super-analysis`);
+      if (!response.ok) return;
+
+      const contentType = response.headers.get("content-type") ?? "";
+
+      // If it's a JSON response, check the status
+      if (!contentType.includes("text/event-stream")) {
+        const data = await response.json();
+        if (data.status === "not_started") {
+          setSuperAnalysisState((prev) => ({ ...prev, status: "idle" }));
+        } else if (data.result) {
+          setSuperAnalysisState((prev) => ({ ...prev, status: "completed" }));
+          setHasExistingAnalysis(true);
+        }
+      }
+    } catch (error) {
+      console.error("Failed to check super analysis status:", error);
+    }
+  }, [videoId]);
 
   const loadSlidesState = useCallback(async () => {
     setSlidesState((prev) => ({
@@ -354,7 +399,24 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
     loadSlidesState();
     loadFeedback();
     loadAnalysisResults();
-  }, [loadFeedback, loadSlidesState, loadAnalysisResults]);
+    checkSuperAnalysisStatus();
+  }, [
+    loadFeedback,
+    loadSlidesState,
+    loadAnalysisResults,
+    checkSuperAnalysisStatus,
+  ]);
+
+  // Poll for super analysis status periodically when not completed
+  useEffect(() => {
+    if (superAnalysisState.status === "completed") return;
+
+    const interval = setInterval(() => {
+      checkSuperAnalysisStatus();
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [superAnalysisState.status, checkSuperAnalysisStatus]);
 
   // Auto-trigger extraction when in idle state
   useEffect(() => {
@@ -413,6 +475,9 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
       isUnpickingAll={isUnpickingAll}
       hasPickedFrames={hasPickedFrames}
       hasExistingAnalysis={hasExistingAnalysis}
+      superAnalysisState={superAnalysisState}
+      setSuperAnalysisState={setSuperAnalysisState}
+      isSuperAnalyzing={isSuperAnalyzing}
     />
   );
 }
@@ -512,6 +577,9 @@ function CompletedState({
   isUnpickingAll,
   hasPickedFrames,
   hasExistingAnalysis,
+  superAnalysisState,
+  setSuperAnalysisState,
+  isSuperAnalyzing,
 }: {
   totalFramesCount: number;
   pickedFramesCount: number;
@@ -522,6 +590,11 @@ function CompletedState({
   isUnpickingAll: boolean;
   hasPickedFrames: boolean;
   hasExistingAnalysis: boolean;
+  superAnalysisState: SuperAnalysisState;
+  setSuperAnalysisState: React.Dispatch<
+    React.SetStateAction<SuperAnalysisState>
+  >;
+  isSuperAnalyzing: boolean;
 }) {
   const [showTutorial, setShowTutorial] = useLocalStorage(
     "video2md-slides-tutorial",
@@ -656,6 +729,7 @@ function CompletedState({
               feedbackMap={feedbackMap}
               onSubmitFeedback={onSubmitFeedback}
               showOnlyPicked={showOnlyPicked}
+              disabled={isSuperAnalyzing}
             />
           )}
         </CardContent>
@@ -671,6 +745,9 @@ function CompletedState({
         isUnpickingAll={isUnpickingAll}
         hasExistingAnalysis={hasExistingAnalysis}
         onNavigateToSuperAnalysis={handleNavigateToSuperAnalysis}
+        superAnalysisState={superAnalysisState}
+        setSuperAnalysisState={setSuperAnalysisState}
+        isSuperAnalyzing={isSuperAnalyzing}
       />
     </div>
   );
@@ -689,6 +766,9 @@ function StickyActionsFooter({
   isUnpickingAll,
   hasExistingAnalysis,
   onNavigateToSuperAnalysis,
+  superAnalysisState,
+  setSuperAnalysisState,
+  isSuperAnalyzing,
 }: {
   pickedFramesCount: number;
   slidesConfirmed: boolean;
@@ -698,7 +778,91 @@ function StickyActionsFooter({
   isUnpickingAll: boolean;
   hasExistingAnalysis: boolean;
   onNavigateToSuperAnalysis: () => void;
+  superAnalysisState: SuperAnalysisState;
+  setSuperAnalysisState: React.Dispatch<
+    React.SetStateAction<SuperAnalysisState>
+  >;
+  isSuperAnalyzing: boolean;
 }) {
+  const [, setQueryState] = useQueryStates(tabQueryConfig);
+
+  const handleStartSuperAnalysis = useCallback(async () => {
+    setSuperAnalysisState({
+      status: "running",
+      slideProgress: [],
+      completedCount: 0,
+      totalCount: 0,
+      message: "Starting super analysis...",
+    });
+
+    // Navigate to super analysis tab which will trigger the workflow
+    void setQueryState({
+      superAnalysis: true,
+      slides: null,
+      analyze: null,
+      slideAnalysis: null,
+    });
+  }, [setSuperAnalysisState, setQueryState]);
+
+  // Show super analysis progress when running
+  if (isSuperAnalyzing) {
+    return (
+      <div className="fixed bottom-0 left-0 right-0 z-50 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+        <div className="mx-auto max-w-5xl px-4 py-3 md:px-6">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            {/* Left side - Progress info */}
+            <div className="flex items-center gap-3">
+              <Loader2 className="h-4 w-4 animate-spin text-primary" />
+              <span className="text-sm">
+                {superAnalysisState.message || "Super analysis in progress..."}
+              </span>
+            </div>
+
+            {/* Right side - Progress and view button */}
+            <div className="flex items-center gap-3">
+              {superAnalysisState.totalCount > 0 && (
+                <span className="text-sm text-muted-foreground">
+                  Slides: {superAnalysisState.completedCount}/
+                  {superAnalysisState.totalCount}
+                </span>
+              )}
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={onNavigateToSuperAnalysis}
+                className="gap-2"
+              >
+                View Progress
+                <ArrowRight className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+
+          {/* Slide progress indicators */}
+          {superAnalysisState.slideProgress.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 mt-3 pt-3 border-t border-border/50">
+              {superAnalysisState.slideProgress.map((slide) => (
+                <div
+                  key={`${slide.slideNumber}-${slide.framePosition}`}
+                  className="flex items-center gap-1 px-2 py-0.5 rounded bg-muted/50 text-xs"
+                  title={
+                    slide.error ??
+                    `Slide ${slide.slideNumber} (${slide.framePosition})`
+                  }
+                >
+                  <span>{getSlideStatusEmoji(slide.status)}</span>
+                  <span className="text-muted-foreground">
+                    #{slide.slideNumber}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="fixed bottom-0 left-0 right-0 z-50 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
       <div className="mx-auto max-w-5xl px-4 py-3 md:px-6">
@@ -748,7 +912,7 @@ function StickyActionsFooter({
             ) : (
               <Button
                 size="sm"
-                onClick={onNavigateToSuperAnalysis}
+                onClick={handleStartSuperAnalysis}
                 disabled={!slidesConfirmed}
                 className="gap-2"
               >
@@ -763,6 +927,20 @@ function StickyActionsFooter({
   );
 }
 
+// Helper function for slide status emoji
+function getSlideStatusEmoji(status: SlideAnalysisProgress["status"]): string {
+  switch (status) {
+    case "pending":
+      return "⏳";
+    case "analyzing":
+      return "💭";
+    case "completed":
+      return "✅";
+    case "failed":
+      return "❌";
+  }
+}
+
 // ============================================================================
 // Slide Grid with Virtual Scrolling
 // ============================================================================
@@ -772,11 +950,13 @@ function SlideGrid({
   feedbackMap,
   onSubmitFeedback,
   showOnlyPicked,
+  disabled = false,
 }: {
   slides: SlideData[];
   feedbackMap: Map<number, SlideFeedbackData>;
   onSubmitFeedback: (feedback: SlideFeedbackData) => Promise<void>;
   showOnlyPicked: boolean;
+  disabled?: boolean;
 }) {
   const parentRef = useRef<HTMLDivElement>(null);
 
@@ -824,6 +1004,7 @@ function SlideGrid({
                   initialFeedback={feedback}
                   onSubmitFeedback={onSubmitFeedback}
                   showOnlyPickedFrames={showOnlyPicked}
+                  disabled={disabled}
                 />
               </div>
             </div>
