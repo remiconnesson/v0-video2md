@@ -30,11 +30,21 @@ async function findOne<T>(query: Promise<T[]>): Promise<T | null> {
 }
 
 /**
+ * Type representing Drizzle tables that have a videoId column.
+ * Used with selectVideoIdsFrom function.
+ */
+type TableWithVideoId =
+  | typeof videoSlides
+  | typeof videoAnalysisRuns
+  | typeof superAnalysisRuns
+  | typeof slideAnalysisResults;
+
+/**
  * Builds a query to select video IDs from a table with optional conditions.
  * Handles empty array guard and provides consistent error handling.
  */
 async function selectVideoIdsFrom(
-  table: any,
+  table: TableWithVideoId,
   videoIds: string[],
   options: {
     distinct?: boolean;
