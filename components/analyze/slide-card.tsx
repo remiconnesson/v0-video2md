@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import type { SlideData, SlideFeedbackData } from "@/lib/slides-types";
 import { formatDuration } from "@/lib/time-utils";
+import { cn } from "@/lib/utils";
 import { ZoomDialog } from "./zoom-dialog";
 
 // ============================================================================
@@ -31,17 +32,18 @@ function FrameCard({
     <div className="flex flex-col gap-3">
       {/* Frame header with prominent checkbox */}
       <label
-        className={`flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all ${
+        className={cn(
+          "flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all",
           isPicked
             ? "bg-primary/10 border-primary shadow-sm"
-            : "bg-muted/30 border-muted hover:border-primary/50 hover:bg-primary/5"
-        }`}
+            : "bg-muted/30 border-muted hover:border-primary/50 hover:bg-primary/5",
+        )}
       >
         <input
           type="checkbox"
           checked={isPicked}
           onChange={(e) => onPickedChange(e.target.checked)}
-          className="h-5 w-5 rounded border-gray-300 text-primary focus:ring-2 focus:ring-primary focus:ring-offset-2"
+          className="h-5 w-5 rounded border-gray-300 text-primary focus:ring-2 focus:ring-primary"
         />
         <span className="text-base font-semibold">{label} Frame</span>
       </label>
