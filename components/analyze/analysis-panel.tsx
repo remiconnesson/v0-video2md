@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/collapsible";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useCopyWithFeedback } from "@/hooks/use-copy-with-feedback";
 import {
   analysisToMarkdown,
   formatSectionTitle,
@@ -57,7 +58,8 @@ export function AnalysisPanel({
     "section",
     parseAsSectionId,
   );
-  const [copiedText, copyToClipboard] = useCopyToClipboard();
+  const [copied, copy] = useCopyWithFeedback();
+  const [_copiedText, copyToClipboard] = useCopyToClipboard();
   const [copiedSection, setCopiedSection] = useState<string | null>(null);
 
   const {
@@ -75,7 +77,7 @@ export function AnalysisPanel({
 
   const handleCopyMarkdown = () => {
     const markdown = analysisToMarkdown(analysis || {});
-    copyToClipboard(markdown);
+    copy(markdown);
   };
 
   const handleCopySection = (title: string, content: unknown) => {
@@ -123,7 +125,6 @@ export function AnalysisPanel({
     },
   );
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: scrollToActiveSection is an effect event
   useEffect(() => {
     scrollToActiveSection(activeSection, scrollToSection);
   }, [activeSection, scrollToSection]);
@@ -140,7 +141,7 @@ export function AnalysisPanel({
         channelName={channelName}
         onCopyMarkdown={handleCopyMarkdown}
         copyDisabled={!hasContent}
-        copied={Boolean(copiedText)}
+        copied={copied}
       />
 
       <div className="grid gap-6 lg:grid-cols-[240px_minmax(0,1fr)]">
@@ -153,7 +154,7 @@ export function AnalysisPanel({
           channelName={channelName}
           onCopyMarkdown={handleCopyMarkdown}
           copyDisabled={!hasContent}
-          copied={Boolean(copiedText)}
+          copied={copied}
         />
 
         <div className="flex flex-col gap-4">
