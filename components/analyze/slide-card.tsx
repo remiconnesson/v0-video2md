@@ -19,6 +19,7 @@ interface FrameCardProps {
   onZoom: () => void;
   isPicked: boolean;
   onPickedChange: (picked: boolean) => void;
+  disabled?: boolean;
 }
 
 function FrameCard({
@@ -27,23 +28,28 @@ function FrameCard({
   onZoom,
   isPicked,
   onPickedChange,
+  disabled = false,
 }: FrameCardProps) {
   return (
     <div className="flex flex-col gap-3">
       {/* Frame header with prominent checkbox */}
       <label
         className={cn(
-          "flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all",
+          "flex items-center gap-3 p-3 rounded-lg border-2 transition-all",
+          disabled ? "cursor-not-allowed opacity-60" : "cursor-pointer",
           isPicked
             ? "bg-primary/10 border-primary shadow-sm"
-            : "bg-muted/30 border-muted hover:border-primary/50 hover:bg-primary/5",
+            : disabled
+              ? "bg-muted/30 border-muted"
+              : "bg-muted/30 border-muted hover:border-primary/50 hover:bg-primary/5",
         )}
       >
         <input
           type="checkbox"
           checked={isPicked}
           onChange={(e) => onPickedChange(e.target.checked)}
-          className="h-5 w-5 rounded border-gray-300 text-primary focus:ring-2 focus:ring-primary"
+          disabled={disabled}
+          className="h-5 w-5 rounded border-gray-300 text-primary focus:ring-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
         />
         <span className="text-base font-semibold">Pick {label} Frame</span>
       </label>
@@ -93,6 +99,7 @@ interface SlideCardProps {
   initialFeedback?: SlideFeedbackData;
   onSubmitFeedback: (feedback: SlideFeedbackData) => Promise<void>;
   showOnlyPickedFrames?: boolean;
+  disabled?: boolean;
 }
 
 export function SlideCard({
@@ -100,6 +107,7 @@ export function SlideCard({
   initialFeedback,
   onSubmitFeedback,
   showOnlyPickedFrames = false,
+  disabled = false,
 }: SlideCardProps) {
   const [zoomOpen, setZoomOpen] = useState(false);
   const [zoomFrame, setZoomFrame] = useState<"first" | "last">("first");
@@ -194,6 +202,7 @@ export function SlideCard({
               onPickedChange={(picked) =>
                 updateField("isFirstFramePicked", picked)
               }
+              disabled={disabled}
             />
           )}
           {showLastFrame && (
@@ -205,6 +214,7 @@ export function SlideCard({
               onPickedChange={(picked) =>
                 updateField("isLastFramePicked", picked)
               }
+              disabled={disabled}
             />
           )}
         </div>
@@ -224,6 +234,7 @@ export function SlideCard({
                       : "ghost"
                   }
                   size="sm"
+                  disabled={disabled}
                   onClick={() =>
                     updateField(
                       "framesSameness",

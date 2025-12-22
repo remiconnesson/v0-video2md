@@ -97,9 +97,11 @@ export function AnalyzeShell({
   const { resolvedTheme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const isDark = resolvedTheme === "dark";
+  // Hide slide-analysis tab until super analysis is complete (for reviewing slide extraction results)
+  // Hide super-analysis from tab bar (accessed via slides panel button)
   const visibleTabs = tabs.filter((tab) => {
     if (tab.id === "super-analysis") return false;
-    if (tab.id === "slide-analysis") return hasSlideAnalysis;
+    if (tab.id === "slide-analysis") return hasSuperAnalysis;
     return true;
   });
 

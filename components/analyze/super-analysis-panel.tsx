@@ -5,6 +5,7 @@ import {
   Copy,
   ExternalLink,
   Image as ImageIcon,
+  RefreshCw,
   Sparkles,
   Stars,
 } from "lucide-react";
@@ -15,7 +16,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { consumeSSE } from "@/lib/sse";
-import type { SuperAnalysisStreamEvent } from "@/lib/super-analysis-types";
+import type {
+  SlideAnalysisProgress,
+  SuperAnalysisStreamEvent,
+} from "@/lib/super-analysis-types";
 
 // Mobile-only header with video info for super analysis
 function MobileSuperAnalysisHeader({
@@ -135,6 +139,14 @@ export function SuperAnalysisPanel({
   const [copied, setCopied] = useState(false);
   const [copiedSection, setCopiedSection] = useState(false);
   const [triggerCount, setTriggerCount] = useState(0);
+  const [slideProgress, setSlideProgress] = useState<SlideAnalysisProgress[]>(
+    [],
+  );
+  const [slideProgressCounts, setSlideProgressCounts] = useState<{
+    completed: number;
+    total: number;
+  }>({ completed: 0, total: 0 });
+  const [isRetryingFailed, setIsRetryingFailed] = useState(false);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -184,6 +196,13 @@ export function SuperAnalysisPanel({
                 } else if (event.phase) {
                   setStatusMessage(event.phase);
                 }
+              },
+              slide_analysis_progress: (event) => {
+                setSlideProgress(event.slides);
+                setSlideProgressCounts({
+                  completed: event.completedCount,
+                  total: event.totalCount,
+                });
               },
               partial: (event) => {
                 setAnalysis((prev) => `${prev}${event.data}`);
@@ -257,6 +276,48 @@ export function SuperAnalysisPanel({
     setTriggerCount((prev) => prev + 1);
   };
 
+  const handleRetryFailedSlides = async () => {
+    const failedSlides = slideProgress.filter((s) => s.status === "failed");
+    if (failedSlides.length === 0) return;
+
+    setIsRetryingFailed(true);
+
+    try {
+      // Target only the failed slides
+      const targets = failedSlides.map((s) => ({
+        slideNumber: s.slideNumber,
+        framePosition: s.framePosition,
+      }));
+
+      // Call the slide analysis API for the failed slides
+      const response = await fetch(`/api/video/${videoId}/slides/analysis`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ targets }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to retry slide analysis");
+      }
+
+      // Update the status of failed slides to analyzing
+      setSlideProgress((prev) =>
+        prev.map((s) =>
+          s.status === "failed"
+            ? { ...s, status: "analyzing" as const, error: undefined }
+            : s,
+        ),
+      );
+
+      // Trigger the super analysis again to continue
+      setTriggerCount((prev) => prev + 1);
+    } catch (error) {
+      console.error("Failed to retry failed slides:", error);
+    } finally {
+      setIsRetryingFailed(false);
+    }
+  };
+
   const handleCopyMarkdown = async () => {
     try {
       await navigator.clipboard.writeText(analysis);
@@ -305,6 +366,18 @@ export function SuperAnalysisPanel({
               <span className="font-medium">Status:</span> {statusMessage}
             </div>
           ) : null}
+
+          {/* Slide analysis progress */}
+          {slideProgress.length > 0 &&
+            (status === "loading" || status === "streaming") && (
+              <SlideAnalysisProgressDisplay
+                slides={slideProgress}
+                completedCount={slideProgressCounts.completed}
+                totalCount={slideProgressCounts.total}
+                onRetryFailed={handleRetryFailedSlides}
+                isRetrying={isRetryingFailed}
+              />
+            )}
 
           <div className="space-y-6">
             {hasContent ? (
@@ -543,5 +616,97 @@ function ThumbnailCell({ src, alt }: { src?: string; alt?: string }) {
         <ImageIcon className="h-8 w-8 text-muted-foreground/20" />
       )}
     </div>
+  );
+}
+
+// ============================================================================
+// Slide Analysis Progress Display
+// ============================================================================
+
+function getStatusEmoji(status: SlideAnalysisProgress["status"]): string {
+  switch (status) {
+    case "pending":
+      return "⏳";
+    case "analyzing":
+      return "💭";
+    case "completed":
+      return "✅";
+    case "failed":
+      return "❌";
+  }
+}
+
+function SlideAnalysisProgressDisplay({
+  slides,
+  completedCount,
+  totalCount,
+  onRetryFailed,
+  isRetrying = false,
+}: {
+  slides: SlideAnalysisProgress[];
+  completedCount: number;
+  totalCount: number;
+  onRetryFailed?: () => void;
+  isRetrying?: boolean;
+}) {
+  const failedSlides = slides.filter((s) => s.status === "failed");
+  const hasFailures = failedSlides.length > 0;
+  const analyzingSlides = slides.filter((s) => s.status === "analyzing");
+  const isAnalyzing = analyzingSlides.length > 0;
+
+  return (
+    <Card className="border-muted/50">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-sm font-medium flex items-center justify-between">
+          <span>Slide Analysis Progress</span>
+          <span className="text-muted-foreground">
+            {completedCount}/{totalCount}
+          </span>
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="pt-0">
+        <div className="flex flex-wrap gap-2">
+          {slides.map((slide) => (
+            <div
+              key={`${slide.slideNumber}-${slide.framePosition}`}
+              className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-muted/30 text-xs"
+              title={
+                slide.error ??
+                `Slide ${slide.slideNumber} (${slide.framePosition})`
+              }
+            >
+              <span>{getStatusEmoji(slide.status)}</span>
+              <span className="text-muted-foreground">
+                #{slide.slideNumber}
+              </span>
+              <span className="text-muted-foreground/60 text-[10px]">
+                {slide.framePosition === "first" ? "F" : "L"}
+              </span>
+            </div>
+          ))}
+        </div>
+        {hasFailures && !isAnalyzing && (
+          <div className="mt-3 flex items-center justify-between gap-3">
+            <p className="text-xs text-muted-foreground">
+              {failedSlides.length} slide(s) failed.
+            </p>
+            {onRetryFailed && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={onRetryFailed}
+                disabled={isRetrying}
+                className="gap-1.5 h-7 text-xs"
+              >
+                <RefreshCw
+                  className={`h-3 w-3 ${isRetrying ? "animate-spin" : ""}`}
+                />
+                {isRetrying ? "Retrying..." : "Retry Failed"}
+              </Button>
+            )}
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
