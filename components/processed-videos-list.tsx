@@ -287,8 +287,23 @@ export function VideosDataTable({ data }: VideosDataTableProps) {
         </div>
       </div>
 
-      {/* Table */}
-      <div className="rounded-lg border">
+      {/* Mobile Card View */}
+      <div className="md:hidden space-y-3">
+        {table.getRowModel().rows.length ? (
+          table
+            .getRowModel()
+            .rows.map((row) => (
+              <MobileVideoCard key={row.id} video={row.original} />
+            ))
+        ) : (
+          <div className="rounded-lg border p-8 text-center text-muted-foreground">
+            No videos found matching your search
+          </div>
+        )}
+      </div>
+
+      {/* Desktop Table View */}
+      <div className="hidden md:block rounded-lg border">
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((hg) => (
@@ -393,6 +408,47 @@ export function VideosDataTable({ data }: VideosDataTableProps) {
         </div>
       </div>
     </div>
+  );
+}
+
+function MobileVideoCard({ video }: { video: VideoData }) {
+  return (
+    <Link
+      href={`/video/youtube/${video.videoId}`}
+      className="block rounded-lg border bg-card hover:bg-muted/50 transition-colors"
+    >
+      <div className="flex gap-3 p-3">
+        <ThumbnailCell
+          src={video.videoData?.thumbnail}
+          alt={video.videoData?.title}
+        />
+        <div className="flex-1 min-w-0">
+          <h3 className="font-medium text-sm line-clamp-2 leading-tight">
+            {video.videoData?.title || "Untitled Video"}
+          </h3>
+          <p className="text-xs text-muted-foreground mt-1 line-clamp-1">
+            {video.videoData?.channelName || "Unknown Channel"}
+          </p>
+          <div className="flex flex-wrap gap-1.5 mt-2">
+            {video.hasSlides && (
+              <Badge variant="secondary" className="text-xs h-5">
+                Slides
+              </Badge>
+            )}
+            {video.hasSlideAnalysis && (
+              <Badge variant="secondary" className="text-xs h-5">
+                Slide AI
+              </Badge>
+            )}
+            {video.hasSuperAnalysis && (
+              <Badge variant="secondary" className="text-xs h-5">
+                Super AI
+              </Badge>
+            )}
+          </div>
+        </div>
+      </div>
+    </Link>
   );
 }
 

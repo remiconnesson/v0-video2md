@@ -846,7 +846,7 @@ function SlideGrid({
   return (
     <div
       ref={parentRef}
-      className="h-[600px] overflow-auto"
+      className="h-[400px] md:h-[600px] overflow-auto"
       style={{
         contain: "strict",
       }}

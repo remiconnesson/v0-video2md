@@ -17,6 +17,104 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { consumeSSE } from "@/lib/sse";
 import type { SuperAnalysisStreamEvent } from "@/lib/super-analysis-types";
 
+// Mobile-only header with video info for super analysis
+function MobileSuperAnalysisHeader({
+  videoId,
+  title,
+  channelName,
+  onCopyMarkdown,
+  copyDisabled,
+  copied,
+}: {
+  videoId?: string;
+  title?: string;
+  channelName?: string;
+  onCopyMarkdown?: () => void;
+  copyDisabled?: boolean;
+  copied?: boolean;
+}) {
+  const thumbnailUrl = videoId
+    ? `https://i.ytimg.com/vi/${videoId}/mqdefault.jpg`
+    : undefined;
+
+  return (
+    <div className="lg:hidden">
+      {/* Compact video info card for mobile */}
+      <div className="flex gap-3 items-start">
+        <div className="w-24 shrink-0">
+          <div className="aspect-video relative overflow-hidden rounded-md bg-muted">
+            {thumbnailUrl ? (
+              <Image
+                src={thumbnailUrl}
+                alt={title || "Video thumbnail"}
+                fill
+                sizes="96px"
+                className="object-cover"
+                unoptimized
+              />
+            ) : (
+              <div className="flex items-center justify-center h-full">
+                <ImageIcon className="h-6 w-6 text-muted-foreground/20" />
+              </div>
+            )}
+          </div>
+        </div>
+        <div className="flex-1 min-w-0">
+          {title ? (
+            <h3 className="font-bold text-sm line-clamp-2 leading-tight">
+              {title}
+            </h3>
+          ) : (
+            <Skeleton className="h-4 w-full" />
+          )}
+          {channelName ? (
+            <p className="text-xs text-muted-foreground mt-1">{channelName}</p>
+          ) : (
+            <Skeleton className="h-3 w-1/2 mt-1" />
+          )}
+          <div className="flex gap-2 mt-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onCopyMarkdown}
+              className="h-7 text-xs gap-1.5"
+              disabled={copyDisabled || !onCopyMarkdown}
+            >
+              {copied ? (
+                <>
+                  <Check className="h-3 w-3" />
+                  Copied
+                </>
+              ) : (
+                <>
+                  <Copy className="h-3 w-3" />
+                  Copy
+                </>
+              )}
+            </Button>
+            {videoId && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 text-xs"
+                asChild
+              >
+                <a
+                  href={`https://www.youtube.com/watch?v=${videoId}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <ExternalLink className="h-3 w-3" />
+                </a>
+              </Button>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 interface SuperAnalysisPanelProps {
   videoId: string;
   title: string;
@@ -173,6 +271,16 @@ export function SuperAnalysisPanel({
 
   return (
     <div className="space-y-4">
+      {/* Mobile video info header */}
+      <MobileSuperAnalysisHeader
+        videoId={videoId}
+        title={title}
+        channelName={channelName}
+        onCopyMarkdown={handleCopyMarkdown}
+        copyDisabled={!hasContent}
+        copied={copied}
+      />
+
       <div className="grid gap-6 lg:grid-cols-[240px_minmax(0,1fr)]">
         <SuperAnalysisSidebar
           videoId={videoId}
@@ -202,7 +310,7 @@ export function SuperAnalysisPanel({
             {hasContent ? (
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-                  <CardTitle className="text-2xl font-bold tracking-tight">
+                  <CardTitle className="text-xl md:text-2xl font-bold tracking-tight">
                     Super Analysis
                   </CardTitle>
                   <Button
@@ -257,22 +365,22 @@ export function SuperAnalysisPanel({
                 ))}
               </div>
             ) : status === "idle" || status === "error" ? (
-              <Card className="border-dashed border-2 flex flex-col items-center justify-center p-12 text-center">
-                <div className="bg-primary/10 p-4 rounded-full mb-4">
-                  <Stars className="h-8 w-8 text-primary" />
+              <Card className="border-dashed border-2 flex flex-col items-center justify-center p-6 md:p-12 text-center">
+                <div className="bg-primary/10 p-3 md:p-4 rounded-full mb-3 md:mb-4">
+                  <Stars className="h-6 w-6 md:h-8 md:w-8 text-primary" />
                 </div>
-                <CardTitle className="mb-2">
+                <CardTitle className="mb-2 text-lg md:text-xl">
                   {status === "error"
                     ? "Analysis failed"
                     : "Super Analysis Ready"}
                 </CardTitle>
-                <p className="text-muted-foreground mb-6 max-w-sm">
+                <p className="text-sm md:text-base text-muted-foreground mb-4 md:mb-6 max-w-sm">
                   {status === "error"
                     ? "There was an error generating the comprehensive analysis. You can try again."
                     : "Generate a comprehensive analysis combining transcripts and slide content."}
                 </p>
                 <Button
-                  size="lg"
+                  size="default"
                   onClick={handleStartAnalysis}
                   className="gap-2"
                 >

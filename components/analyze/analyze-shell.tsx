@@ -191,7 +191,7 @@ export function AnalyzeShell({
           hasSuperAnalysis={hasSuperAnalysis}
         />
         <SidebarInset className="flex flex-col">
-          <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-6 py-6">
+          <div className="mx-auto flex w-full max-w-5xl flex-col gap-4 md:gap-6 px-4 py-4 md:px-6 md:py-6">
             {activeTab !== "analyze" &&
               activeTab !== "slide-analysis" &&
               activeTab !== "super-analysis" && (
@@ -385,16 +385,18 @@ function VideoInfoDisplay({
 }) {
   return (
     <div className="min-w-0">
-      <h1 className="truncate text-2xl font-bold">{title}</h1>
+      <h1 className="truncate text-xl md:text-2xl font-bold">{title}</h1>
 
-      <div className="mt-1 flex items-center gap-3">
-        <span className="text-sm text-muted-foreground">{channelName}</span>
+      <div className="mt-1 flex items-center gap-2 md:gap-3 flex-wrap">
+        <span className="text-xs md:text-sm text-muted-foreground">
+          {channelName}
+        </span>
 
         <a
           href={`https://www.youtube.com/watch?v=${youtubeId}`}
           target="_blank"
           rel="noopener noreferrer"
-          className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+          className="flex items-center gap-1 text-xs md:text-sm text-muted-foreground hover:text-foreground"
         >
           <ExternalLink className="h-3 w-3" />
           Watch
