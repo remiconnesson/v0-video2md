@@ -13,6 +13,7 @@ import { useQuery } from "@tanstack/react-query";
 import { FileVideo, Image as ImageIcon, Search } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
+import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
