@@ -100,7 +100,11 @@ export function AnalyzeShell({
   const { resolvedTheme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const isDark = resolvedTheme === "dark";
-  const visibleTabs = tabs.filter((tab) => tab.id !== "super-analysis");
+  const visibleTabs = tabs.filter((tab) => {
+    if (tab.id === "super-analysis") return false;
+    if (tab.id === "slide-analysis") return hasSlideAnalysis;
+    return true;
+  });
 
   useEffect(() => {
     setMounted(true);
