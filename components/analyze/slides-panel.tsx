@@ -20,6 +20,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StepIndicator } from "@/components/ui/step-indicator";
+import type { SlideAnalysisResultsResponse } from "@/lib/api-types";
 import { UI } from "@/lib/constants";
 import { slidesPanelTabQueryConfig } from "@/lib/query-utils";
 import type {
