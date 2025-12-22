@@ -360,7 +360,7 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
         },
         complete: () => {
           setAnalysisState({
-            status: SlidesStatus.COMPLETED,
+            status: SlideAnalysisStatus.COMPLETED,
             progress: 100,
             message: "Analysis complete",
             error: null,
@@ -369,7 +369,7 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
         error: (e) => {
           setAnalysisState((prev) => ({
             ...prev,
-            status: SlidesStatus.ERROR,
+            status: SlideAnalysisStatus.ERROR,
             error: e.message,
           }));
         },
@@ -380,7 +380,7 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
 
       setAnalysisState((prev) => ({
         ...prev,
-        status: SlidesStatus.ERROR,
+        status: SlideAnalysisStatus.ERROR,
         error: errorMessage,
       }));
     }
