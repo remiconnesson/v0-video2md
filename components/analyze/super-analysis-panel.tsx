@@ -139,7 +139,6 @@ export function SuperAnalysisPanel({
     data: analysis,
     error: errorMessage,
     statusMessage,
-    refetch,
   } = useStreamingFetch<string>(
     url,
     {
@@ -161,7 +160,6 @@ export function SuperAnalysisPanel({
 
   const handleStartAnalysis = () => {
     setTriggerCount((prev) => prev + 1);
-    refetch();
   };
 
   const handleCopyMarkdown = async () => {
