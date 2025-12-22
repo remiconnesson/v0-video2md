@@ -145,14 +145,13 @@ export function SuperAnalysisPanel({
       initialData: "",
       accumulatePartial: true,
       onStatusMessage: (message) => {
-        // Custom status message logic for super analysis
         if (triggerCount > 0 && message === "Fetching...") {
-          return "Starting super analysis...";
+          console.log("Starting super analysis...");
+        } else if (message === "Generating...") {
+          console.log("Generating comprehensive analysis...");
+        } else {
+          console.log(message);
         }
-        if (message === "Generating...") {
-          return "Generating comprehensive analysis...";
-        }
-        return message;
       },
     },
     [url],
