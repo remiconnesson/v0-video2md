@@ -33,7 +33,9 @@ interface SlideAnalysisPanelProps {
 type AnalysisStatus = SlideAnalysisStatusType;
 
 export function SlideAnalysisPanel({ videoId }: SlideAnalysisPanelProps) {
-  const [status, setStatus] = useState<AnalysisStatus>("loading");
+  const [status, setStatus] = useState<AnalysisStatus>(
+    SlideAnalysisStatus.LOADING,
+  );
   const [results, setResults] = useState<SlideAnalysisResult[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [progress, setProgress] = useState({ current: 0, message: "" });
@@ -234,7 +236,7 @@ export function SlideAnalysisPanel({ videoId }: SlideAnalysisPanelProps) {
   }, [loadResults, loadCoverage]);
 
   // Loading state
-  if (status === CoverageStatus.LOADING) {
+  if (status === SlideAnalysisStatus.LOADING) {
     return (
       <Card>
         <CardContent className="py-12">
