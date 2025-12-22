@@ -6,7 +6,7 @@ import {
   storeSuperAnalysisWorkflowId,
 } from "@/db/queries";
 import { createSSEResponse, errorResponse, logError } from "@/lib/api-utils";
-import { handleOngoingWorkflowHandler } from "@/lib/workflow-route-utils";
+import { dispatchOngoingWorkflowHandler } from "@/lib/workflow-route-utils";
 import { isValidYouTubeVideoId } from "@/lib/youtube-utils";
 import { superAnalysisWorkflow } from "@/workflows/super-analysis";
 
@@ -44,7 +44,7 @@ export async function GET(
     }
 
     // Use the shared handler for ongoing workflows
-    return handleOngoingWorkflowHandler({
+    return dispatchOngoingWorkflowHandler({
       workflowId,
       videoId,
       readable,
