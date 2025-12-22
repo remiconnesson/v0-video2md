@@ -1,11 +1,12 @@
 "use client";
 
-import { ImageIcon, ThumbsDown, ThumbsUp, ZoomIn } from "lucide-react";
+import { ImageIcon, ZoomIn } from "lucide-react";
 import Image from "next/image";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import type { SlideData, SlideFeedbackData } from "@/lib/slides-types";
 import { formatDuration } from "@/lib/time-utils";
+import { cn } from "@/lib/utils";
 import { ZoomDialog } from "./zoom-dialog";
 
 // ============================================================================
@@ -18,8 +19,6 @@ interface FrameCardProps {
   onZoom: () => void;
   isPicked: boolean;
   onPickedChange: (picked: boolean) => void;
-  hasUsefulContent: boolean | null;
-  onUsefulContentChange: (value: boolean | null) => void;
 }
 
 function FrameCard({
@@ -28,20 +27,25 @@ function FrameCard({
   onZoom,
   isPicked,
   onPickedChange,
-  hasUsefulContent,
-  onUsefulContentChange,
 }: FrameCardProps) {
   return (
     <div className="flex flex-col gap-3">
-      {/* Frame header with checkbox */}
-      <label className="flex items-center gap-2 cursor-pointer">
+      {/* Frame header with prominent checkbox */}
+      <label
+        className={cn(
+          "flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all",
+          isPicked
+            ? "bg-primary/10 border-primary shadow-sm"
+            : "bg-muted/30 border-muted hover:border-primary/50 hover:bg-primary/5",
+        )}
+      >
         <input
           type="checkbox"
           checked={isPicked}
           onChange={(e) => onPickedChange(e.target.checked)}
-          className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-2 focus:ring-primary"
+          className="h-5 w-5 rounded border-gray-300 text-primary focus:ring-2 focus:ring-primary"
         />
-        <span className="text-sm font-medium">{label} Frame</span>
+        <span className="text-base font-semibold">Pick {label} Frame</span>
       </label>
 
       {/* Image container - preserves aspect ratio */}
@@ -75,34 +79,6 @@ function FrameCard({
             {label}
           </div>
         </button>
-      </div>
-
-      <div className="flex items-center justify-between gap-2 rounded-md border bg-muted/30 p-3">
-        <span className="text-sm font-medium">
-          Does this frame have useful content?
-        </span>
-        <div className="flex items-center gap-2">
-          <Button
-            variant={hasUsefulContent === true ? "default" : "outline"}
-            size="sm"
-            onClick={() =>
-              onUsefulContentChange(hasUsefulContent === true ? null : true)
-            }
-          >
-            <ThumbsUp className="mr-1 h-3 w-3" />
-            Yes
-          </Button>
-          <Button
-            variant={hasUsefulContent === false ? "destructive" : "outline"}
-            size="sm"
-            onClick={() =>
-              onUsefulContentChange(hasUsefulContent === false ? null : false)
-            }
-          >
-            <ThumbsDown className="mr-1 h-3 w-3" />
-            No
-          </Button>
-        </div>
       </div>
     </div>
   );
@@ -203,10 +179,6 @@ export function SlideCard({
             onPickedChange={(picked) =>
               updateField("isFirstFramePicked", picked)
             }
-            hasUsefulContent={feedback.firstFrameHasUsefulContent}
-            onUsefulContentChange={(value) =>
-              updateField("firstFrameHasUsefulContent", value)
-            }
           />
           <FrameCard
             label="Last"
@@ -216,39 +188,19 @@ export function SlideCard({
             onPickedChange={(picked) =>
               updateField("isLastFramePicked", picked)
             }
-            hasUsefulContent={feedback.lastFrameHasUsefulContent}
-            onUsefulContentChange={(value) =>
-              updateField("lastFrameHasUsefulContent", value)
-            }
           />
         </div>
 
-        {/* Slide-level annotations */}
-        <div className="space-y-3">
-          <div className="flex items-center justify-between p-3 rounded-md bg-muted/30 border">
-            <span className="text-sm font-medium">
-              Do first and last frames show similar content?
+        {/* Slide-level annotations - less prominent */}
+        <div className="space-y-3 pt-2">
+          <div className="flex items-center justify-between p-2 rounded-md bg-muted/20 text-sm">
+            <span className="text-muted-foreground">
+              Report first and last frame having different useful content?
             </span>
             <div className="flex items-center gap-2">
               <Button
                 variant={
-                  feedback.framesSameness === "same" ? "default" : "outline"
-                }
-                size="sm"
-                onClick={() =>
-                  updateField(
-                    "framesSameness",
-                    feedback.framesSameness === "same" ? null : "same",
-                  )
-                }
-              >
-                Same
-              </Button>
-              <Button
-                variant={
-                  feedback.framesSameness === "different"
-                    ? "default"
-                    : "outline"
+                  feedback.framesSameness === "different" ? "default" : "ghost"
                 }
                 size="sm"
                 onClick={() =>
@@ -260,7 +212,7 @@ export function SlideCard({
                   )
                 }
               >
-                Different
+                Report
               </Button>
             </div>
           </div>

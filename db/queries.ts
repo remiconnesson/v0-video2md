@@ -172,6 +172,17 @@ export async function getVideoIdsWithSuperAnalysis(videoIds: string[]) {
   }
 }
 
+ /**
+ * Gets video IDs that have slide analysis results.
+ */
+export async function getVideoIdsWithSlideAnalysis(videoIds: string[]) {
+  if (videoIds.length === 0) return [];
+  return await db
+    .selectDistinct({ videoId: slideAnalysisResults.videoId })
+    .from(slideAnalysisResults)
+    .where(inArray(slideAnalysisResults.videoId, videoIds));
+}
+
 // ============================================================================
 // Slide Extraction Queries
 // ============================================================================

@@ -107,6 +107,7 @@ export interface VideoData {
   hasSlides: boolean;
   hasAnalysis: boolean;
   hasSuperAnalysis: boolean;
+  hasSlideAnalysis: boolean;
   completedAt?: string;
 }
 
@@ -219,6 +220,17 @@ export const columns: ColumnDef<VideoData>[] = [
         ? row.original.hasSuperAnalysis
         : !row.original.hasSuperAnalysis;
     },
+   {
+    accessorKey: "hasSlideAnalysis",
+    header: "Slide AI",
+    size: 120,
+    cell: ({ row }) => <StatusBadge value={row.original.hasSlideAnalysis} />,
+    filterFn: (row, _columnId, filterValue: string) => {
+      if (filterValue === "all") return true;
+      return filterValue === "yes"
+        ? row.original.hasSlideAnalysis
+        : !row.original.hasSlideAnalysis;
+    },
   },
 ];
 
@@ -281,6 +293,13 @@ export function VideosDataTable({ data }: VideosDataTableProps) {
             value={getFilter("hasSuperAnalysis") || "all"}
             onValueChange={(v) =>
               setFilter("hasSuperAnalysis", v === "all" ? "" : v)
+              }
+          />
+          <FilterSelect
+            label="Slide AI"
+            value={getFilter("hasSlideAnalysis") || "all"}
+            onValueChange={(v) =>
+              setFilter("hasSlideAnalysis", v === "all" ? "" : v)
             }
           />
         </div>
