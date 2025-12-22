@@ -105,12 +105,13 @@ export function useStreamingFetch<T>(
                 }
               },
               partial: (event) => {
-                if (
-                  accumulatePartial &&
-                  typeof data === "string" &&
-                  typeof event.data === "string"
-                ) {
-                  setData((prev) => `${prev}${event.data}` as T);
+                if (accumulatePartial && typeof event.data === "string") {
+                  setData((prev) => {
+                    if (typeof prev === "string") {
+                      return `${prev}${event.data}` as T;
+                    }
+                    return event.data;
+                  });
                 } else {
                   setData(event.data);
                 }
@@ -170,7 +171,7 @@ export function useStreamingFetch<T>(
         statusMessageRef.current("");
       }
     },
-    [url, initialData, accumulatePartial, data],
+    [url, initialData, accumulatePartial],
   );
 
   const refetch = useCallback(() => {
