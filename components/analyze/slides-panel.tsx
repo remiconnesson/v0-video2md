@@ -13,6 +13,7 @@ import {
   X,
 } from "lucide-react";
 import { useQueryStates } from "nuqs";
+import type { CSSProperties } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -23,6 +24,7 @@ import type {
   SlideFeedbackResponse,
   SlidesResponse,
 } from "@/lib/api-types";
+import { UI } from "@/lib/constants";
 import { slidesPanelTabQueryConfig } from "@/lib/query-utils";
 import type {
   SlideAnalysisState,
@@ -946,17 +948,20 @@ function SlideGrid({
   const virtualizer = useVirtualizer({
     count: slides.length,
     getScrollElement: () => parentRef.current,
-    estimateSize: () => 500, // Estimated height of each slide card
-    overscan: 2, // Number of items to render outside of the visible area
+    estimateSize: () => UI.SLIDE_CARD_ESTIMATED_HEIGHT, // Estimated height of each slide card
+    overscan: UI.VIRTUAL_LIST_OVERSCAN, // Number of items to render outside of the visible area
   });
+  const panelStyle = {
+    contain: "strict",
+    "--slides-panel-height": `${UI.SLIDES_PANEL_HEIGHT.mobile}px`,
+    "--slides-panel-height-desktop": `${UI.SLIDES_PANEL_HEIGHT.desktop}px`,
+  } as CSSProperties;
 
   return (
     <div
       ref={parentRef}
-      className="h-[400px] md:h-[600px] overflow-auto"
-      style={{
-        contain: "strict",
-      }}
+      className="h-[var(--slides-panel-height)] md:h-[var(--slides-panel-height-desktop)] overflow-auto"
+      style={panelStyle}
     >
       <div
         style={{
