@@ -172,7 +172,7 @@ export async function getVideoIdsWithSuperAnalysis(videoIds: string[]) {
   }
 }
 
- /**
+/**
  * Gets video IDs that have slide analysis results.
  */
 export async function getVideoIdsWithSlideAnalysis(videoIds: string[]) {

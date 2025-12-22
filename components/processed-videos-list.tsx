@@ -220,7 +220,8 @@ export const columns: ColumnDef<VideoData>[] = [
         ? row.original.hasSuperAnalysis
         : !row.original.hasSuperAnalysis;
     },
-   {
+  },
+  {
     accessorKey: "hasSlideAnalysis",
     header: "Slide AI",
     size: 120,
@@ -293,7 +294,7 @@ export function VideosDataTable({ data }: VideosDataTableProps) {
             value={getFilter("hasSuperAnalysis") || "all"}
             onValueChange={(v) =>
               setFilter("hasSuperAnalysis", v === "all" ? "" : v)
-              }
+            }
           />
           <FilterSelect
             label="Slide AI"
