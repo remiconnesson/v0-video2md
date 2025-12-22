@@ -33,6 +33,7 @@ import {
 } from "@/lib/analysis-format";
 import { consumeSSE } from "@/lib/sse";
 import { isRecord } from "@/lib/type-utils";
+import { cn } from "@/lib/utils";
 import type { AnalysisStreamEvent } from "@/workflows/steps/transcript-analysis";
 
 interface AnalysisPanelProps {
@@ -584,6 +585,7 @@ function MobileAnalysisHeader({
             <Button
               variant="outline"
               className="w-full justify-between h-9 text-sm"
+              aria-label="Jump to section menu"
             >
               <span>
                 {activeSection
@@ -592,7 +594,10 @@ function MobileAnalysisHeader({
                   : "Jump to section"}
               </span>
               <ChevronDown
-                className={`h-4 w-4 transition-transform ${sectionsOpen ? "rotate-180" : ""}`}
+                className={cn(
+                  "h-4 w-4 transition-transform",
+                  sectionsOpen && "rotate-180",
+                )}
               />
             </Button>
           </CollapsibleTrigger>
@@ -608,11 +613,12 @@ function MobileAnalysisHeader({
                       onSectionClick?.(section.id);
                       setSectionsOpen(false);
                     }}
-                    className={`w-full rounded-md px-3 py-2 text-left text-sm transition ${
+                    className={cn(
+                      "w-full rounded-md px-3 py-2 text-left text-sm transition",
                       isActive
                         ? "bg-primary/10 text-primary font-medium"
-                        : "text-muted-foreground hover:bg-muted"
-                    }`}
+                        : "text-muted-foreground hover:bg-muted",
+                    )}
                   >
                     {section.title}
                   </button>
