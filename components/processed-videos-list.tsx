@@ -9,10 +9,10 @@ import {
   getPaginationRowModel,
   useReactTable,
 } from "@tanstack/react-table";
+import { useQuery } from "@tanstack/react-query";
 import { FileVideo, Image as ImageIcon, Search } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -34,29 +34,26 @@ import {
 } from "@/components/ui/table";
 
 export function ProcessedVideosList() {
-  const [videos, setVideos] = useState<VideoData[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: videos, isLoading, error } = useQuery({
+    queryKey: ['videos'],
+    queryFn: async () => {
+      const response = await fetch("/api/videos");
+      if (!response.ok) throw new Error("Failed to fetch videos");
+      return response.json();
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    retry: 2,
+  });
 
-  useEffect(() => {
-    async function fetchVideos() {
-      try {
-        const response = await fetch("/api/videos");
-        if (!response.ok) throw new Error("Failed to fetch videos");
-        setVideos(await response.json());
-      } catch (error) {
-        console.error("Error fetching videos:", error);
-      } finally {
-        setLoading(false);
-      }
-    }
-    fetchVideos();
-  }, []);
-
-  if (loading) {
+  if (isLoading) {
     return <SimpleCardLayout>Loading videos...</SimpleCardLayout>;
   }
 
-  if (videos.length === 0) {
+  if (error) {
+    return <SimpleCardLayout>Error loading videos</SimpleCardLayout>;
+  }
+
+  if (!videos?.length) {
     return <SimpleCardLayout>No processed videos yet</SimpleCardLayout>;
   }
 
