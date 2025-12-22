@@ -6,7 +6,10 @@ import {
   saveSlideAnalysisResult,
 } from "@/db/queries";
 import type { SlideAnalysisTarget } from "@/lib/slides-types";
-import { validateTranscriptStructure, type TranscriptSegment } from "@/lib/transcript-format";
+import {
+  type TranscriptSegment,
+  validateTranscriptStructure,
+} from "@/lib/transcript-format";
 
 // ============================================================================
 // Picked Slide Info Interface

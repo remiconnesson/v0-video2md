@@ -1,7 +1,10 @@
 import { streamDynamicAnalysis } from "@/ai/dynamic-analysis";
 import { getVideoWithTranscript, saveTranscriptAnalysis } from "@/db/queries";
 import { emit } from "@/lib/stream-utils";
-import { formatTranscriptForLLM, validateTranscriptStructure } from "@/lib/transcript-format";
+import {
+  formatTranscriptForLLM,
+  validateTranscriptStructure,
+} from "@/lib/transcript-format";
 
 // ============================================================================
 // Transcript Data Interface

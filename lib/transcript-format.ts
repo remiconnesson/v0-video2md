@@ -24,7 +24,9 @@ export interface TranscriptSegment {
  * @returns Array of validated transcript segments
  * @throws Error if validation fails
  */
-export function validateTranscriptStructure(data: unknown): TranscriptSegment[] {
+export function validateTranscriptStructure(
+  data: unknown,
+): TranscriptSegment[] {
   const result = z.array(TranscriptSegmentSchema).safeParse(data);
   if (!result.success) {
     console.error("Transcript validation failed:", result.error.format());
