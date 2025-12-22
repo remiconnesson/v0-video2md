@@ -1,5 +1,8 @@
 import { FatalError, getWritable } from "workflow";
-import type { SlideAnalysisStreamEvent } from "@/lib/slides-types";
+import type {
+  SlideAnalysisStreamEvent,
+  SlideAnalysisTarget,
+} from "@/lib/slides-types";
 import { emit } from "@/lib/stream-utils";
 import { isValidYouTubeVideoId } from "@/lib/youtube-utils";
 import {
@@ -11,7 +14,10 @@ import {
 // Main Workflow
 // ============================================================================
 
-export async function analyzeSelectedSlidesWorkflow(videoId: string) {
+export async function analyzeSelectedSlidesWorkflow(
+  videoId: string,
+  targets?: SlideAnalysisTarget[],
+) {
   "use workflow";
 
   const writable = getWritable<SlideAnalysisStreamEvent>();
@@ -35,7 +41,7 @@ export async function analyzeSelectedSlidesWorkflow(videoId: string) {
       writable,
     );
 
-    const pickedSlides = await getPickedSlidesWithContext(videoId);
+    const pickedSlides = await getPickedSlidesWithContext(videoId, targets);
 
     if (pickedSlides.length === 0) {
       throw new FatalError("No slides selected for analysis");
