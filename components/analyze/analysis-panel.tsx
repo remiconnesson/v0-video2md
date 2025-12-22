@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/collapsible";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useCopyToClipboard } from "@/hooks/use-copy-to-clipboard";
 import {
   analysisToMarkdown,
   formatSectionTitle,
@@ -56,7 +57,7 @@ export function AnalysisPanel({
     "section",
     parseAsSectionId,
   );
-  const [copied, setCopied] = useState(false);
+  const { copied, copy: copyToClipboard } = useCopyToClipboard();
   const [copiedSection, setCopiedSection] = useState<string | null>(null);
 
   const {
@@ -74,26 +75,14 @@ export function AnalysisPanel({
 
   const handleCopyMarkdown = async () => {
     const markdown = analysisToMarkdown(analysis || {});
-
-    try {
-      await navigator.clipboard.writeText(markdown);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch (err) {
-      console.error("Failed to copy:", err);
-    }
+    await copyToClipboard(markdown);
   };
 
   const handleCopySection = async (title: string, content: unknown) => {
     const markdown = sectionToMarkdown(title, content);
-
-    try {
-      await navigator.clipboard.writeText(markdown);
-      setCopiedSection(title);
-      setTimeout(() => setCopiedSection(null), 2000);
-    } catch (err) {
-      console.error("Failed to copy section:", err);
-    }
+    await copyToClipboard(markdown);
+    setCopiedSection(title);
+    setTimeout(() => setCopiedSection(null), 2000);
   };
 
   const hasContent = Object.keys(analysis || {}).length > 0;
