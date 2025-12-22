@@ -1,8 +1,27 @@
+export type SlideAnalysisStatus =
+  | "pending"
+  | "analyzing"
+  | "completed"
+  | "failed";
+
+export interface SlideAnalysisProgress {
+  slideNumber: number;
+  framePosition: "first" | "last";
+  status: SlideAnalysisStatus;
+  error?: string;
+}
+
 export type SuperAnalysisStreamEvent =
   | {
       type: "progress";
       phase: string;
       message: string;
+    }
+  | {
+      type: "slide_analysis_progress";
+      slides: SlideAnalysisProgress[];
+      completedCount: number;
+      totalCount: number;
     }
   | {
       type: "partial";
