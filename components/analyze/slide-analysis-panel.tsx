@@ -1,16 +1,12 @@
 "use client";
 
+import { useQueryClient } from "@tanstack/react-query";
 import { FileText, Loader2, RefreshCw } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Streamdown } from "streamdown";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import type {
-  SlideAnalysisResult,
-  SlideAnalysisResultsResponse,
-  SlideFeedbackResponse,
-  SlidesResponse,
-} from "@/lib/api-types";
+import type { SlideAnalysisResult } from "@/lib/api-types";
 import type {
   SlideAnalysisStreamEvent,
   SlideAnalysisTarget,
@@ -22,12 +18,11 @@ import {
   SlideAnalysisStatus,
   type SlideAnalysisStatusType,
 } from "@/lib/status-types";
-import { useQueryClient } from "@tanstack/react-query";
 import {
-  useSlideAnalysisQuery,
-  useSlidesQuery,
-  useSlideFeedbackQuery,
   usePickSlidesMutation,
+  useSlideAnalysisQuery,
+  useSlideFeedbackQuery,
+  useSlidesQuery,
 } from "@/lib/use-slide-queries";
 
 // Removed local SlideAnalysisResult interface as it's now in api-types
@@ -48,7 +43,9 @@ export function SlideAnalysisPanel({ videoId }: SlideAnalysisPanelProps) {
     CoverageStatus.IDLE,
   );
   const [coverageError, setCoverageError] = useState<string | null>(null);
-  const [streamingResults, setStreamingResults] = useState<SlideAnalysisResult[]>([]);
+  const [streamingResults, setStreamingResults] = useState<
+    SlideAnalysisResult[]
+  >([]);
 
   // Use TanStack Query for data loading
   const {
@@ -74,7 +71,8 @@ export function SlideAnalysisPanel({ videoId }: SlideAnalysisPanelProps) {
 
   // Derived state from query results and streaming
   const queryResults = analysisData?.results ?? [];
-  const results = status === SlideAnalysisStatus.ANALYZING ? streamingResults : queryResults;
+  const results =
+    status === SlideAnalysisStatus.ANALYZING ? streamingResults : queryResults;
   const isLoading = isAnalysisLoading || isSlidesLoading || isFeedbackLoading;
   const loadError = analysisError || slidesError || feedbackError;
 
@@ -335,12 +333,21 @@ export function SlideAnalysisPanel({ videoId }: SlideAnalysisPanelProps) {
         <CardContent>
           <div className="text-center py-8 space-y-4">
             <p className="text-destructive">{error}</p>
-            <Button variant="outline" onClick={() => {
-              // Refetch all queries
-              queryClient.invalidateQueries({ queryKey: ['slide-analysis', videoId] });
-              queryClient.invalidateQueries({ queryKey: ['slides', videoId] });
-              queryClient.invalidateQueries({ queryKey: ['slide-feedback', videoId] });
-            }}>
+            <Button
+              variant="outline"
+              onClick={() => {
+                // Refetch all queries
+                queryClient.invalidateQueries({
+                  queryKey: ["slide-analysis", videoId],
+                });
+                queryClient.invalidateQueries({
+                  queryKey: ["slides", videoId],
+                });
+                queryClient.invalidateQueries({
+                  queryKey: ["slide-feedback", videoId],
+                });
+              }}
+            >
               Retry
             </Button>
           </div>
@@ -377,8 +384,10 @@ export function SlideAnalysisPanel({ videoId }: SlideAnalysisPanelProps) {
           missingTargets={missingTargets}
           onRetry={() => {
             // Refetch slides and feedback
-            queryClient.invalidateQueries({ queryKey: ['slides', videoId] });
-            queryClient.invalidateQueries({ queryKey: ['slide-feedback', videoId] });
+            queryClient.invalidateQueries({ queryKey: ["slides", videoId] });
+            queryClient.invalidateQueries({
+              queryKey: ["slide-feedback", videoId],
+            });
           }}
           onAnalyzeMissing={() => void startAnalysis(missingTargets)}
         />

@@ -1,5 +1,6 @@
 "use client";
 
+import { useQueryClient } from "@tanstack/react-query";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useLocalStorage } from "@uidotdev/usehooks";
 import {
@@ -15,16 +16,10 @@ import {
 import { useQueryStates } from "nuqs";
 import type { CSSProperties } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StepIndicator } from "@/components/ui/step-indicator";
-import type {
-  SlideAnalysisResultsResponse,
-  SlideFeedbackResponse,
-  SlidesResponse,
-} from "@/lib/api-types";
 import { UI } from "@/lib/constants";
 import { slidesPanelTabQueryConfig } from "@/lib/query-utils";
 import type {
@@ -37,13 +32,13 @@ import type {
 } from "@/lib/slides-types";
 import { consumeSSE } from "@/lib/sse";
 import { SlideAnalysisStatus, SlidesStatus } from "@/lib/status-types";
+import {
+  useSaveSlideFeedbackMutation,
+  useSlideFeedbackQuery,
+  useSlidesQuery,
+} from "@/lib/use-slide-queries";
 import { cn } from "@/lib/utils";
 import { SlideCard } from "./slide-card";
-import {
-  useSlidesQuery,
-  useSlideFeedbackQuery,
-  useSaveSlideFeedbackMutation,
-} from "@/lib/use-slide-queries";
 
 // Type for storing analysis results per slide/frame
 interface SlideAnalysisResultData {
@@ -57,7 +52,7 @@ interface SlidesPanelProps {
 }
 
 export function SlidesPanel({ videoId }: SlidesPanelProps) {
-  const queryClient = useQueryClient();
+  const _queryClient = useQueryClient();
   const [slidesState, setSlidesState] = useState<SlidesState>({
     status: SlidesStatus.LOADING,
     step: 1,
@@ -87,11 +82,7 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
     error: slidesError,
   } = useSlidesQuery(videoId);
 
-  const {
-    data: feedbackData,
-    isLoading: isFeedbackLoading,
-    error: feedbackError,
-  } = useSlideFeedbackQuery(videoId);
+  const { data: feedbackData } = useSlideFeedbackQuery(videoId);
 
   const saveFeedbackMutation = useSaveSlideFeedbackMutation(videoId);
 
@@ -99,7 +90,7 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
   const feedbackMap = useMemo(() => {
     if (!feedbackData?.feedback) return new Map<number, SlideFeedbackData>();
     return new Map<number, SlideFeedbackData>(
-      feedbackData.feedback.map((fb) => [fb.slideNumber, fb])
+      feedbackData.feedback.map((fb) => [fb.slideNumber, fb]),
     );
   }, [feedbackData]);
 
@@ -173,7 +164,8 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
             totalSteps: 4,
             message: "",
             error:
-              slidesData.errorMessage ?? "Slide extraction failed. Please try again.",
+              slidesData.errorMessage ??
+              "Slide extraction failed. Please try again.",
             slides,
           });
           return;
@@ -198,7 +190,7 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
       try {
         // Use TanStack Query mutation
         await saveFeedbackMutation.mutateAsync(feedback);
-        
+
         // Optimistically update local state
         // The mutation will automatically invalidate and refetch the feedback query
       } catch (error) {
