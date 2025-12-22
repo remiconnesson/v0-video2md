@@ -58,7 +58,18 @@ export function AnalysisPanel({
     parseAsSectionId,
   );
   const [copiedText, copyToClipboard] = useCopyToClipboard();
+  const [copied, setCopied] = useState(false);
   const [copiedSection, setCopiedSection] = useState<string | null>(null);
+
+  // Reset copied state after 2 seconds
+  useEffect(() => {
+    if (copied) {
+      const timer = setTimeout(() => {
+        setCopied(false);
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [copied]);
 
   const {
     status,
@@ -76,6 +87,7 @@ export function AnalysisPanel({
   const handleCopyMarkdown = () => {
     const markdown = analysisToMarkdown(analysis || {});
     copyToClipboard(markdown);
+    setCopied(true);
   };
 
   const handleCopySection = (title: string, content: unknown) => {
@@ -140,7 +152,7 @@ export function AnalysisPanel({
         channelName={channelName}
         onCopyMarkdown={handleCopyMarkdown}
         copyDisabled={!hasContent}
-        copied={Boolean(copiedText)}
+        copied={copied}
       />
 
       <div className="grid gap-6 lg:grid-cols-[240px_minmax(0,1fr)]">
@@ -153,7 +165,7 @@ export function AnalysisPanel({
           channelName={channelName}
           onCopyMarkdown={handleCopyMarkdown}
           copyDisabled={!hasContent}
-          copied={Boolean(copiedText)}
+          copied={copied}
         />
 
         <div className="flex flex-col gap-4">
