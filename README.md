@@ -48,8 +48,18 @@ A Next.js application that processes YouTube videos to extract transcripts, perf
 3. Set up environment variables:
    ```bash
    cp .env.example .env
-   # Edit .env with your database URL and API keys
+   # Edit .env with your configuration
    ```
+   
+   Required environment variables:
+   - `DATABASE_URL` - PostgreSQL connection string
+   - `APIFY_API_TOKEN` - For YouTube transcript fetching
+   - `OPENAI_API_KEY` - For AI-powered analysis
+   - `BLOB_READ_WRITE_TOKEN` - For slide image storage (optional)
+   - `SLIDES_EXTRACTOR_URL` - URL to slides extraction service (optional)
+   - `SLIDES_API_PASSWORD` - Authentication for slides service (optional)
+   
+   See `.env.example` for detailed documentation of each variable.
 
 4. Run database migrations:
    ```bash
@@ -117,3 +127,20 @@ pnpm tsc --noEmit # Type check
    ```
 
 3. Follow the coding guidelines in [.github/copilot-instructions.md](.github/copilot-instructions.md)
+
+## Security
+
+⚠️ **Important Security Notice**: This application is designed for development and demonstration purposes. Before deploying to production, please review and implement the security measures outlined in [SECURITY.md](SECURITY.md).
+
+### Key Security Considerations
+
+- **No Authentication**: API endpoints are currently public and unprotected
+- **No Rate Limiting**: Endpoints can be called without restriction
+- **Environment Variables**: Never commit `.env` files or expose API keys
+- **Production Deployment**: Requires additional security hardening (authentication, rate limiting, input sanitization)
+
+For detailed security information, vulnerability reporting, and production deployment guidelines, see [SECURITY.md](SECURITY.md).
+
+## License
+
+This project is available for use under standard open source practices. Please review the code and ensure compliance with third-party service terms (YouTube, OpenAI, etc.) when deploying.
