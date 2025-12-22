@@ -3,9 +3,6 @@
   "functions": {
     "app/api/**/*": {
       "maxDuration": 800
-    }, 
-    "workflows/**/*": {
-      "maxDuration": 800
     }
   }
 }
