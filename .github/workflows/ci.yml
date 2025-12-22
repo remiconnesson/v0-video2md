@@ -36,6 +36,9 @@ jobs:
       - name: Lint check
         run: pnpm biome check .
 
+      - name: Type gen
+        run: pnpm next typegen
+
       - name: Type check
         run: pnpm tsc --noEmit
 
