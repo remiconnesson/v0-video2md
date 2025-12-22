@@ -227,3 +227,33 @@ export const slideFeedback = pgTable(
 
 export type SlideFeedback = typeof slideFeedback.$inferSelect;
 export type NewSlideFeedback = typeof slideFeedback.$inferInsert;
+
+// ============================================================================
+// Slide Analysis Tables
+// ============================================================================
+
+/**
+ * Stores AI-generated markdown analysis for individual slide frames
+ */
+export const slideAnalysisResults = pgTable(
+  "slide_analysis_results",
+  {
+    id: serial("id").primaryKey(),
+    videoId: videoIdColumn(),
+    slideNumber: integer("slide_number").notNull(),
+    framePosition: framePositionEnum("frame_position").notNull(),
+    markdownContent: text("markdown_content").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("slide_analysis_results_video_idx").on(table.videoId),
+    unique("slide_analysis_results_video_slide_frame").on(
+      table.videoId,
+      table.slideNumber,
+      table.framePosition,
+    ),
+  ],
+);
+
+export type SlideAnalysisResult = typeof slideAnalysisResults.$inferSelect;
+export type NewSlideAnalysisResult = typeof slideAnalysisResults.$inferInsert;
