@@ -22,12 +22,22 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StepIndicator } from "@/components/ui/step-indicator";
 import type {
+  SlideAnalysisState,
+  SlideAnalysisStreamEvent,
   SlideData,
   SlideFeedbackData,
   SlideStreamEvent,
   SlidesState,
 } from "@/lib/slides-types";
 import { consumeSSE } from "@/lib/sse";
+
+// Type for storing analysis results per slide/frame
+interface SlideAnalysisResultData {
+  slideNumber: number;
+  framePosition: "first" | "last";
+  markdown: string;
+}
+
 import { SlideCard } from "./slide-card";
 import { SlideGridTab } from "./slide-grid-tab";
 
@@ -52,6 +62,17 @@ export function SlidesPanel({ videoId, view = "curation" }: SlidesPanelProps) {
     Map<number, SlideFeedbackData>
   >(new Map());
   const [isUnpickingAll, setIsUnpickingAll] = useState(false);
+
+  // Slide analysis state
+  const [analysisState, setAnalysisState] = useState<SlideAnalysisState>({
+    status: "idle",
+    progress: 0,
+    message: "",
+    error: null,
+  });
+  const [analysisResults, setAnalysisResults] = useState<
+    Map<string, SlideAnalysisResultData>
+  >(new Map());
 
   const loadSlidesState = useCallback(async () => {
     setSlidesState((prev) => ({
@@ -249,6 +270,99 @@ export function SlidesPanel({ videoId, view = "curation" }: SlidesPanelProps) {
     [feedbackMap, slidesState.slides],
   );
 
+  // Load existing analysis results
+  const loadAnalysisResults = useCallback(async () => {
+    try {
+      const response = await fetch(`/api/video/${videoId}/slides/analysis`);
+      if (!response.ok) return;
+
+      const data = await response.json();
+      const resultsMap = new Map<string, SlideAnalysisResultData>();
+
+      for (const result of data.results as SlideAnalysisResultData[]) {
+        const key = `${result.slideNumber}-${result.framePosition}`;
+        resultsMap.set(key, result);
+      }
+
+      setAnalysisResults(resultsMap);
+    } catch (error) {
+      console.error("Failed to load slide analysis results:", error);
+    }
+  }, [videoId]);
+
+  // Start slide analysis
+  const handleAnalyzeSelectedSlides = useCallback(async () => {
+    if (!hasPickedFrames) return;
+
+    setAnalysisState({
+      status: "streaming",
+      progress: 0,
+      message: "Starting analysis...",
+      error: null,
+    });
+
+    try {
+      const response = await fetch(`/api/video/${videoId}/slides/analysis`, {
+        method: "POST",
+      });
+
+      if (!response.ok) {
+        const errorData = await response
+          .json()
+          .catch(() => ({ error: "Failed to start analysis" }));
+        throw new Error(errorData.error);
+      }
+
+      // Consume SSE stream
+      await consumeSSE<SlideAnalysisStreamEvent>(response, {
+        progress: (e) => {
+          setAnalysisState((prev) => ({
+            ...prev,
+            status: "streaming",
+            progress: e.progress,
+            message: e.message,
+          }));
+        },
+        slide_markdown: (e) => {
+          setAnalysisResults((prev) => {
+            const next = new Map(prev);
+            const key = `${e.slideNumber}-${e.framePosition}`;
+            next.set(key, {
+              slideNumber: e.slideNumber,
+              framePosition: e.framePosition,
+              markdown: e.markdown,
+            });
+            return next;
+          });
+        },
+        complete: () => {
+          setAnalysisState({
+            status: "completed",
+            progress: 100,
+            message: "Analysis complete",
+            error: null,
+          });
+        },
+        error: (e) => {
+          setAnalysisState((prev) => ({
+            ...prev,
+            status: "error",
+            error: e.message,
+          }));
+        },
+      });
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Failed to analyze slides.";
+
+      setAnalysisState((prev) => ({
+        ...prev,
+        status: "error",
+        error: errorMessage,
+      }));
+    }
+  }, [videoId, hasPickedFrames]);
+
   const startExtraction = useCallback(async () => {
     // Set state to extracting
     setSlidesState((prev) => ({
@@ -326,11 +440,12 @@ export function SlidesPanel({ videoId, view = "curation" }: SlidesPanelProps) {
     }
   }, [videoId]);
 
-  // Load feedback on mount
+  // Load feedback and analysis on mount
   useEffect(() => {
     loadSlidesState();
     loadFeedback();
-  }, [loadFeedback, loadSlidesState]);
+    loadAnalysisResults();
+  }, [loadFeedback, loadSlidesState, loadAnalysisResults]);
 
   // Auto-trigger extraction when in idle state
   useEffect(() => {
@@ -380,6 +495,7 @@ export function SlidesPanel({ videoId, view = "curation" }: SlidesPanelProps) {
   // Completed state - show slides
   return (
     <CompletedState
+      videoId={videoId}
       totalFramesCount={slidesState.slides.length * 2}
       pickedFramesCount={pickedFramesCount}
       slides={slidesState.slides}
@@ -389,6 +505,9 @@ export function SlidesPanel({ videoId, view = "curation" }: SlidesPanelProps) {
       onUnpickAll={handleUnpickAll}
       isUnpickingAll={isUnpickingAll}
       hasPickedFrames={hasPickedFrames}
+      onAnalyzeSelectedSlides={handleAnalyzeSelectedSlides}
+      analysisState={analysisState}
+      hasAnalysisResults={analysisResults.size > 0}
     />
   );
 }
@@ -478,6 +597,7 @@ function ErrorState({
 }
 
 function CompletedState({
+  videoId,
   totalFramesCount,
   pickedFramesCount,
   slides,
@@ -487,7 +607,11 @@ function CompletedState({
   onUnpickAll,
   isUnpickingAll,
   hasPickedFrames,
+  onAnalyzeSelectedSlides,
+  analysisState,
+  hasAnalysisResults,
 }: {
+  videoId: string;
   totalFramesCount: number;
   pickedFramesCount: number;
   slides: SlideData[];
@@ -497,16 +621,24 @@ function CompletedState({
   onUnpickAll: () => Promise<void>;
   isUnpickingAll: boolean;
   hasPickedFrames: boolean;
+  onAnalyzeSelectedSlides: () => Promise<void>;
+  analysisState: SlideAnalysisState;
+  hasAnalysisResults: boolean;
 }) {
   const [showTutorial, setShowTutorial] = useLocalStorage(
     "video2md-slides-tutorial",
     true,
   );
   const [, setQueryState] = useQueryStates(tabQueryConfig);
+  // Suppress unused variable warning - videoId is passed for potential future use
+  void videoId;
+
   const slidesLabel =
     view === "curation"
       ? `Frames (${pickedFramesCount}/${totalFramesCount})`
       : `Picked Frames (${pickedFramesCount})`;
+
+  const isAnalyzing = analysisState.status === "streaming";
 
   return (
     <Card>
@@ -516,33 +648,78 @@ function CompletedState({
             <ImageIcon className="h-5 w-5" />
             {slidesLabel}
           </span>
-          {view === "curation" && (
-            <div className="flex flex-wrap items-center gap-2">
-              {!showTutorial && (
+          <div className="flex flex-wrap items-center gap-2">
+            {view === "curation" && (
+              <>
+                {!showTutorial && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                    onClick={() => setShowTutorial(true)}
+                    title="Show tutorial"
+                  >
+                    <HelpCircle className="h-4 w-4" />
+                  </Button>
+                )}
                 <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                  onClick={() => setShowTutorial(true)}
-                  title="Show tutorial"
+                  variant="outline"
+                  size="sm"
+                  onClick={onUnpickAll}
+                  disabled={!hasPickedFrames || isUnpickingAll || isAnalyzing}
                 >
-                  <HelpCircle className="h-4 w-4" />
+                  {isUnpickingAll ? "Unpicking..." : "Unpick all frames"}
                 </Button>
+              </>
+            )}
+            <Button
+              variant="default"
+              size="sm"
+              onClick={onAnalyzeSelectedSlides}
+              disabled={!hasPickedFrames || isAnalyzing}
+            >
+              {isAnalyzing ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Analyzing...
+                </>
+              ) : hasAnalysisResults ? (
+                "Re-analyze Selected"
+              ) : (
+                "Analyze Selected Slides"
               )}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={onUnpickAll}
-                disabled={!hasPickedFrames || isUnpickingAll}
-              >
-                {isUnpickingAll ? "Unpicking..." : "Unpick all frames"}
-              </Button>
-            </div>
-          )}
+            </Button>
+          </div>
         </CardTitle>
       </CardHeader>
 
-      <CardContent>
+      {/* Analysis progress indicator */}
+      {isAnalyzing && (
+        <CardContent className="pt-0 pb-4">
+          <div className="flex items-center gap-3 p-3 bg-muted/30 rounded-md">
+            <Loader2 className="h-4 w-4 animate-spin text-primary" />
+            <span className="text-sm">{analysisState.message}</span>
+            <span className="text-sm text-muted-foreground ml-auto">
+              {analysisState.progress}%
+            </span>
+          </div>
+        </CardContent>
+      )}
+
+      {/* Analysis error indicator */}
+      {analysisState.status === "error" && analysisState.error && (
+        <CardContent className="pt-0 pb-4">
+          <div className="p-3 bg-destructive/10 text-destructive rounded-md text-sm">
+            {analysisState.error}
+          </div>
+        </CardContent>
+      )}
+
+      <CardContent
+        className={
+          isAnalyzing || analysisState.status === "error" ? "pt-0" : ""
+        }
+      >
         {view === "curation" && showTutorial && (
           <Card className="mb-6 bg-primary/[0.02] border-primary/20 shadow-none relative overflow-hidden">
             <div className="absolute top-2 right-2">
