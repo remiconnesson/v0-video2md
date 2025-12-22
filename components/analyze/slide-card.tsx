@@ -187,7 +187,7 @@ export function SlideCard({
         <div className="space-y-3">
           <div className="flex items-center justify-between p-3 rounded-md bg-muted/30 border">
             <span className="text-sm font-medium">
-              Report first and last frame having different content?
+              Report first and last frame having different useful content?
             </span>
             <div className="flex items-center gap-2">
               <Button
