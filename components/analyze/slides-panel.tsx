@@ -2,7 +2,16 @@
 
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useLocalStorage } from "@uidotdev/usehooks";
-import { HelpCircle, ImageIcon, Loader2, X } from "lucide-react";
+import {
+  ArrowRight,
+  Check,
+  Eye,
+  EyeOff,
+  HelpCircle,
+  ImageIcon,
+  Loader2,
+  X,
+} from "lucide-react";
 import { createParser, useQueryStates } from "nuqs";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
@@ -15,7 +24,8 @@ const parseAsPresence = createParser<boolean>({
 const tabQueryConfig = {
   analyze: parseAsPresence,
   slides: parseAsPresence,
-  slidesGrid: parseAsPresence,
+  slideAnalysis: parseAsPresence,
+  superAnalysis: parseAsPresence,
 };
 
 import { Button } from "@/components/ui/button";
@@ -30,6 +40,8 @@ import type {
   SlidesState,
 } from "@/lib/slides-types";
 import { consumeSSE } from "@/lib/sse";
+import { cn } from "@/lib/utils";
+import { SlideCard } from "./slide-card";
 
 // Type for storing analysis results per slide/frame
 interface SlideAnalysisResultData {
@@ -38,17 +50,11 @@ interface SlideAnalysisResultData {
   markdown: string;
 }
 
-import { SlideCard } from "./slide-card";
-import { SlideGridTab } from "./slide-grid-tab";
-
-type SlidesPanelView = "curation" | "grid";
-
 interface SlidesPanelProps {
   videoId: string;
-  view?: SlidesPanelView;
 }
 
-export function SlidesPanel({ videoId, view = "curation" }: SlidesPanelProps) {
+export function SlidesPanel({ videoId }: SlidesPanelProps) {
   const [slidesState, setSlidesState] = useState<SlidesState>({
     status: "loading",
     step: 1,
@@ -515,13 +521,11 @@ export function SlidesPanel({ videoId, view = "curation" }: SlidesPanelProps) {
   // Completed state - show slides
   return (
     <CompletedState
-      videoId={videoId}
       totalFramesCount={slidesState.slides.length * 2}
       pickedFramesCount={pickedFramesCount}
       slides={slidesState.slides}
       feedbackMap={feedbackMap}
       onSubmitFeedback={submitFeedback}
-      view={view}
       onUnpickAll={handleUnpickAll}
       isUnpickingAll={isUnpickingAll}
       hasPickedFrames={hasPickedFrames}
@@ -587,6 +591,7 @@ function ExtractingState({
               slides={slides}
               feedbackMap={feedbackMap}
               onSubmitFeedback={onSubmitFeedback}
+              showOnlyPicked={false}
             />
           </div>
         )}
@@ -617,13 +622,11 @@ function ErrorState({
 }
 
 function CompletedState({
-  videoId,
   totalFramesCount,
   pickedFramesCount,
   slides,
   feedbackMap,
   onSubmitFeedback,
-  view,
   onUnpickAll,
   isUnpickingAll,
   hasPickedFrames,
@@ -631,13 +634,11 @@ function CompletedState({
   analysisState,
   hasAnalysisResults,
 }: {
-  videoId: string;
   totalFramesCount: number;
   pickedFramesCount: number;
   slides: SlideData[];
   feedbackMap: Map<number, SlideFeedbackData>;
   onSubmitFeedback: (feedback: SlideFeedbackData) => Promise<void>;
-  view: SlidesPanelView;
   onUnpickAll: () => Promise<void>;
   isUnpickingAll: boolean;
   hasPickedFrames: boolean;
@@ -649,175 +650,284 @@ function CompletedState({
     "video2md-slides-tutorial",
     true,
   );
+  const [showOnlyPicked, setShowOnlyPicked] = useState(false);
+  const [slidesConfirmed, setSlidesConfirmed] = useState(false);
   const [, setQueryState] = useQueryStates(tabQueryConfig);
-  // Suppress unused variable warning - videoId is passed for potential future use
-  void videoId;
 
-  const slidesLabel =
-    view === "curation"
-      ? `Frames (${pickedFramesCount}/${totalFramesCount})`
-      : `Picked Frames (${pickedFramesCount})`;
+  const isAnalyzing = analysisState.status === "streaming";
+  const isAnalysisComplete =
+    analysisState.status === "completed" || hasAnalysisResults;
 
+  // Filter slides based on showOnlyPicked toggle
+  const filteredSlides = useMemo(() => {
+    if (!showOnlyPicked) return slides;
+
+    return slides.filter((slide) => {
+      const feedback = feedbackMap.get(slide.slideNumber);
+      return feedback?.isFirstFramePicked || feedback?.isLastFramePicked;
+    });
+  }, [slides, feedbackMap, showOnlyPicked]);
+
+  const handleNavigateToSuperAnalysis = () => {
+    void setQueryState({
+      superAnalysis: true,
+      slides: null,
+      analyze: null,
+      slideAnalysis: null,
+    });
+  };
+
+  return (
+    <div className="flex flex-col">
+      <Card className="flex-1">
+        <CardHeader>
+          <CardTitle className="flex items-center justify-between">
+            <span className="flex items-center gap-2">
+              <ImageIcon className="h-5 w-5" />
+              Frames ({pickedFramesCount}/{totalFramesCount})
+            </span>
+            <div className="flex flex-wrap items-center gap-2">
+              {!showTutorial && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                  onClick={() => setShowTutorial(true)}
+                  title="Show tutorial"
+                >
+                  <HelpCircle className="h-4 w-4" />
+                </Button>
+              )}
+              {/* Show only picked toggle */}
+              <Button
+                variant={showOnlyPicked ? "secondary" : "outline"}
+                size="sm"
+                onClick={() => setShowOnlyPicked(!showOnlyPicked)}
+                className="gap-1.5"
+                disabled={!hasPickedFrames}
+              >
+                {showOnlyPicked ? (
+                  <>
+                    <Eye className="h-4 w-4" />
+                    Show all
+                  </>
+                ) : (
+                  <>
+                    <EyeOff className="h-4 w-4" />
+                    Show picked only
+                  </>
+                )}
+              </Button>
+            </div>
+          </CardTitle>
+        </CardHeader>
+
+        {/* Analysis progress indicator */}
+        {isAnalyzing && (
+          <CardContent className="pt-0 pb-4">
+            <div className="flex items-center gap-3 p-3 bg-muted/30 rounded-md">
+              <Loader2 className="h-4 w-4 animate-spin text-primary" />
+              <span className="text-sm">{analysisState.message}</span>
+              <span className="text-sm text-muted-foreground ml-auto">
+                {analysisState.progress}%
+              </span>
+            </div>
+          </CardContent>
+        )}
+
+        {/* Analysis error indicator */}
+        {analysisState.status === "error" && analysisState.error && (
+          <CardContent className="pt-0 pb-4">
+            <div className="p-3 bg-destructive/10 text-destructive rounded-md text-sm">
+              {analysisState.error}
+            </div>
+          </CardContent>
+        )}
+
+        <CardContent
+          className={cn(
+            isAnalyzing || analysisState.status === "error" ? "pt-0" : "",
+            "pb-32", // Add padding for sticky footer
+          )}
+        >
+          {showTutorial && (
+            <Card className="mb-6 bg-primary/[0.02] border-primary/20 shadow-none relative overflow-hidden">
+              <div className="absolute top-2 right-2">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 text-muted-foreground hover:text-foreground hover:bg-primary/10"
+                  onClick={() => setShowTutorial(false)}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2 text-primary">
+                  <HelpCircle className="h-4 w-4" />
+                  How this page works
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4 text-sm text-muted-foreground">
+                <p>
+                  Pick the slides you&apos;d like to include in the final
+                  analysis. Changes are saved automatically.
+                </p>
+                <p>
+                  Once you&apos;ve picked your slides, confirm your selection
+                  below and click &quot;Analyze Selected Slides&quot; to
+                  generate the Super Analysis.
+                </p>
+                <p>
+                  You can use the &quot;Show picked only&quot; toggle to review
+                  just your selected frames.
+                </p>
+                <div className="pt-2 flex justify-end">
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => setShowTutorial(false)}
+                    className="text-xs h-8"
+                  >
+                    Hide tutorial
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {filteredSlides.length === 0 && showOnlyPicked ? (
+            <div className="text-center py-12 text-muted-foreground">
+              <ImageIcon className="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <p>No slides have been picked yet.</p>
+              <p className="text-sm mt-1">
+                Toggle &quot;Show all&quot; to see all slides and pick some.
+              </p>
+            </div>
+          ) : (
+            <SlideGrid
+              slides={filteredSlides}
+              feedbackMap={feedbackMap}
+              onSubmitFeedback={onSubmitFeedback}
+              showOnlyPicked={showOnlyPicked}
+            />
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Sticky footer with actions */}
+      <StickyActionsFooter
+        pickedFramesCount={pickedFramesCount}
+        slidesConfirmed={slidesConfirmed}
+        onSlidesConfirmedChange={setSlidesConfirmed}
+        hasPickedFrames={hasPickedFrames}
+        onUnpickAll={onUnpickAll}
+        isUnpickingAll={isUnpickingAll}
+        onAnalyzeSelectedSlides={onAnalyzeSelectedSlides}
+        analysisState={analysisState}
+        isAnalysisComplete={isAnalysisComplete}
+        onNavigateToSuperAnalysis={handleNavigateToSuperAnalysis}
+      />
+    </div>
+  );
+}
+
+// ============================================================================
+// Sticky Actions Footer
+// ============================================================================
+
+function StickyActionsFooter({
+  pickedFramesCount,
+  slidesConfirmed,
+  onSlidesConfirmedChange,
+  hasPickedFrames,
+  onUnpickAll,
+  isUnpickingAll,
+  onAnalyzeSelectedSlides,
+  analysisState,
+  isAnalysisComplete,
+  onNavigateToSuperAnalysis,
+}: {
+  pickedFramesCount: number;
+  slidesConfirmed: boolean;
+  onSlidesConfirmedChange: (confirmed: boolean) => void;
+  hasPickedFrames: boolean;
+  onUnpickAll: () => Promise<void>;
+  isUnpickingAll: boolean;
+  onAnalyzeSelectedSlides: () => Promise<void>;
+  analysisState: SlideAnalysisState;
+  isAnalysisComplete: boolean;
+  onNavigateToSuperAnalysis: () => void;
+}) {
   const isAnalyzing = analysisState.status === "streaming";
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center justify-between">
-          <span className="flex items-center gap-2">
-            <ImageIcon className="h-5 w-5" />
-            {slidesLabel}
-          </span>
-          <div className="flex flex-wrap items-center gap-2">
-            {view === "curation" && (
-              <>
-                {!showTutorial && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                    onClick={() => setShowTutorial(true)}
-                    title="Show tutorial"
-                  >
-                    <HelpCircle className="h-4 w-4" />
-                  </Button>
+    <div className="fixed bottom-0 left-0 right-0 z-50 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+      <div className="mx-auto max-w-5xl px-4 py-3 md:px-6">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          {/* Left side - Confirmation checkbox */}
+          <label className="flex items-center gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={slidesConfirmed}
+              onChange={(e) => onSlidesConfirmedChange(e.target.checked)}
+              disabled={!hasPickedFrames || isAnalyzing}
+              className="h-5 w-5 rounded border-gray-300 text-primary focus:ring-2 focus:ring-primary disabled:opacity-50"
+            />
+            <span
+              className={cn(
+                "text-sm",
+                !hasPickedFrames && "text-muted-foreground",
+              )}
+            >
+              {hasPickedFrames
+                ? `These ${pickedFramesCount} slides look good to me`
+                : "Pick some slides first"}
+            </span>
+          </label>
+
+          {/* Right side - Action buttons */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onUnpickAll}
+              disabled={!hasPickedFrames || isUnpickingAll || isAnalyzing}
+            >
+              {isUnpickingAll ? "Unpicking..." : "Unpick all"}
+            </Button>
+
+            {isAnalysisComplete ? (
+              <Button
+                size="sm"
+                onClick={onNavigateToSuperAnalysis}
+                className="gap-2"
+              >
+                <Check className="h-4 w-4" />
+                Go to Super Analysis
+                <ArrowRight className="h-4 w-4" />
+              </Button>
+            ) : (
+              <Button
+                size="sm"
+                onClick={onAnalyzeSelectedSlides}
+                disabled={!slidesConfirmed || isAnalyzing}
+                className="gap-2"
+              >
+                {isAnalyzing ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Analyzing...
+                  </>
+                ) : (
+                  "Analyze Selected Slides"
                 )}
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={onUnpickAll}
-                  disabled={!hasPickedFrames || isUnpickingAll || isAnalyzing}
-                >
-                  {isUnpickingAll ? "Unpicking..." : "Unpick all frames"}
-                </Button>
-              </>
+              </Button>
             )}
           </div>
-        </CardTitle>
-      </CardHeader>
-
-      {/* Analysis progress indicator */}
-      {isAnalyzing && (
-        <CardContent className="pt-0 pb-4">
-          <div className="flex items-center gap-3 p-3 bg-muted/30 rounded-md">
-            <Loader2 className="h-4 w-4 animate-spin text-primary" />
-            <span className="text-sm">{analysisState.message}</span>
-            <span className="text-sm text-muted-foreground ml-auto">
-              {analysisState.progress}%
-            </span>
-          </div>
-        </CardContent>
-      )}
-
-      {/* Analysis error indicator */}
-      {analysisState.status === "error" && analysisState.error && (
-        <CardContent className="pt-0 pb-4">
-          <div className="p-3 bg-destructive/10 text-destructive rounded-md text-sm">
-            {analysisState.error}
-          </div>
-        </CardContent>
-      )}
-
-      <CardContent
-        className={
-          isAnalyzing || analysisState.status === "error" ? "pt-0" : ""
-        }
-      >
-        {view === "curation" && showTutorial && (
-          <Card className="mb-6 bg-primary/[0.02] border-primary/20 shadow-none relative overflow-hidden">
-            <div className="absolute top-2 right-2">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7 text-muted-foreground hover:text-foreground hover:bg-primary/10"
-                onClick={() => setShowTutorial(false)}
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2 text-primary">
-                <HelpCircle className="h-4 w-4" />
-                How this page works
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4 text-sm text-muted-foreground">
-              <p>
-                In this page you can select which slides you&apos;d like to keep
-                for this video. Interactions immediately save the choice in the
-                database (there&apos;s no save button).
-              </p>
-              <p>
-                You can also help build a dataset to improve the service. If a
-                frame doesn&apos;t have useful content you can mark it as such
-                (or the opposite) to label images for training and dev purposes.
-              </p>
-              <p>
-                We&apos;re improving the slide detection algorithm, so we show
-                the first and last frame of each segment. If the algorithm were
-                perfect, the first and last frame would be identical in terms of
-                useful content. By indicating whether they contain useful
-                content and how similar they are, you help us close that gap.
-              </p>
-              <p>You don&apos;t need to annotate everything—10% is enough.</p>
-              <div className="space-y-2">
-                <p className="font-medium text-foreground">Order of priority</p>
-                <ol className="list-decimal space-y-2 pl-5">
-                  <li>
-                    Pick the best slides (shown in the{" "}
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setQueryState({
-                          slidesGrid: true,
-                          slides: null,
-                          analyze: null,
-                        })
-                      }
-                      className="text-primary underline underline-offset-4 cursor-pointer"
-                    >
-                      Slide Grid tab
-                    </button>
-                    ) that will be used for AI slide-to-markdown extraction.
-                  </li>
-                  <li>
-                    Annotate some slides so we can build a dataset to improve
-                    slide detection quality and eventually remove the need for
-                    manual selection.
-                  </li>
-                </ol>
-              </div>
-              <div className="pt-2 flex justify-end">
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => setShowTutorial(false)}
-                  className="text-xs h-8"
-                >
-                  Hide tutorial
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-        {view === "curation" ? (
-          <SlideGrid
-            slides={slides}
-            feedbackMap={feedbackMap}
-            onSubmitFeedback={onSubmitFeedback}
-          />
-        ) : (
-          <SlideGridTab
-            slides={slides}
-            feedbackMap={feedbackMap}
-            onAnalyzeSelectedSlides={onAnalyzeSelectedSlides}
-            analysisState={analysisState}
-            hasAnalysisResults={hasAnalysisResults}
-            pickedCount={pickedFramesCount}
-          />
-        )}
-      </CardContent>
-    </Card>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -829,10 +939,12 @@ function SlideGrid({
   slides,
   feedbackMap,
   onSubmitFeedback,
+  showOnlyPicked,
 }: {
   slides: SlideData[];
   feedbackMap: Map<number, SlideFeedbackData>;
   onSubmitFeedback: (feedback: SlideFeedbackData) => Promise<void>;
+  showOnlyPicked: boolean;
 }) {
   const parentRef = useRef<HTMLDivElement>(null);
 
@@ -860,6 +972,7 @@ function SlideGrid({
       >
         {virtualizer.getVirtualItems().map((virtualItem) => {
           const slide = slides[virtualItem.index];
+          const feedback = feedbackMap.get(slide.slideNumber);
           return (
             <div
               key={virtualItem.key}
@@ -876,8 +989,9 @@ function SlideGrid({
               <div className="pb-6">
                 <SlideCard
                   slide={slide}
-                  initialFeedback={feedbackMap.get(slide.slideNumber)}
+                  initialFeedback={feedback}
                   onSubmitFeedback={onSubmitFeedback}
+                  showOnlyPickedFrames={showOnlyPicked}
                 />
               </div>
             </div>

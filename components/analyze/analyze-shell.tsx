@@ -4,7 +4,6 @@ import {
   ExternalLink,
   FileText,
   FolderOpen,
-  Grid3x3,
   Home,
   Menu,
   Moon,
@@ -39,7 +38,6 @@ import { cn } from "@/lib/utils";
 export type AnalyzeTabId =
   | "analyze"
   | "slides"
-  | "slides-grid"
   | "slide-analysis"
   | "super-analysis";
 
@@ -50,8 +48,7 @@ export const tabs = [
     label: "Super Analysis",
     icon: Wand2,
   },
-  { id: "slides" as AnalyzeTabId, label: "Slide Curation", icon: FolderOpen },
-  { id: "slides-grid" as AnalyzeTabId, label: "Slides Grid", icon: Grid3x3 },
+  { id: "slides" as AnalyzeTabId, label: "Slides", icon: FolderOpen },
   {
     id: "slide-analysis" as AnalyzeTabId,
     label: "Slide Analysis",
@@ -68,7 +65,6 @@ const parseAsPresence = createParser<boolean>({
 const tabQueryConfig = {
   analyze: parseAsPresence,
   slides: parseAsPresence,
-  slidesGrid: parseAsPresence,
   slideAnalysis: parseAsPresence,
   superAnalysis: parseAsPresence,
 };
@@ -95,11 +91,9 @@ export function AnalyzeShell({
       ? "super-analysis"
       : queryState.slideAnalysis
         ? "slide-analysis"
-        : queryState.slidesGrid
-          ? "slides-grid"
-          : queryState.slides
-            ? "slides"
-            : "analyze";
+        : queryState.slides
+          ? "slides"
+          : "analyze";
   const { resolvedTheme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const isDark = resolvedTheme === "dark";
@@ -120,7 +114,6 @@ export function AnalyzeShell({
       superAnalysis: null,
       analyze: true,
       slides: null,
-      slidesGrid: null,
       slideAnalysis: null,
     });
   }, [hasSuperAnalysis, queryState.superAnalysis, setQueryState]);
@@ -132,7 +125,6 @@ export function AnalyzeShell({
       void setQueryState({
         superAnalysis: true,
         slideAnalysis: null,
-        slidesGrid: null,
         slides: null,
         analyze: null,
       });
@@ -142,18 +134,6 @@ export function AnalyzeShell({
     if (tab === "slide-analysis") {
       void setQueryState({
         slideAnalysis: true,
-        superAnalysis: null,
-        slidesGrid: null,
-        slides: null,
-        analyze: null,
-      });
-      return;
-    }
-
-    if (tab === "slides-grid") {
-      void setQueryState({
-        slidesGrid: true,
-        slideAnalysis: null,
         superAnalysis: null,
         slides: null,
         analyze: null,
@@ -166,7 +146,6 @@ export function AnalyzeShell({
         slides: true,
         slideAnalysis: null,
         superAnalysis: null,
-        slidesGrid: null,
         analyze: null,
       });
       return;
@@ -177,7 +156,6 @@ export function AnalyzeShell({
       superAnalysis: null,
       slideAnalysis: null,
       slides: null,
-      slidesGrid: null,
     });
   };
 
@@ -353,11 +331,7 @@ function AnalyzeTabContent({
   channelName: string;
 }) {
   if (activeTab === "slides") {
-    return <SlidesPanel videoId={videoId} view="curation" />;
-  }
-
-  if (activeTab === "slides-grid") {
-    return <SlidesPanel videoId={videoId} view="grid" />;
+    return <SlidesPanel videoId={videoId} />;
   }
 
   if (activeTab === "slide-analysis") {
