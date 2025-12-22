@@ -19,6 +19,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StepIndicator } from "@/components/ui/step-indicator";
+import type {
+  SlideAnalysisResultsResponse,
+  SlideFeedbackResponse,
+  SlidesResponse,
+} from "@/lib/api-types";
 import { UI } from "@/lib/constants";
 import { slidesPanelTabQueryConfig } from "@/lib/query-utils";
 import type {
@@ -86,8 +91,8 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
         throw new Error("Failed to load slides state");
       }
 
-      const data = await response.json();
-      const slides: SlideData[] = data.slides ?? [];
+      const data = (await response.json()) as SlidesResponse;
+      const slides = data.slides;
       const slidesMessage = `Extracted ${data.totalSlides ?? slides.length} slides`;
 
       switch (data.status) {
@@ -168,10 +173,10 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
       const response = await fetch(`/api/video/${videoId}/slides/feedback`);
       if (!response.ok) return;
 
-      const data = await response.json();
+      const data = (await response.json()) as SlideFeedbackResponse;
       const newMap = new Map<number, SlideFeedbackData>();
 
-      data.feedback.forEach((fb: SlideFeedbackData) => {
+      data.feedback.forEach((fb) => {
         newMap.set(fb.slideNumber, fb);
       });
 
@@ -274,10 +279,10 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
       const response = await fetch(`/api/video/${videoId}/slides/analysis`);
       if (!response.ok) return;
 
-      const data = await response.json();
+      const data = (await response.json()) as SlideAnalysisResultsResponse;
       const resultsMap = new Map<string, SlideAnalysisResultData>();
 
-      for (const result of data.results as SlideAnalysisResultData[]) {
+      for (const result of data.results) {
         const key = `${result.slideNumber}-${result.framePosition}`;
         resultsMap.set(key, result);
       }

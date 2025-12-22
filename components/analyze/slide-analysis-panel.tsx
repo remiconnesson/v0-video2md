@@ -6,10 +6,14 @@ import { Streamdown } from "streamdown";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type {
+  SlideAnalysisResult,
+  SlideAnalysisResultsResponse,
+  SlideFeedbackResponse,
+  SlidesResponse,
+} from "@/lib/api-types";
+import type {
   SlideAnalysisStreamEvent,
   SlideAnalysisTarget,
-  SlideData,
-  SlideFeedbackData,
 } from "@/lib/slides-types";
 import { consumeSSE } from "@/lib/sse";
 import {
@@ -19,12 +23,7 @@ import {
   type SlideAnalysisStatusType,
 } from "@/lib/status-types";
 
-interface SlideAnalysisResult {
-  slideNumber: number;
-  framePosition: "first" | "last";
-  markdown: string;
-  createdAt?: string;
-}
+// Removed local SlideAnalysisResult interface as it's now in api-types
 
 interface SlideAnalysisPanelProps {
   videoId: string;
@@ -54,7 +53,7 @@ export function SlideAnalysisPanel({ videoId }: SlideAnalysisPanelProps) {
         throw new Error("Failed to load analysis results");
       }
 
-      const data = await response.json();
+      const data = (await response.json()) as SlideAnalysisResultsResponse;
       setResults(data.results);
       setStatus(
         data.results.length > 0
@@ -87,11 +86,12 @@ export function SlideAnalysisPanel({ videoId }: SlideAnalysisPanelProps) {
         throw new Error("Failed to load slide feedback");
       }
 
-      const slidesData = await slidesResponse.json();
-      const feedbackData = await feedbackResponse.json();
+      const slidesData = (await slidesResponse.json()) as SlidesResponse;
+      const feedbackData =
+        (await feedbackResponse.json()) as SlideFeedbackResponse;
 
-      const slides: SlideData[] = slidesData.slides ?? [];
-      const feedback: SlideFeedbackData[] = feedbackData.feedback ?? [];
+      const slides = slidesData.slides;
+      const feedback = feedbackData.feedback;
       const feedbackMap = new Map(
         feedback.map((entry) => [entry.slideNumber, entry]),
       );

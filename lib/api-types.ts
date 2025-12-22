@@ -25,3 +25,38 @@ export const videoStatusResponseSchema = z.discriminatedUnion("status", [
   }),
 ]);
 export type VideoStatusResponse = z.infer<typeof videoStatusResponseSchema>;
+
+// ============================================================================
+// Slides API Types
+// ============================================================================
+
+import { SlideDataSchema, SlideFeedbackDataSchema } from "./slides-types";
+
+export const slidesResponseSchema = z.object({
+  status: z.string(),
+  runId: z.string().nullable(),
+  totalSlides: z.number(),
+  errorMessage: z.string().nullable(),
+  slides: z.array(SlideDataSchema),
+});
+export type SlidesResponse = z.infer<typeof slidesResponseSchema>;
+
+export const slideFeedbackResponseSchema = z.object({
+  feedback: z.array(SlideFeedbackDataSchema),
+});
+export type SlideFeedbackResponse = z.infer<typeof slideFeedbackResponseSchema>;
+
+export const slideAnalysisResultSchema = z.object({
+  slideNumber: z.number(),
+  framePosition: z.enum(["first", "last"]),
+  markdown: z.string(),
+  createdAt: z.string().optional(),
+});
+export type SlideAnalysisResult = z.infer<typeof slideAnalysisResultSchema>;
+
+export const slideAnalysisResultsResponseSchema = z.object({
+  results: z.array(slideAnalysisResultSchema),
+});
+export type SlideAnalysisResultsResponse = z.infer<
+  typeof slideAnalysisResultsResponseSchema
+>;
