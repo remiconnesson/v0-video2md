@@ -33,7 +33,8 @@ import {
 } from "@/lib/analysis-format";
 import { LoadingStatus } from "@/lib/status-types";
 import { isRecord } from "@/lib/type-utils";
-import { useStreamingFetch } from "@/lib/use-streaming-fetch";
+import { useSSEFetch } from "@/lib/use-sse-fetch";
+import type { AnalysisStreamEvent } from "@/workflows/steps/transcript-analysis";
 import { cn } from "@/lib/utils";
 
 interface AnalysisPanelProps {
@@ -58,16 +59,29 @@ export function AnalysisPanel({
   );
   const [copied, setCopied] = useState(false);
   const [copiedSection, setCopiedSection] = useState<string | null>(null);
+  const [statusMessage, setStatusMessage] = useState<string>("");
 
   const {
     status,
     data: analysis,
     error: errorMessage,
-    statusMessage: _statusMessage,
-  } = useStreamingFetch<Record<string, unknown>>(
+    refetch,
+  } = useSSEFetch<AnalysisStreamEvent, Record<string, unknown>>(
     `/api/video/${videoId}/analysis`,
     {
       initialData: {},
+      accumulatePartial: true,
+      onProgress: (event) => {
+        setStatusMessage((event as any).message || (event as any).phase || "");
+      },
+      onPartial: (event) => {
+        // The hook handles accumulation automatically with accumulatePartial: true
+      },
+      parseJsonResponse: (data: any) => {
+        // When completed, the API returns { videoId, result, createdAt }
+        // When streaming, we accumulate partial results
+        return data.result ?? data;
+      },
     },
     [videoId],
   );

@@ -14,7 +14,8 @@ import { Streamdown } from "streamdown";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useStreamingFetch } from "@/lib/use-streaming-fetch";
+import { useSSEFetch } from "@/lib/use-sse-fetch";
+import type { SuperAnalysisStreamEvent } from "@/lib/super-analysis-types";
 
 // Mobile-only header with video info for super analysis
 function MobileSuperAnalysisHeader({
@@ -134,26 +135,36 @@ export function SuperAnalysisPanel({
       ? `/api/video/${videoId}/super-analysis?trigger=true`
       : `/api/video/${videoId}/super-analysis`;
 
+  const [statusMessage, setStatusMessage] = useState<string>("");
+
   const {
     status,
     data: analysis,
     error: errorMessage,
-    statusMessage,
     refetch,
-  } = useStreamingFetch<string>(
+  } = useSSEFetch<SuperAnalysisStreamEvent, string>(
     url,
     {
       initialData: "",
       accumulatePartial: true,
-      onStatusMessage: (message) => {
+      onProgress: (event) => {
+        let message = (event as any).message;
         // Custom status message logic for super analysis
         if (triggerCount > 0 && message === "Fetching...") {
-          return "Starting super analysis...";
+          message = "Starting super analysis...";
         }
         if (message === "Generating...") {
-          return "Generating comprehensive analysis...";
+          message = "Generating comprehensive analysis...";
         }
-        return message;
+        setStatusMessage(message);
+      },
+      onPartial: (event) => {
+        // The hook handles accumulation automatically with accumulatePartial: true
+      },
+      parseJsonResponse: (data: any) => {
+        // When completed, the API returns { videoId, result, createdAt }
+        // When streaming, we accumulate partial results
+        return data.result ?? data;
       },
     },
     [url],
