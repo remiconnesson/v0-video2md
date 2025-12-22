@@ -7,6 +7,7 @@ import {
   Grid3x3,
   Home,
   Moon,
+  Sparkles,
   Sun,
 } from "lucide-react";
 import Link from "next/link";
@@ -14,6 +15,7 @@ import { useTheme } from "next-themes";
 import { createParser, useQueryStates } from "nuqs";
 import { useEffect, useState } from "react";
 import { AnalysisPanel } from "@/components/analyze/analysis-panel";
+import { SlideAnalysisPanel } from "@/components/analyze/slide-analysis-panel";
 import { SlidesPanel } from "@/components/analyze/slides-panel";
 import {
   Sidebar,
@@ -29,12 +31,21 @@ import {
 } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
 
-export type AnalyzeTabId = "analyze" | "slides" | "slides-grid";
+export type AnalyzeTabId =
+  | "analyze"
+  | "slides"
+  | "slides-grid"
+  | "slide-analysis";
 
 export const tabs = [
   { id: "analyze" as AnalyzeTabId, label: "Analysis", icon: FileText },
   { id: "slides" as AnalyzeTabId, label: "Slide Curation", icon: FolderOpen },
   { id: "slides-grid" as AnalyzeTabId, label: "Slides Grid", icon: Grid3x3 },
+  {
+    id: "slide-analysis" as AnalyzeTabId,
+    label: "Slide Analysis",
+    icon: Sparkles,
+  },
 ];
 
 const parseAsPresence = createParser<boolean>({
@@ -47,6 +58,7 @@ const tabQueryConfig = {
   analyze: parseAsPresence,
   slides: parseAsPresence,
   slidesGrid: parseAsPresence,
+  slideAnalysis: parseAsPresence,
 };
 
 type AnalyzeShellProps = {
@@ -61,11 +73,13 @@ export function AnalyzeShell({
   channelName,
 }: AnalyzeShellProps) {
   const [queryState, setQueryState] = useQueryStates(tabQueryConfig);
-  const activeTab: AnalyzeTabId = queryState.slidesGrid
-    ? "slides-grid"
-    : queryState.slides
-      ? "slides"
-      : "analyze";
+  const activeTab: AnalyzeTabId = queryState.slideAnalysis
+    ? "slide-analysis"
+    : queryState.slidesGrid
+      ? "slides-grid"
+      : queryState.slides
+        ? "slides"
+        : "analyze";
   const { resolvedTheme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const isDark = resolvedTheme === "dark";
@@ -75,17 +89,42 @@ export function AnalyzeShell({
   }, []);
 
   const handleTabChange = (tab: AnalyzeTabId) => {
+    if (tab === "slide-analysis") {
+      void setQueryState({
+        slideAnalysis: true,
+        slidesGrid: null,
+        slides: null,
+        analyze: null,
+      });
+      return;
+    }
+
     if (tab === "slides-grid") {
-      void setQueryState({ slidesGrid: true, slides: null, analyze: null });
+      void setQueryState({
+        slidesGrid: true,
+        slideAnalysis: null,
+        slides: null,
+        analyze: null,
+      });
       return;
     }
 
     if (tab === "slides") {
-      void setQueryState({ slides: true, slidesGrid: null, analyze: null });
+      void setQueryState({
+        slides: true,
+        slideAnalysis: null,
+        slidesGrid: null,
+        analyze: null,
+      });
       return;
     }
 
-    void setQueryState({ analyze: true, slides: null, slidesGrid: null });
+    void setQueryState({
+      analyze: true,
+      slideAnalysis: null,
+      slides: null,
+      slidesGrid: null,
+    });
   };
 
   return (
@@ -100,7 +139,7 @@ export function AnalyzeShell({
         />
         <SidebarInset className="flex flex-col">
           <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-6 py-6">
-            {activeTab !== "analyze" && (
+            {activeTab !== "analyze" && activeTab !== "slide-analysis" && (
               <VideoInfoDisplay
                 title={title}
                 channelName={channelName}
@@ -226,6 +265,10 @@ function AnalyzeTabContent({
 
   if (activeTab === "slides-grid") {
     return <SlidesPanel videoId={videoId} view="grid" />;
+  }
+
+  if (activeTab === "slide-analysis") {
+    return <SlideAnalysisPanel videoId={videoId} />;
   }
 
   return (

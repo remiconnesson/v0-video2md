@@ -625,8 +625,8 @@ function CompletedState({
             <ImageIcon className="h-5 w-5" />
             {slidesLabel}
           </span>
-          {view === "curation" && (
-            <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2">
+            {view === "curation" && (
               <Button
                 variant="outline"
                 size="sm"
@@ -635,25 +635,25 @@ function CompletedState({
               >
                 {isUnpickingAll ? "Unpicking..." : "Unpick all frames"}
               </Button>
-              <Button
-                variant="default"
-                size="sm"
-                onClick={onAnalyzeSelectedSlides}
-                disabled={!hasPickedFrames || isAnalyzing}
-              >
-                {isAnalyzing ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Analyzing...
-                  </>
-                ) : hasAnalysisResults ? (
-                  "Re-analyze Selected"
-                ) : (
-                  "Analyze Selected Slides"
-                )}
-              </Button>
-            </div>
-          )}
+            )}
+            <Button
+              variant="default"
+              size="sm"
+              onClick={onAnalyzeSelectedSlides}
+              disabled={!hasPickedFrames || isAnalyzing}
+            >
+              {isAnalyzing ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Analyzing...
+                </>
+              ) : hasAnalysisResults ? (
+                "Re-analyze Selected"
+              ) : (
+                "Analyze Selected Slides"
+              )}
+            </Button>
+          </div>
         </CardTitle>
       </CardHeader>
 

@@ -22,7 +22,11 @@ type TranscriptSegment = z.infer<typeof TranscriptSegmentSchema>;
 
 function validateTranscriptStructure(data: unknown): TranscriptSegment[] {
   const result = z.array(TranscriptSegmentSchema).safeParse(data);
-  return result.success ? result.data : [];
+  if (!result.success) {
+    console.error("Transcript validation failed:", result.error.format());
+    throw new Error(`Invalid transcript structure: ${result.error.message}`);
+  }
+  return result.data;
 }
 
 // ============================================================================
@@ -124,8 +128,9 @@ function getTranscriptContextForSlide(
   const bufferStart = Math.max(0, startTime - 10);
   const bufferEnd = endTime + 10;
 
+  // Include any segment that overlaps with the buffered time window
   const relevantSegments = segments.filter(
-    (segment) => segment.start >= bufferStart && segment.start <= bufferEnd,
+    (segment) => segment.end >= bufferStart && segment.start <= bufferEnd,
   );
 
   if (relevantSegments.length === 0) {
