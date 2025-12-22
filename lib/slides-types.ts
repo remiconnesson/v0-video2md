@@ -133,6 +133,15 @@ export type SlideAnalysisStreamEvent =
       message: string;
     }
   | {
+      /**
+       * Emitted when slide analysis starts, containing all slide stream IDs.
+       * Each slideStreamId corresponds to a namespaced stream that emits
+       * SlideTextStreamState events as the AI streams the analysis.
+       */
+      type: "slides_started";
+      slideStreamIds: SlideStreamId[];
+    }
+  | {
       type: "slide_markdown";
       slideNumber: number;
       framePosition: "first" | "last";
@@ -152,6 +161,38 @@ export interface SlideAnalysisTarget {
   slideNumber: number;
   framePosition: "first" | "last";
 }
+
+// ============================================================================
+// Slide Text Stream State Types (for parallel streaming)
+// ============================================================================
+
+/**
+ * Unique identifier for a slide frame being analyzed.
+ * Format: `${slideNumber}-${framePosition}`
+ */
+export type SlideStreamId = `${number}-${"first" | "last"}`;
+
+export function makeSlideStreamId(
+  slideNumber: number,
+  framePosition: "first" | "last",
+): SlideStreamId {
+  return `${slideNumber}-${framePosition}`;
+}
+
+/**
+ * State of a single slide's text streaming analysis.
+ * Uses 'type' field for SSE compatibility.
+ */
+export type SlideTextStreamState =
+  | { type: "streaming"; text: string }
+  | { type: "success"; text: string }
+  | { type: "error"; text: string | null; errorMessage: string };
+
+/**
+ * Event emitted to namespaced writable streams during slide analysis.
+ * Each slide gets its own namespace based on its SlideStreamId.
+ */
+export type SlideTextStreamEvent = SlideTextStreamState;
 
 /**
  * Picked slide info - represents a slide frame that was picked for analysis

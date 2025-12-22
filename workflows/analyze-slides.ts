@@ -2,7 +2,9 @@ import { FatalError, getWritable } from "workflow";
 import type {
   SlideAnalysisStreamEvent,
   SlideAnalysisTarget,
+  SlideStreamId,
 } from "@/lib/slides-types";
+import { makeSlideStreamId } from "@/lib/slides-types";
 import { emit } from "@/lib/stream-utils";
 import { isValidYouTubeVideoId } from "@/lib/youtube-utils";
 import {
@@ -51,6 +53,11 @@ export async function analyzeSelectedSlidesWorkflow(
     currentStep = "analyzing slides";
     const totalSlides = pickedSlides.length;
 
+    // Build slide stream IDs for namespaced streams
+    const slideStreamIds: SlideStreamId[] = pickedSlides.map((slide) =>
+      makeSlideStreamId(slide.slideNumber, slide.framePosition),
+    );
+
     await emit<SlideAnalysisStreamEvent>(
       {
         type: "progress",
@@ -61,12 +68,21 @@ export async function analyzeSelectedSlidesWorkflow(
       writable,
     );
 
-    // Run all analyses in parallel
+    // Emit slides_started event so client knows which namespaced streams to subscribe to
+    await emit<SlideAnalysisStreamEvent>(
+      {
+        type: "slides_started",
+        slideStreamIds,
+      },
+      writable,
+    );
+
+    // Run all analyses in parallel - each step writes to its own namespaced stream
     const results = await Promise.all(
       pickedSlides.map((slideInfo) => analyzeAndSaveSlide(videoId, slideInfo)),
     );
 
-    // Emit all results
+    // Emit final results on the main stream (for backwards compatibility)
     for (const result of results) {
       await emit<SlideAnalysisStreamEvent>(
         {

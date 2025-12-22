@@ -1,12 +1,17 @@
+import { getWritable } from "workflow";
 import { z } from "zod";
-import { analyzeSlide } from "@/ai/slide-analysis";
+import { streamSlideAnalysis } from "@/ai/slide-analysis";
 import {
   getSlideFeedback,
   getVideoSlides,
   getVideoWithTranscript,
   saveSlideAnalysisResult,
 } from "@/db/queries";
-import type { SlideAnalysisTarget } from "@/lib/slides-types";
+import type {
+  SlideAnalysisTarget,
+  SlideTextStreamState,
+} from "@/lib/slides-types";
+import { makeSlideStreamId } from "@/lib/slides-types";
 
 // ============================================================================
 // Transcript Schema (for validation)
@@ -168,6 +173,7 @@ export interface SlideAnalysisResultInfo {
 
 // ============================================================================
 // Step: Analyze and save a single slide (combined for parallelization)
+// Uses namespaced writable streams to emit streaming state for each slide.
 // ============================================================================
 
 export async function analyzeAndSaveSlide(
@@ -176,16 +182,26 @@ export async function analyzeAndSaveSlide(
 ): Promise<SlideAnalysisResultInfo> {
   "use step";
 
-  // Analyze the slide
-  const markdown = await analyzeSlide({
-    videoTitle: slideInfo.videoTitle,
-    slideNumber: slideInfo.slideNumber,
-    framePosition: slideInfo.framePosition,
-    imageUrl: slideInfo.imageUrl,
-    transcriptContext: slideInfo.transcriptContext || undefined,
-  });
+  // Get namespaced writable stream for this specific slide
+  const namespace = makeSlideStreamId(
+    slideInfo.slideNumber,
+    slideInfo.framePosition,
+  );
+  const writable = getWritable<SlideTextStreamState>({ namespace });
 
-  // Save to database
+  // Stream the slide analysis - this emits streaming/success/error states
+  const markdown = await streamSlideAnalysis(
+    {
+      videoTitle: slideInfo.videoTitle,
+      slideNumber: slideInfo.slideNumber,
+      framePosition: slideInfo.framePosition,
+      imageUrl: slideInfo.imageUrl,
+      transcriptContext: slideInfo.transcriptContext || undefined,
+    },
+    writable,
+  );
+
+  // Save to database after successful analysis
   await saveSlideAnalysisResult(
     videoId,
     slideInfo.slideNumber,
