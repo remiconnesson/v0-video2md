@@ -1,6 +1,6 @@
 "use client";
 
-import { ImageIcon, ThumbsDown, ThumbsUp, ZoomIn } from "lucide-react";
+import { ImageIcon, ZoomIn } from "lucide-react";
 import Image from "next/image";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -18,8 +18,6 @@ interface FrameCardProps {
   onZoom: () => void;
   isPicked: boolean;
   onPickedChange: (picked: boolean) => void;
-  hasUsefulContent: boolean | null;
-  onUsefulContentChange: (value: boolean | null) => void;
 }
 
 function FrameCard({
@@ -28,8 +26,6 @@ function FrameCard({
   onZoom,
   isPicked,
   onPickedChange,
-  hasUsefulContent,
-  onUsefulContentChange,
 }: FrameCardProps) {
   return (
     <div className="flex flex-col gap-3">
@@ -75,32 +71,6 @@ function FrameCard({
             {label}
           </div>
         </button>
-      </div>
-
-      <div className="flex items-center justify-between gap-2 rounded-md border bg-muted/30 p-3">
-        <span className="text-sm font-medium">Useful content?</span>
-        <div className="flex items-center gap-2">
-          <Button
-            variant={hasUsefulContent === true ? "default" : "outline"}
-            size="sm"
-            onClick={() =>
-              onUsefulContentChange(hasUsefulContent === true ? null : true)
-            }
-          >
-            <ThumbsUp className="mr-1 h-3 w-3" />
-            Yes
-          </Button>
-          <Button
-            variant={hasUsefulContent === false ? "destructive" : "outline"}
-            size="sm"
-            onClick={() =>
-              onUsefulContentChange(hasUsefulContent === false ? null : false)
-            }
-          >
-            <ThumbsDown className="mr-1 h-3 w-3" />
-            No
-          </Button>
-        </div>
       </div>
     </div>
   );
@@ -201,10 +171,6 @@ export function SlideCard({
             onPickedChange={(picked) =>
               updateField("isFirstFramePicked", picked)
             }
-            hasUsefulContent={feedback.firstFrameHasUsefulContent}
-            onUsefulContentChange={(value) =>
-              updateField("firstFrameHasUsefulContent", value)
-            }
           />
           <FrameCard
             label="Last"
@@ -213,10 +179,6 @@ export function SlideCard({
             isPicked={feedback.isLastFramePicked}
             onPickedChange={(picked) =>
               updateField("isLastFramePicked", picked)
-            }
-            hasUsefulContent={feedback.lastFrameHasUsefulContent}
-            onUsefulContentChange={(value) =>
-              updateField("lastFrameHasUsefulContent", value)
             }
           />
         </div>
@@ -228,20 +190,6 @@ export function SlideCard({
               Report first and last frame having different content?
             </span>
             <div className="flex items-center gap-2">
-              <Button
-                variant={
-                  feedback.framesSameness === "same" ? "default" : "outline"
-                }
-                size="sm"
-                onClick={() =>
-                  updateField(
-                    "framesSameness",
-                    feedback.framesSameness === "same" ? null : "same",
-                  )
-                }
-              >
-                Same
-              </Button>
               <Button
                 variant={
                   feedback.framesSameness === "different"
