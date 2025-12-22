@@ -2,7 +2,7 @@
 
 import { Copy } from "lucide-react";
 import { AnalysisSidebar } from "@/components/analyze/analysis-panel";
-import { AnalyzeSidebar } from "@/components/analyze/analyze-shell";
+import { AnalyzeSidebar, tabs } from "@/components/analyze/analyze-shell";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -11,7 +11,7 @@ export default function AnalyzeLoading() {
   return (
     <SidebarProvider defaultOpen={false}>
       <div className="relative flex min-h-screen w-full">
-        <AnalyzeSidebar activeTab="analyze" />
+        <AnalyzeSidebar activeTab="analyze" tabs={tabs} />
         <SidebarInset className="flex flex-col">
           <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-6 py-6">
             <div className="grid gap-6 lg:grid-cols-[240px_minmax(0,1fr)]">

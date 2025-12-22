@@ -124,6 +124,32 @@ export type VideoAnalysisWorkflowId =
 export type NewVideoAnalysisWorkflowId =
   typeof videoAnalysisWorkflowIds.$inferInsert;
 
+export const superAnalysisRuns = pgTable("super_analysis_runs", {
+  videoId: videoIdColumn().primaryKey(),
+  result: jsonb("result").$type<string>(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type SuperAnalysisRun = typeof superAnalysisRuns.$inferSelect;
+export type NewSuperAnalysisRun = typeof superAnalysisRuns.$inferInsert;
+
+export const superAnalysisWorkflowIds = pgTable(
+  "super_analysis_workflow_ids",
+  {
+    videoId: videoIdColumn().primaryKey(),
+    workflowId: varchar("workflow_id", { length: 100 }).notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("super_analysis_workflow_ids_video_id_idx").on(table.workflowId),
+  ],
+);
+
+export type SuperAnalysisWorkflowId =
+  typeof superAnalysisWorkflowIds.$inferSelect;
+export type NewSuperAnalysisWorkflowId =
+  typeof superAnalysisWorkflowIds.$inferInsert;
+
 // ============================================================================
 // Slides Tables
 // ============================================================================

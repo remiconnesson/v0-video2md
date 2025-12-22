@@ -8,6 +8,7 @@ import {
   Home,
   Moon,
   Sparkles,
+  Stars,
   Sun,
 } from "lucide-react";
 import Link from "next/link";
@@ -17,6 +18,7 @@ import { useEffect, useState } from "react";
 import { AnalysisPanel } from "@/components/analyze/analysis-panel";
 import { SlideAnalysisPanel } from "@/components/analyze/slide-analysis-panel";
 import { SlidesPanel } from "@/components/analyze/slides-panel";
+import { SuperAnalysisPanel } from "@/components/analyze/super-analysis-panel";
 import {
   Sidebar,
   SidebarContent,
@@ -35,10 +37,16 @@ export type AnalyzeTabId =
   | "analyze"
   | "slides"
   | "slides-grid"
-  | "slide-analysis";
+  | "slide-analysis"
+  | "super-analysis";
 
 export const tabs = [
   { id: "analyze" as AnalyzeTabId, label: "Analysis", icon: FileText },
+  {
+    id: "super-analysis" as AnalyzeTabId,
+    label: "Super Analysis",
+    icon: Stars,
+  },
   { id: "slides" as AnalyzeTabId, label: "Slide Curation", icon: FolderOpen },
   { id: "slides-grid" as AnalyzeTabId, label: "Slides Grid", icon: Grid3x3 },
   {
@@ -59,39 +67,77 @@ const tabQueryConfig = {
   slides: parseAsPresence,
   slidesGrid: parseAsPresence,
   slideAnalysis: parseAsPresence,
+  superAnalysis: parseAsPresence,
 };
 
 type AnalyzeShellProps = {
   videoId: string;
   title: string;
   channelName: string;
+  hasTranscriptAnalysis: boolean;
+  hasSlideAnalysis: boolean;
 };
 
 export function AnalyzeShell({
   videoId,
   title,
   channelName,
+  hasTranscriptAnalysis,
+  hasSlideAnalysis,
 }: AnalyzeShellProps) {
   const [queryState, setQueryState] = useQueryStates(tabQueryConfig);
-  const activeTab: AnalyzeTabId = queryState.slideAnalysis
-    ? "slide-analysis"
-    : queryState.slidesGrid
-      ? "slides-grid"
-      : queryState.slides
-        ? "slides"
-        : "analyze";
+  const hasSuperAnalysis = hasTranscriptAnalysis && hasSlideAnalysis;
+  const activeTab: AnalyzeTabId =
+    queryState.superAnalysis && hasSuperAnalysis
+      ? "super-analysis"
+      : queryState.slideAnalysis
+        ? "slide-analysis"
+        : queryState.slidesGrid
+          ? "slides-grid"
+          : queryState.slides
+            ? "slides"
+            : "analyze";
   const { resolvedTheme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const isDark = resolvedTheme === "dark";
+  const visibleTabs = hasSuperAnalysis
+    ? tabs
+    : tabs.filter((tab) => tab.id !== "super-analysis");
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
+  useEffect(() => {
+    if (!queryState.superAnalysis || hasSuperAnalysis) return;
+
+    void setQueryState({
+      superAnalysis: null,
+      analyze: true,
+      slides: null,
+      slidesGrid: null,
+      slideAnalysis: null,
+    });
+  }, [hasSuperAnalysis, queryState.superAnalysis, setQueryState]);
+
   const handleTabChange = (tab: AnalyzeTabId) => {
+    if (tab === "super-analysis") {
+      if (!hasSuperAnalysis) return;
+
+      void setQueryState({
+        superAnalysis: true,
+        slideAnalysis: null,
+        slidesGrid: null,
+        slides: null,
+        analyze: null,
+      });
+      return;
+    }
+
     if (tab === "slide-analysis") {
       void setQueryState({
         slideAnalysis: true,
+        superAnalysis: null,
         slidesGrid: null,
         slides: null,
         analyze: null,
@@ -103,6 +149,7 @@ export function AnalyzeShell({
       void setQueryState({
         slidesGrid: true,
         slideAnalysis: null,
+        superAnalysis: null,
         slides: null,
         analyze: null,
       });
@@ -113,6 +160,7 @@ export function AnalyzeShell({
       void setQueryState({
         slides: true,
         slideAnalysis: null,
+        superAnalysis: null,
         slidesGrid: null,
         analyze: null,
       });
@@ -121,6 +169,7 @@ export function AnalyzeShell({
 
     void setQueryState({
       analyze: true,
+      superAnalysis: null,
       slideAnalysis: null,
       slides: null,
       slidesGrid: null,
@@ -136,16 +185,19 @@ export function AnalyzeShell({
           mounted={mounted}
           isDark={isDark}
           onToggleTheme={() => setTheme(isDark ? "light" : "dark")}
+          tabs={visibleTabs}
         />
         <SidebarInset className="flex flex-col">
           <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-6 py-6">
-            {activeTab !== "analyze" && activeTab !== "slide-analysis" && (
-              <VideoInfoDisplay
-                title={title}
-                channelName={channelName}
-                youtubeId={videoId}
-              />
-            )}
+            {activeTab !== "analyze" &&
+              activeTab !== "slide-analysis" &&
+              activeTab !== "super-analysis" && (
+                <VideoInfoDisplay
+                  title={title}
+                  channelName={channelName}
+                  youtubeId={videoId}
+                />
+              )}
             <AnalyzeTabContent
               activeTab={activeTab}
               videoId={videoId}
@@ -165,12 +217,14 @@ export function AnalyzeSidebar({
   mounted,
   isDark,
   onToggleTheme,
+  tabs: visibleTabs,
 }: {
   activeTab: AnalyzeTabId;
   onTabChange?: (tab: AnalyzeTabId) => void;
   mounted?: boolean;
   isDark?: boolean;
   onToggleTheme?: () => void;
+  tabs: typeof tabs;
 }) {
   return (
     <Sidebar variant="floating" collapsible="icon">
@@ -194,7 +248,7 @@ export function AnalyzeSidebar({
 
       <SidebarContent className="px-2 py-2">
         <SidebarMenu>
-          {tabs.map((tab) => {
+          {visibleTabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
             return (
@@ -269,6 +323,16 @@ function AnalyzeTabContent({
 
   if (activeTab === "slide-analysis") {
     return <SlideAnalysisPanel videoId={videoId} />;
+  }
+
+  if (activeTab === "super-analysis") {
+    return (
+      <SuperAnalysisPanel
+        videoId={videoId}
+        title={title}
+        channelName={channelName}
+      />
+    );
   }
 
   return (

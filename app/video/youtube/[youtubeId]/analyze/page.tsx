@@ -1,4 +1,5 @@
 import { AnalyzeShell } from "@/components/analyze/analyze-shell";
+import { getCompletedAnalysis, hasSlideAnalysisResults } from "@/db/queries";
 import { fetchAndSaveTranscript } from "@/lib/fetch-and-save-transcript";
 import { isValidYouTubeVideoId } from "@/lib/youtube-utils";
 
@@ -21,11 +22,19 @@ export default async function AnalyzePage(props: AnalyzePageProps) {
   const videoData = await fetchAndSaveTranscript(youtubeId);
   console.log("[AnalyzePage] 4. Got transcript data:", videoData.title);
 
+  const [completedAnalysis, hasSlideAnalysis] = await Promise.all([
+    getCompletedAnalysis(youtubeId),
+    hasSlideAnalysisResults(youtubeId),
+  ]);
+  const hasTranscriptAnalysis = !!completedAnalysis?.result;
+
   return (
     <AnalyzeShell
       videoId={youtubeId}
       title={videoData.title}
       channelName={videoData.channelName}
+      hasTranscriptAnalysis={hasTranscriptAnalysis}
+      hasSlideAnalysis={hasSlideAnalysis}
     />
   );
 }
