@@ -247,7 +247,7 @@ export function SlidesPanel({ videoId, view = "curation" }: SlidesPanelProps) {
     () =>
       slidesState.slides.some((slide) => {
         const feedback = feedbackMap.get(slide.slideNumber);
-        const isFirstPicked = feedback?.isFirstFramePicked ?? true;
+        const isFirstPicked = feedback?.isFirstFramePicked ?? false;
         const isLastPicked = feedback?.isLastFramePicked ?? false;
 
         return isFirstPicked || isLastPicked;
@@ -259,7 +259,7 @@ export function SlidesPanel({ videoId, view = "curation" }: SlidesPanelProps) {
     () =>
       slidesState.slides.reduce((acc, slide) => {
         const feedback = feedbackMap.get(slide.slideNumber);
-        const isFirstPicked = feedback?.isFirstFramePicked ?? true;
+        const isFirstPicked = feedback?.isFirstFramePicked ?? false;
         const isLastPicked = feedback?.isLastFramePicked ?? false;
 
         let count = 0;

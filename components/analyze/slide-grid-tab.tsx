@@ -67,7 +67,7 @@ export function SlideGridTab({
 
     for (const slide of slides) {
       const feedback = feedbackMap.get(slide.slideNumber);
-      const isFirstPicked = feedback?.isFirstFramePicked ?? true;
+      const isFirstPicked = feedback?.isFirstFramePicked ?? false;
       const isLastPicked = feedback?.isLastFramePicked ?? false;
 
       if (isFirstPicked && slide.firstFrameImageUrl) {

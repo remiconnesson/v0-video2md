@@ -136,7 +136,7 @@ export function SlideCard({
       firstFrameHasUsefulContent: null,
       lastFrameHasUsefulContent: null,
       framesSameness: null,
-      isFirstFramePicked: true,
+      isFirstFramePicked: false,
       isLastFramePicked: false,
       ...initialFeedback,
       ...localChanges,
