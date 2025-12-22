@@ -8,8 +8,8 @@ import {
   Home,
   Moon,
   Sparkles,
-  Stars,
   Sun,
+  Wand2,
 } from "lucide-react";
 import Link from "next/link";
 import { useTheme } from "next-themes";
@@ -45,7 +45,7 @@ export const tabs = [
   {
     id: "super-analysis" as AnalyzeTabId,
     label: "Super Analysis",
-    icon: Stars,
+    icon: Wand2,
   },
   { id: "slides" as AnalyzeTabId, label: "Slide Curation", icon: FolderOpen },
   { id: "slides-grid" as AnalyzeTabId, label: "Slides Grid", icon: Grid3x3 },
@@ -100,9 +100,7 @@ export function AnalyzeShell({
   const { resolvedTheme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const isDark = resolvedTheme === "dark";
-  const visibleTabs = hasSuperAnalysis
-    ? tabs
-    : tabs.filter((tab) => tab.id !== "super-analysis");
+  const visibleTabs = tabs.filter((tab) => tab.id !== "super-analysis");
 
   useEffect(() => {
     setMounted(true);
@@ -186,6 +184,7 @@ export function AnalyzeShell({
           isDark={isDark}
           onToggleTheme={() => setTheme(isDark ? "light" : "dark")}
           tabs={visibleTabs}
+          hasSuperAnalysis={hasSuperAnalysis}
         />
         <SidebarInset className="flex flex-col">
           <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-6 py-6">
@@ -218,6 +217,7 @@ export function AnalyzeSidebar({
   isDark,
   onToggleTheme,
   tabs: visibleTabs,
+  hasSuperAnalysis,
 }: {
   activeTab: AnalyzeTabId;
   onTabChange?: (tab: AnalyzeTabId) => void;
@@ -225,6 +225,7 @@ export function AnalyzeSidebar({
   isDark?: boolean;
   onToggleTheme?: () => void;
   tabs: typeof tabs;
+  hasSuperAnalysis: boolean;
 }) {
   return (
     <Sidebar variant="floating" collapsible="icon">
@@ -270,6 +271,34 @@ export function AnalyzeSidebar({
               </SidebarMenuItem>
             );
           })}
+
+          {hasSuperAnalysis && (
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                tooltip="Super Analysis"
+                isActive={activeTab === "super-analysis"}
+                onClick={() => onTabChange?.("super-analysis")}
+                className={cn(
+                  "relative flex items-center justify-center transition-all duration-300",
+                  activeTab === "super-analysis"
+                    ? "bg-sidebar-accent"
+                    : "hover:bg-sidebar-accent/50",
+                )}
+              >
+                <Wand2
+                  className={cn(
+                    "size-5 transition-all duration-300",
+                    activeTab === "super-analysis"
+                      ? "text-amber-500"
+                      : "group-hover:text-amber-400",
+                  )}
+                />
+                {activeTab === "super-analysis" ? (
+                  <div className="absolute left-0 top-1/2 h-5 w-1 -translate-y-1/2 rounded-r bg-amber-500" />
+                ) : null}
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          )}
         </SidebarMenu>
       </SidebarContent>
 
