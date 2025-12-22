@@ -26,7 +26,7 @@ import {
 } from "@/components/ui/collapsible";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useCopyToClipboard } from "@/hooks/use-copy-to-clipboard";
+import { useCopyToClipboard } from "@uidotdev/usehooks";
 import {
   analysisToMarkdown,
   formatSectionTitle,
@@ -57,7 +57,7 @@ export function AnalysisPanel({
     "section",
     parseAsSectionId,
   );
-  const { copied, copy: copyToClipboard } = useCopyToClipboard();
+  const [copiedText, copyToClipboard] = useCopyToClipboard();
   const [copiedSection, setCopiedSection] = useState<string | null>(null);
 
   const {
@@ -73,14 +73,14 @@ export function AnalysisPanel({
     [videoId],
   );
 
-  const handleCopyMarkdown = async () => {
+  const handleCopyMarkdown = () => {
     const markdown = analysisToMarkdown(analysis || {});
-    await copyToClipboard(markdown);
+    copyToClipboard(markdown);
   };
 
-  const handleCopySection = async (title: string, content: unknown) => {
+  const handleCopySection = (title: string, content: unknown) => {
     const markdown = sectionToMarkdown(title, content);
-    await copyToClipboard(markdown);
+    copyToClipboard(markdown);
     setCopiedSection(title);
     setTimeout(() => setCopiedSection(null), 2000);
   };
@@ -140,7 +140,7 @@ export function AnalysisPanel({
         channelName={channelName}
         onCopyMarkdown={handleCopyMarkdown}
         copyDisabled={!hasContent}
-        copied={copied}
+        copied={Boolean(copiedText)}
       />
 
       <div className="grid gap-6 lg:grid-cols-[240px_minmax(0,1fr)]">
@@ -153,7 +153,7 @@ export function AnalysisPanel({
           channelName={channelName}
           onCopyMarkdown={handleCopyMarkdown}
           copyDisabled={!hasContent}
-          copied={copied}
+          copied={Boolean(copiedText)}
         />
 
         <div className="flex flex-col gap-4">
