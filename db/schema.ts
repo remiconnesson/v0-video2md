@@ -126,7 +126,7 @@ export type NewVideoAnalysisWorkflowId =
 
 export const superAnalysisRuns = pgTable("super_analysis_runs", {
   videoId: videoIdColumn().primaryKey(),
-  result: jsonb("result").$type<string>(),
+  result: text("result"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

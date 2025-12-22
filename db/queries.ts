@@ -361,16 +361,23 @@ export async function saveTranscriptAnalysis(
  * Gets completed super analysis for a video.
  */
 export async function getCompletedSuperAnalysis(videoId: string) {
-  return await findOne(
-    db
-      .select({
-        videoId: superAnalysisRuns.videoId,
-        result: superAnalysisRuns.result,
-        createdAt: superAnalysisRuns.createdAt,
-      })
-      .from(superAnalysisRuns)
-      .where(eq(superAnalysisRuns.videoId, videoId)),
-  );
+  try {
+    return await findOne(
+      db
+        .select({
+          videoId: superAnalysisRuns.videoId,
+          result: superAnalysisRuns.result,
+          createdAt: superAnalysisRuns.createdAt,
+        })
+        .from(superAnalysisRuns)
+        .where(eq(superAnalysisRuns.videoId, videoId)),
+    );
+  } catch (error) {
+    // If the table doesn't exist yet, we treat it as no analysis found
+    // This prevents the workflow from crashing if migrations haven't been run
+    console.error("Error querying super_analysis_runs:", error);
+    return null;
+  }
 }
 
 /**
@@ -395,12 +402,17 @@ export async function saveSuperAnalysisResult(videoId: string, result: string) {
  * Gets workflow record for super analysis.
  */
 export async function getSuperAnalysisWorkflowId(videoId: string) {
-  return await findOne(
-    db
-      .select()
-      .from(superAnalysisWorkflowIds)
-      .where(eq(superAnalysisWorkflowIds.videoId, videoId)),
-  );
+  try {
+    return await findOne(
+      db
+        .select()
+        .from(superAnalysisWorkflowIds)
+        .where(eq(superAnalysisWorkflowIds.videoId, videoId)),
+    );
+  } catch (error) {
+    console.error("Error querying super_analysis_workflow_ids:", error);
+    return null;
+  }
 }
 
 /**
