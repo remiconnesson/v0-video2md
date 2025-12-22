@@ -1,5 +1,6 @@
 "use client";
 
+import { useCopyToClipboard } from "@uidotdev/usehooks";
 import {
   Check,
   Copy,
@@ -14,7 +15,6 @@ import { Streamdown } from "streamdown";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useCopyToClipboard } from "@uidotdev/usehooks";
 import { useStreamingFetch } from "@/lib/use-streaming-fetch";
 
 // Mobile-only header with video info for super analysis
@@ -219,7 +219,7 @@ export function SuperAnalysisPanel({
                     aria-label="Copy super analysis markdown"
                     className="gap-2 shrink-0 text-muted-foreground hover:text-foreground"
                   >
-                    {Boolean(copiedText) ? (
+                    {copiedText ? (
                       <>
                         <Check className="h-4 w-4" />
                         Copied!

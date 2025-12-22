@@ -12,7 +12,9 @@ export const parseAsPresence = createParser<boolean>({
 });
 
 /**
- * Query configuration for analyze tabs in analyze-shell.tsx
+ * Query configuration for analyze shell tabs.
+ * Note: Intentionally separate from slidesPanelTabQueryConfig for semantic clarity,
+ * even though they currently have the same shape. This allows independent evolution.
  */
 export const analyzeShellTabQueryConfig = {
   analyze: parseAsPresence,
@@ -22,7 +24,7 @@ export const analyzeShellTabQueryConfig = {
 };
 
 /**
- * Query configuration for analyze tabs in analyze-tabs.tsx
+ * Query configuration for analyze tabs (used in tab navigation components)
  */
 export const analyzeTabsTabQueryConfig = {
   analyze: parseAsPresence,
@@ -31,7 +33,9 @@ export const analyzeTabsTabQueryConfig = {
 };
 
 /**
- * Query configuration for slides panel tabs
+ * Query configuration for slides panel tabs.
+ * Note: Intentionally separate from analyzeShellTabQueryConfig for semantic clarity,
+ * even though they currently have the same shape. This allows independent evolution.
  */
 export const slidesPanelTabQueryConfig = {
   analyze: parseAsPresence,

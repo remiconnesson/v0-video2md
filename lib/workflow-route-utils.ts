@@ -19,6 +19,11 @@ export interface WorkflowRouteOptions<TCompletedResult, TWorkflowRecord> {
   extractWorkflowId: (record: TWorkflowRecord) => string;
 }
 
+/**
+ * Public API facade for handling ongoing workflow responses.
+ * Delegates to dispatchOngoingWorkflowHandler for actual status dispatch.
+ * Kept as a separate function for API clarity and stable public interface.
+ */
 export function handleOngoingWorkflowHandler({
   workflowId,
   videoId,
@@ -44,7 +49,6 @@ export function createWorkflowRouteHandler<TCompletedResult, TWorkflowRecord>(
   return async function handleWorkflowRoute(
     videoId: YouTubeVideoId,
     additionalLogic?: {
-      shouldRestartFailed?: boolean;
       customStatusHandler?: (
         status: WorkflowStatus,
         workflowId: string,
