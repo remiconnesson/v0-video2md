@@ -32,8 +32,19 @@ export const db: DbSchema = new Proxy({} as DbSchema, {
     if (prop in dbInstance) {
       return dbInstance[prop as keyof DbSchema];
     }
-
-    return undefined;
+  get(_target, prop, _receiver) {
+    const target = getDb();
+    // Use Reflect.get with the real target as receiver to preserve correct `this` binding
+    return Reflect.get(target, prop, target);
+  },
+  has(_target, prop) {
+    return Reflect.has(getDb(), prop);
+  },
+  ownKeys(_target) {
+    return Reflect.ownKeys(getDb());
+  },
+  getOwnPropertyDescriptor(_target, prop) {
+    return Reflect.getOwnPropertyDescriptor(getDb(), prop);
   },
 });
 
