@@ -381,7 +381,7 @@ export function SlidesPanel({ videoId, view = "curation" }: SlidesPanelProps) {
         error: errorMessage,
       }));
     }
-  }, [videoId, hasPickedFrames]);
+  }, [videoId, hasPickedFrames, feedbackMap, slidesState.slides]);
 
   const startExtraction = useCallback(async () => {
     // Set state to extracting
