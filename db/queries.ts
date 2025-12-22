@@ -5,7 +5,6 @@ import { db } from "./index";
 import {
   channels,
   scrapTranscriptV1,
-  slideFeedback,
   videoAnalysisRuns,
   videoAnalysisWorkflowIds,
   videoSlideExtractions,
@@ -25,10 +24,21 @@ const slideFeedbackFieldOrder = [
   "isLastFramePicked",
 ] as const;
 
-const slideFeedbackFieldColumns: Record<
-  (typeof slideFeedbackFieldOrder)[number],
-  string
-> = {
+type SlideFeedbackField = (typeof slideFeedbackFieldOrder)[number];
+
+type SlideFeedbackPayload = {
+  firstFrameHasUsefulContent?: boolean | null;
+  lastFrameHasUsefulContent?: boolean | null;
+  framesSameness?: "same" | "different" | null;
+  isFirstFramePicked?: boolean;
+  isLastFramePicked?: boolean;
+};
+
+type SlideFeedbackFieldValueMap = Partial<
+  Record<SlideFeedbackField, SlideFeedbackPayload[SlideFeedbackField]>
+>;
+
+const slideFeedbackFieldColumns: Record<SlideFeedbackField, string> = {
   firstFrameHasUsefulContent: "first_frame_has_useful_content",
   lastFrameHasUsefulContent: "last_frame_has_useful_content",
   framesSameness: "frames_sameness",
@@ -55,17 +65,17 @@ async function getSlideFeedbackColumns() {
   return slideFeedbackColumnsPromise;
 }
 
+function getSupportedFeedbackFields(columns: Set<string>) {
+  return slideFeedbackFieldOrder.filter((field) =>
+    columns.has(slideFeedbackFieldColumns[field]),
+  );
+}
+
 function pickSupportedFeedbackFields(
-  feedback: {
-    firstFrameHasUsefulContent?: boolean | null;
-    lastFrameHasUsefulContent?: boolean | null;
-    framesSameness?: "same" | "different" | null;
-    isFirstFramePicked?: boolean;
-    isLastFramePicked?: boolean;
-  },
+  feedback: SlideFeedbackPayload,
   columns: Set<string>,
 ) {
-  return slideFeedbackFieldOrder.reduce<Record<string, unknown>>(
+  return slideFeedbackFieldOrder.reduce<SlideFeedbackFieldValueMap>(
     (acc, field) => {
       const column = slideFeedbackFieldColumns[field];
       if (columns.has(column) && hasOwn(feedback, field)) {
@@ -75,6 +85,30 @@ function pickSupportedFeedbackFields(
     },
     {},
   );
+}
+
+function buildInsertColumns(fields: string[]) {
+  return [
+    sql.identifier("video_id"),
+    sql.identifier("slide_index"),
+    ...fields.map((field) => sql.identifier(field)),
+  ];
+}
+
+function buildValuesRow(
+  videoId: string,
+  slideNumber: number,
+  fields: string[],
+  fieldValues: Record<string, unknown>,
+) {
+  return sql`(${sql.join(
+    [
+      sql`${videoId}`,
+      sql`${slideNumber}`,
+      ...fields.map((field) => sql`${fieldValues[field]}`),
+    ],
+    sql`, `,
+  )})`;
 }
 
 /**
@@ -438,37 +472,64 @@ export async function getSlideFeedback(videoId: string) {
  */
 export async function upsertSlideFeedback(
   videoId: string,
-  feedback: {
-    slideNumber: number;
-    firstFrameHasUsefulContent?: boolean | null;
-    lastFrameHasUsefulContent?: boolean | null;
-    framesSameness?: "same" | "different" | null;
-    isFirstFramePicked?: boolean;
-    isLastFramePicked?: boolean;
-  },
+  feedback: { slideNumber: number } & SlideFeedbackPayload,
 ) {
   const columns = await getSlideFeedbackColumns();
   const supportedFields = pickSupportedFeedbackFields(feedback, columns);
-  const insertValues = {
-    videoId,
-    slideNumber: feedback.slideNumber,
-    ...supportedFields,
-  };
-  const updateSet = { ...supportedFields };
+  const insertFields = slideFeedbackFieldOrder
+    .filter((field) => hasOwn(supportedFields, field))
+    .map((field) => slideFeedbackFieldColumns[field]);
 
-  const insertQuery = db.insert(slideFeedback).values(insertValues);
+  const updateSet = slideFeedbackFieldOrder.reduce<Record<string, unknown>>(
+    (acc, field) => {
+      if (hasOwn(supportedFields, field)) {
+        acc[slideFeedbackFieldColumns[field]] =
+          supportedFields[field as SlideFeedbackField];
+      }
+      return acc;
+    },
+    {},
+  );
 
   if (Object.keys(updateSet).length === 0) {
-    await insertQuery.onConflictDoNothing({
-      target: [slideFeedback.videoId, slideFeedback.slideNumber],
-    });
+    if (insertFields.length === 0) {
+      await db.execute(
+        sql`insert into slide_feedback (video_id, slide_index) values (${videoId}, ${feedback.slideNumber}) on conflict (video_id, slide_index) do nothing`,
+      );
+      return;
+    }
+
+    await db.execute(
+      sql`insert into slide_feedback (${sql.join(
+        buildInsertColumns(insertFields),
+        sql`, `,
+      )}) values ${buildValuesRow(
+        videoId,
+        feedback.slideNumber,
+        insertFields,
+        updateSet,
+      )} on conflict (video_id, slide_index) do nothing`,
+    );
     return;
   }
 
-  await insertQuery.onConflictDoUpdate({
-    target: [slideFeedback.videoId, slideFeedback.slideNumber],
-    set: updateSet,
-  });
+  await db.execute(
+    sql`insert into slide_feedback (${sql.join(
+      buildInsertColumns(insertFields),
+      sql`, `,
+    )}) values ${buildValuesRow(
+      videoId,
+      feedback.slideNumber,
+      insertFields,
+      updateSet,
+    )} on conflict (video_id, slide_index) do update set ${sql.join(
+      Object.entries(updateSet).map(
+        ([column]) =>
+          sql`${sql.identifier(column)} = excluded.${sql.identifier(column)}`,
+      ),
+      sql`, `,
+    )}`,
+  );
 }
 
 /**
@@ -476,23 +537,12 @@ export async function upsertSlideFeedback(
  */
 export async function upsertSlideFeedbackBatch(
   videoId: string,
-  feedbackItems: Array<{
-    slideNumber: number;
-    firstFrameHasUsefulContent?: boolean | null;
-    lastFrameHasUsefulContent?: boolean | null;
-    framesSameness?: "same" | "different" | null;
-    isFirstFramePicked?: boolean;
-    isLastFramePicked?: boolean;
-  }>,
+  feedbackItems: Array<{ slideNumber: number } & SlideFeedbackPayload>,
 ) {
   if (feedbackItems.length === 0) return;
 
   const columns = await getSlideFeedbackColumns();
-  const supportedFields = slideFeedbackFieldOrder.filter((field) =>
-    columns.has(slideFeedbackFieldColumns[field]),
-  );
-  const excludedValue = (column: string) =>
-    sql`excluded.${sql.identifier(column)}`;
+  const supportedFields = getSupportedFeedbackFields(columns);
 
   const groupedFeedback = feedbackItems.reduce((acc, feedback) => {
     const signature = supportedFields
@@ -505,35 +555,59 @@ export async function upsertSlideFeedbackBatch(
   }, new Map<string, typeof feedbackItems>());
 
   for (const [signature, items] of groupedFeedback) {
-    const setFields = supportedFields.reduce<Record<string, unknown>>(
-      (acc, field, index) => {
-        if (signature[index] === "1") {
-          acc[field] = excludedValue(slideFeedbackFieldColumns[field]);
-        }
-        return acc;
-      },
-      {},
+    const presentFields = supportedFields.filter(
+      (_field, index) => signature[index] === "1",
+    );
+    const presentColumns = presentFields.map(
+      (field) => slideFeedbackFieldColumns[field],
     );
 
-    const insertQuery = db.insert(slideFeedback).values(
-      items.map((feedback) => ({
+    const insertValuesRows = items.map((feedback) => {
+      const valuesByColumn = presentFields.reduce<Record<string, unknown>>(
+        (acc, field) => {
+          acc[slideFeedbackFieldColumns[field]] = feedback[field];
+          return acc;
+        },
+        {},
+      );
+
+      return buildValuesRow(
         videoId,
-        slideNumber: feedback.slideNumber,
-        ...pickSupportedFeedbackFields(feedback, columns),
-      })),
-    );
+        feedback.slideNumber,
+        presentColumns,
+        valuesByColumn,
+      );
+    });
 
-    if (Object.keys(setFields).length === 0) {
-      await insertQuery.onConflictDoNothing({
-        target: [slideFeedback.videoId, slideFeedback.slideNumber],
-      });
+    if (presentColumns.length === 0) {
+      await db.execute(
+        sql`insert into slide_feedback (video_id, slide_index) values ${sql.join(
+          items.map((feedback) =>
+            buildValuesRow(videoId, feedback.slideNumber, [], {}),
+          ),
+          sql`, `,
+        )} on conflict (video_id, slide_index) do nothing`,
+      );
       continue;
     }
 
-    await insertQuery.onConflictDoUpdate({
-      target: [slideFeedback.videoId, slideFeedback.slideNumber],
-      set: setFields,
-    });
+    const updateAssignments = presentColumns.map(
+      (column) =>
+        sql`${sql.identifier(column)} = excluded.${sql.identifier(column)}`,
+    );
+
+    await db.execute(
+      sql`insert into slide_feedback (${sql.join(
+        buildInsertColumns(presentColumns),
+        sql`, `,
+      )}) values ${sql.join(
+        insertValuesRows,
+        sql`, `,
+      )} on conflict (video_id, slide_index) do update set ${sql.join(
+        updateAssignments,
+        sql`, `,
+      )}`,
+    );
   }
 }
 
