@@ -7,8 +7,8 @@ import { z } from "zod";
 import { formatDuration, toClockParts } from "./time-utils";
 
 export const TranscriptSegmentSchema = z.object({
-  start: z.number(),
-  end: z.number(),
+  start: z.number().min(0),
+  end: z.number().min(0),
   text: z.string(),
 });
 
