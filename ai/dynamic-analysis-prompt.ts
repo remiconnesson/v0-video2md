@@ -59,6 +59,10 @@ This being said, ALWAYS include a detailed summary of the video as one of the fi
 - Use backticks to emphasize code related concepts.
 - You have to make the detailed summary super readable. Not a soup of text. Use markdown extensively. Use markdown headers.
 
+## Mermaid Diagram Rules
+
+When generating Mermaid diagrams, use only simple alphanumeric node IDs, put all descriptive text inside node labels using <br/> instead of \n, keep edge labels short and symbolic (no parentheses, commas, or sentences), and rewrite silently if the diagram would otherwise be invalid.
+
 ## Output Schema
 
 Please answer in JSON respecting the following schema:

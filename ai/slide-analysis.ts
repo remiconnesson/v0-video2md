@@ -13,7 +13,10 @@ Based on the transcript analysis and the slide, describe the useful content of t
 - Be concise but thorough - extract the essence of what makes this slide valuable
 - If the slide contains code, use proper code blocks with language specification
 - Use mermaid diagrams when visual representations would be helpful
-- Output ONLY the markdown content, no additional commentary`;
+- Output ONLY the markdown content, no additional commentary
+
+## Mermaid Diagram Rules
+When generating Mermaid diagrams, use only simple alphanumeric node IDs, put all descriptive text inside node labels using <br/> instead of \n, keep edge labels short and symbolic (no parentheses, commas, or sentences), and rewrite silently if the diagram would otherwise be invalid`;
 
 export interface SlideAnalysisInput {
   videoTitle: string;
