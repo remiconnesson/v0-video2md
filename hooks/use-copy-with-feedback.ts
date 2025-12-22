@@ -1,5 +1,6 @@
 import { useCopyToClipboard } from "@uidotdev/usehooks";
 import { useEffect, useState } from "react";
+import { UI } from "@/lib/constants";
 
 /**
  * Hook that wraps useCopyToClipboard with auto-resetting feedback state.
@@ -18,7 +19,7 @@ export function useCopyWithFeedback() {
     if (copied) {
       const timer = setTimeout(() => {
         setCopied(false);
-      }, 2000);
+      }, UI.COPY_FEEDBACK_DURATION_MS);
       return () => clearTimeout(timer);
     }
   }, [copied]);
