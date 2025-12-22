@@ -17,6 +17,66 @@ import {
 // Helper Functions
 // ============================================================================
 
+const slideFeedbackFieldOrder = [
+  "firstFrameHasUsefulContent",
+  "lastFrameHasUsefulContent",
+  "framesSameness",
+  "isFirstFramePicked",
+  "isLastFramePicked",
+] as const;
+
+const slideFeedbackFieldColumns: Record<
+  (typeof slideFeedbackFieldOrder)[number],
+  string
+> = {
+  firstFrameHasUsefulContent: "first_frame_has_useful_content",
+  lastFrameHasUsefulContent: "last_frame_has_useful_content",
+  framesSameness: "frames_sameness",
+  isFirstFramePicked: "is_first_frame_picked",
+  isLastFramePicked: "is_last_frame_picked",
+};
+
+const hasOwn = <T extends object>(obj: T, key: PropertyKey) =>
+  Object.hasOwn(obj, key);
+
+let slideFeedbackColumnsPromise: Promise<Set<string>> | null = null;
+
+async function getSlideFeedbackColumns() {
+  if (!slideFeedbackColumnsPromise) {
+    slideFeedbackColumnsPromise = db
+      .execute<{
+        column_name: string;
+      }>(
+        sql`select column_name from information_schema.columns where table_name = 'slide_feedback' and table_schema = 'public'`,
+      )
+      .then((result) => new Set(result.rows.map((row) => row.column_name)));
+  }
+
+  return slideFeedbackColumnsPromise;
+}
+
+function pickSupportedFeedbackFields(
+  feedback: {
+    firstFrameHasUsefulContent?: boolean | null;
+    lastFrameHasUsefulContent?: boolean | null;
+    framesSameness?: "same" | "different" | null;
+    isFirstFramePicked?: boolean;
+    isLastFramePicked?: boolean;
+  },
+  columns: Set<string>,
+) {
+  return slideFeedbackFieldOrder.reduce<Record<string, unknown>>(
+    (acc, field) => {
+      const column = slideFeedbackFieldColumns[field];
+      if (columns.has(column) && hasOwn(feedback, field)) {
+        acc[field] = feedback[field];
+      }
+      return acc;
+    },
+    {},
+  );
+}
+
 /**
  * Helper to consistently handle single-result queries that may return null.
  */
@@ -354,10 +414,23 @@ export async function videoExists(videoId: string) {
  * Gets all slide feedback for a video.
  */
 export async function getSlideFeedback(videoId: string) {
-  return await db
-    .select()
-    .from(slideFeedback)
-    .where(eq(slideFeedback.videoId, videoId));
+  const columns = await getSlideFeedbackColumns();
+  const optionalFieldSelections = slideFeedbackFieldOrder.map((field) => {
+    const column = slideFeedbackFieldColumns[field];
+    if (columns.has(column)) {
+      return sql`${sql.identifier(column)} as "${sql.raw(field)}"`;
+    }
+    return sql`null as "${sql.raw(field)}"`;
+  });
+
+  const result = await db.execute(
+    sql`select slide_index as "slideNumber", ${sql.join(
+      optionalFieldSelections,
+      sql`, `,
+    )} from slide_feedback where video_id = ${videoId}`,
+  );
+
+  return result.rows;
 }
 
 /**
@@ -374,18 +447,28 @@ export async function upsertSlideFeedback(
     isLastFramePicked?: boolean;
   },
 ) {
-  await db
-    .insert(slideFeedback)
-    .values({
-      videoId,
-      ...feedback,
-    })
-    .onConflictDoUpdate({
+  const columns = await getSlideFeedbackColumns();
+  const supportedFields = pickSupportedFeedbackFields(feedback, columns);
+  const insertValues = {
+    videoId,
+    slideNumber: feedback.slideNumber,
+    ...supportedFields,
+  };
+  const updateSet = { ...supportedFields };
+
+  const insertQuery = db.insert(slideFeedback).values(insertValues);
+
+  if (Object.keys(updateSet).length === 0) {
+    await insertQuery.onConflictDoNothing({
       target: [slideFeedback.videoId, slideFeedback.slideNumber],
-      set: {
-        ...feedback,
-      },
     });
+    return;
+  }
+
+  await insertQuery.onConflictDoUpdate({
+    target: [slideFeedback.videoId, slideFeedback.slideNumber],
+    set: updateSet,
+  });
 }
 
 /**
@@ -404,33 +487,16 @@ export async function upsertSlideFeedbackBatch(
 ) {
   if (feedbackItems.length === 0) return;
 
+  const columns = await getSlideFeedbackColumns();
+  const supportedFields = slideFeedbackFieldOrder.filter((field) =>
+    columns.has(slideFeedbackFieldColumns[field]),
+  );
   const excludedValue = (column: string) =>
     sql`excluded.${sql.identifier(column)}`;
 
-  const fieldOrder = [
-    "firstFrameHasUsefulContent",
-    "lastFrameHasUsefulContent",
-    "framesSameness",
-    "isFirstFramePicked",
-    "isLastFramePicked",
-  ] as const;
-
-  const fieldColumns: Record<(typeof fieldOrder)[number], string> = {
-    firstFrameHasUsefulContent: "first_frame_has_useful_content",
-    lastFrameHasUsefulContent: "last_frame_has_useful_content",
-    framesSameness: "frames_sameness",
-    isFirstFramePicked: "is_first_frame_picked",
-    isLastFramePicked: "is_last_frame_picked",
-  };
-
-  const hasField = (
-    feedback: (typeof feedbackItems)[number],
-    field: (typeof fieldOrder)[number],
-  ) => Object.hasOwn(feedback, field);
-
   const groupedFeedback = feedbackItems.reduce((acc, feedback) => {
-    const signature = fieldOrder
-      .map((field) => (hasField(feedback, field) ? "1" : "0"))
+    const signature = supportedFields
+      .map((field) => (hasOwn(feedback, field) ? "1" : "0"))
       .join("");
     const group = acc.get(signature) ?? [];
     group.push(feedback);
@@ -439,10 +505,10 @@ export async function upsertSlideFeedbackBatch(
   }, new Map<string, typeof feedbackItems>());
 
   for (const [signature, items] of groupedFeedback) {
-    const setFields = fieldOrder.reduce<Record<string, unknown>>(
+    const setFields = supportedFields.reduce<Record<string, unknown>>(
       (acc, field, index) => {
         if (signature[index] === "1") {
-          acc[field] = excludedValue(fieldColumns[field]);
+          acc[field] = excludedValue(slideFeedbackFieldColumns[field]);
         }
         return acc;
       },
@@ -452,7 +518,8 @@ export async function upsertSlideFeedbackBatch(
     const insertQuery = db.insert(slideFeedback).values(
       items.map((feedback) => ({
         videoId,
-        ...feedback,
+        slideNumber: feedback.slideNumber,
+        ...pickSupportedFeedbackFields(feedback, columns),
       })),
     );
 
