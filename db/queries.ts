@@ -1,4 +1,5 @@
 import { and, asc, desc, eq, inArray, isNotNull, type SQL } from "drizzle-orm";
+import { getTableConfig } from "drizzle-orm/pg-core";
 import type { SlideData } from "@/lib/slides-types";
 import type { TranscriptSegment } from "@/lib/transcript-format";
 import { db } from "./index";
@@ -16,7 +17,6 @@ import {
   videoSlides,
   videos,
 } from "./schema";
-import { getTableConfig } from "drizzle-orm/pg-core";
 
 // ============================================================================
 // Helper Functions

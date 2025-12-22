@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { SlideDataSchema, SlideFeedbackDataSchema } from "./slides-types";
 
 // ============================================================================
 // Video Status Types
@@ -29,8 +30,6 @@ export type VideoStatusResponse = z.infer<typeof videoStatusResponseSchema>;
 // ============================================================================
 // Slides API Types
 // ============================================================================
-
-import { SlideDataSchema, SlideFeedbackDataSchema } from "./slides-types";
 
 export const slidesResponseSchema = z.object({
   status: z.string(),
