@@ -1,8 +1,3 @@
-/**
- * Status enums for type-safe status handling across the application
- * Eliminates magic strings and provides type safety
- */
-
 // ============================================================================
 // Loading Status - Common loading states across different features
 // ============================================================================
