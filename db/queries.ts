@@ -151,6 +151,27 @@ export async function hasSlideAnalysisResults(videoId: string) {
   return !!result;
 }
 
+/**
+ * Gets video IDs that have completed super analysis.
+ */
+export async function getVideoIdsWithSuperAnalysis(videoIds: string[]) {
+  if (videoIds.length === 0) return [];
+  try {
+    return await db
+      .select({ videoId: superAnalysisRuns.videoId })
+      .from(superAnalysisRuns)
+      .where(
+        and(
+          inArray(superAnalysisRuns.videoId, videoIds),
+          isNotNull(superAnalysisRuns.result),
+        ),
+      );
+  } catch (error) {
+    console.error("Error querying super_analysis_runs for IDs:", error);
+    return [];
+  }
+}
+
 // ============================================================================
 // Slide Extraction Queries
 // ============================================================================

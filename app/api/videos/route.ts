@@ -3,6 +3,7 @@ import {
   getProcessedVideos,
   getVideoIdsWithAnalysis,
   getVideoIdsWithSlides,
+  getVideoIdsWithSuperAnalysis,
 } from "@/db/queries";
 import { formatDuration } from "@/lib/time-utils";
 
@@ -15,13 +16,17 @@ export async function GET() {
   const results = await getProcessedVideos();
   const videoIds = results.map((row) => row.videoId);
 
-  const [slidesRows, analysisRows] = await Promise.all([
+  const [slidesRows, analysisRows, superAnalysisRows] = await Promise.all([
     getVideoIdsWithSlides(videoIds),
     getVideoIdsWithAnalysis(videoIds),
+    getVideoIdsWithSuperAnalysis(videoIds),
   ]);
 
   const videosWithSlides = new Set(slidesRows.map((row) => row.videoId));
   const videosWithAnalysis = new Set(analysisRows.map((row) => row.videoId));
+  const videosWithSuperAnalysis = new Set(
+    superAnalysisRows.map((row) => row.videoId),
+  );
 
   // Transform to match the ProcessedVideosList expected format
   const processedVideos = results.map((row) => ({
@@ -37,6 +42,7 @@ export async function GET() {
     },
     hasSlides: videosWithSlides.has(row.videoId),
     hasAnalysis: videosWithAnalysis.has(row.videoId),
+    hasSuperAnalysis: videosWithSuperAnalysis.has(row.videoId),
     completedAt: row.createdAt?.toISOString(),
   }));
 

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { streamSuperAnalysis } from "@/ai/super-analysis";
 import {
   getCompletedAnalysis,
   getCompletedSuperAnalysis,
@@ -7,9 +8,11 @@ import {
   getVideoWithTranscript,
   saveSuperAnalysisResult,
 } from "@/db/queries";
-import type { SuperAnalysisInputData, SuperAnalysisStreamEvent } from "@/lib/super-analysis-types";
-import { streamSuperAnalysis } from "@/ai/super-analysis";
 import { emit } from "@/lib/stream-utils";
+import type {
+  SuperAnalysisInputData,
+  SuperAnalysisStreamEvent,
+} from "@/lib/super-analysis-types";
 
 const TranscriptSegmentSchema = z.object({
   start: z.number(),
