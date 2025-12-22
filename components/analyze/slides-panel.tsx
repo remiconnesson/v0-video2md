@@ -653,7 +653,8 @@ function CompletedState({
 
   const isAnalyzing = analysisState.status === SlideAnalysisStatus.STREAMING;
   const isAnalysisComplete =
-    analysisState.status === "completed" || hasAnalysisResults;
+    analysisState.status === SlideAnalysisStatus.COMPLETED ||
+    hasAnalysisResults;
 
   // Filter slides based on showOnlyPicked toggle
   const filteredSlides = useMemo(() => {
@@ -733,17 +734,20 @@ function CompletedState({
         )}
 
         {/* Analysis error indicator */}
-        {analysisState.status === "error" && analysisState.error && (
-          <CardContent className="pt-0 pb-4">
-            <div className="p-3 bg-destructive/10 text-destructive rounded-md text-sm">
-              {analysisState.error}
-            </div>
-          </CardContent>
-        )}
+        {analysisState.status === SlideAnalysisStatus.ERROR &&
+          analysisState.error && (
+            <CardContent className="pt-0 pb-4">
+              <div className="p-3 bg-destructive/10 text-destructive rounded-md text-sm">
+                {analysisState.error}
+              </div>
+            </CardContent>
+          )}
 
         <CardContent
           className={cn(
-            isAnalyzing || analysisState.status === "error" ? "pt-0" : "",
+            isAnalyzing || analysisState.status === SlideAnalysisStatus.ERROR
+              ? "pt-0"
+              : "",
             "pb-32", // Add padding for sticky footer
           )}
         >

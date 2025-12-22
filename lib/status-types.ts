@@ -59,6 +59,8 @@ export type CoverageStatusType =
 
 // ============================================================================
 // Job Status - For external job processing (from VPS)
+// Note: Uses TypeScript enum (not const object pattern) for compatibility with
+// external systems that may rely on numeric enum reverse mapping.
 // ============================================================================
 
 export enum JobStatus {

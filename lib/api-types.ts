@@ -32,7 +32,7 @@ export type VideoStatusResponse = z.infer<typeof videoStatusResponseSchema>;
 // ============================================================================
 
 export const slidesResponseSchema = z.object({
-  status: z.string(),
+  status: z.enum(["pending", "in_progress", "completed", "failed", "idle"]),
   runId: z.string().nullable(),
   totalSlides: z.number(),
   errorMessage: z.string().nullable(),

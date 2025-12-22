@@ -415,7 +415,7 @@ function SlideCoverageSummary({
   onRetry: () => void;
   onAnalyzeMissing: () => void;
 }) {
-  if (status === "idle") {
+  if (status === CoverageStatus.IDLE) {
     return null;
   }
 

@@ -90,7 +90,7 @@ export function calculateTranscriptDuration(
   if (segments.length === 0) return 0;
 
   const lastSegment = segments[segments.length - 1];
-  return lastSegment.end ?? lastSegment.start;
+  return lastSegment.end;
 }
 
 /**

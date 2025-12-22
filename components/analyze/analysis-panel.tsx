@@ -1,5 +1,6 @@
 "use client";
 
+import { useCopyToClipboard } from "@uidotdev/usehooks";
 import {
   Check,
   ChevronDown,
@@ -26,7 +27,6 @@ import {
 } from "@/components/ui/collapsible";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useCopyToClipboard } from "@uidotdev/usehooks";
 import {
   analysisToMarkdown,
   formatSectionTitle,
