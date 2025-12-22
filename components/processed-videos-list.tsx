@@ -155,6 +155,7 @@ export const columns: ColumnDef<VideoData>[] = [
     cell: ({ row }) => (
       <Link
         href={`/video/youtube/${row.original.videoId}`}
+        title={row.original.videoData?.title || "Untitled Video"}
         className="line-clamp-2 hover:text-primary font-medium"
       >
         {row.original.videoData?.title || "Untitled Video"}
