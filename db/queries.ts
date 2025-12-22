@@ -1,4 +1,13 @@
-import { and, asc, desc, eq, inArray, isNotNull, type SQL } from "drizzle-orm";
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  inArray,
+  isNotNull,
+  type SQL,
+  sql,
+} from "drizzle-orm";
 import { getTableConfig } from "drizzle-orm/pg-core";
 import type { SlideData } from "@/lib/slides-types";
 import type { TranscriptSegment } from "@/lib/transcript-format";
@@ -157,6 +166,46 @@ export async function getProcessedVideos() {
       thumbnail: scrapTranscriptV1.thumbnail,
       createdAt: scrapTranscriptV1.createdAt,
       channelName: channels.channelName,
+    })
+    .from(videos)
+    .innerJoin(scrapTranscriptV1, eq(videos.videoId, scrapTranscriptV1.videoId))
+    .innerJoin(channels, eq(videos.channelId, channels.channelId))
+    .where(isNotNull(scrapTranscriptV1.transcript))
+    .orderBy(desc(scrapTranscriptV1.createdAt));
+}
+
+/**
+ * Gets all processed videos with their processing status (slides, analysis, etc.) in a single query.
+ * This is more efficient than making multiple separate queries.
+ */
+export async function getProcessedVideosWithStatus() {
+  return await db
+    .select({
+      videoId: videos.videoId,
+      title: videos.title,
+      description: scrapTranscriptV1.description,
+      durationSeconds: scrapTranscriptV1.durationSeconds,
+      thumbnail: scrapTranscriptV1.thumbnail,
+      createdAt: scrapTranscriptV1.createdAt,
+      channelName: channels.channelName,
+      hasSlides: sql<boolean>`EXISTS(
+        SELECT 1 FROM ${videoSlides}
+        WHERE ${videoSlides.videoId} = ${videos.videoId}
+      )`,
+      hasAnalysis: sql<boolean>`EXISTS(
+        SELECT 1 FROM ${videoAnalysisRuns}
+        WHERE ${videoAnalysisRuns.videoId} = ${videos.videoId}
+        AND ${videoAnalysisRuns.result} IS NOT NULL
+      )`,
+      hasSlideAnalysis: sql<boolean>`EXISTS(
+        SELECT 1 FROM ${slideAnalysisResults}
+        WHERE ${slideAnalysisResults.videoId} = ${videos.videoId}
+      )`,
+      hasSuperAnalysis: sql<boolean>`EXISTS(
+        SELECT 1 FROM ${superAnalysisRuns}
+        WHERE ${superAnalysisRuns.videoId} = ${videos.videoId}
+        AND ${superAnalysisRuns.result} IS NOT NULL
+      )`,
     })
     .from(videos)
     .innerJoin(scrapTranscriptV1, eq(videos.videoId, scrapTranscriptV1.videoId))
