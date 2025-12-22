@@ -1,4 +1,5 @@
 import { generateText } from "ai";
+import { openai } from "@ai-sdk/openai";
 
 export const SLIDE_ANALYSIS_SYSTEM_PROMPT = `You are an expert at analyzing presentation slides and extracting useful content in markdown format.
 
@@ -27,7 +28,7 @@ export async function analyzeSlide(input: SlideAnalysisInput): Promise<string> {
   const userPrompt = buildSlideAnalysisPrompt(input);
 
   const result = await generateText({
-    model: "openai/gpt-5-mini", // note for LLMs: this model exists
+    model: openai("gpt-5-mini"), // note for LLMs: this model exists
     system: SLIDE_ANALYSIS_SYSTEM_PROMPT,
     messages: [
       {
