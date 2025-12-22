@@ -195,11 +195,7 @@ export function AnalyzeShell({
         />
         <SidebarInset className="flex flex-col">
           {/* Mobile navigation header */}
-          <MobileNavHeader
-            activeTab={activeTab}
-            visibleTabs={visibleTabs}
-            hasSuperAnalysis={hasSuperAnalysis}
-          />
+          <MobileNavHeader activeTab={activeTab} visibleTabs={visibleTabs} />
 
           <div className="mx-auto flex w-full max-w-5xl flex-col gap-4 md:gap-6 px-4 py-4 md:px-6 md:py-6">
             {activeTab !== "analyze" &&
@@ -420,11 +416,9 @@ function VideoInfoDisplay({
 function MobileNavHeader({
   activeTab,
   visibleTabs,
-  hasSuperAnalysis,
 }: {
   activeTab: AnalyzeTabId;
   visibleTabs: typeof tabs;
-  hasSuperAnalysis: boolean;
 }) {
   // TODO: (Investigate) It seems like there's an assumption here that by default if there's "no active tab", then the transcript analysis tab is the active tab.
   const currentTab =
