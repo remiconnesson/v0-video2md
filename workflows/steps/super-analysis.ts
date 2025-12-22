@@ -1,11 +1,15 @@
 import { z } from "zod";
 import {
   getCompletedAnalysis,
+  getCompletedSuperAnalysis,
   getSlideAnalysisResults,
   getVideoSlides,
   getVideoWithTranscript,
+  saveSuperAnalysisResult,
 } from "@/db/queries";
-import type { SuperAnalysisInputData } from "@/lib/super-analysis-types";
+import type { SuperAnalysisInputData, SuperAnalysisStreamEvent } from "@/lib/super-analysis-types";
+import { streamSuperAnalysis } from "@/ai/super-analysis";
+import { emit } from "@/lib/stream-utils";
 
 const TranscriptSegmentSchema = z.object({
   start: z.number(),
@@ -81,4 +85,35 @@ export async function getSuperAnalysisInputData(
     slidesAnalysis,
     transcriptSegments,
   };
+}
+
+export async function checkExistingSuperAnalysis(videoId: string) {
+  "use step";
+  return await getCompletedSuperAnalysis(videoId);
+}
+
+export async function runSuperAnalysisStep(
+  inputData: SuperAnalysisInputData,
+  writable: WritableStream<SuperAnalysisStreamEvent>,
+) {
+  "use step";
+
+  const analysisStream = streamSuperAnalysis(inputData);
+
+  for await (const chunk of analysisStream.textStream) {
+    await emit<SuperAnalysisStreamEvent>(
+      { type: "partial", data: chunk },
+      writable,
+    );
+  }
+
+  return await analysisStream.text;
+}
+
+export async function saveSuperAnalysisResultStep(
+  videoId: string,
+  finalResult: string,
+) {
+  "use step";
+  await saveSuperAnalysisResult(videoId, finalResult);
 }

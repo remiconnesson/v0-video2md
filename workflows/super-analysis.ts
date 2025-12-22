@@ -1,12 +1,12 @@
 import { getWritable } from "workflow";
-import { streamSuperAnalysis } from "@/ai/super-analysis";
-import {
-  getCompletedSuperAnalysis,
-  saveSuperAnalysisResult,
-} from "@/db/queries";
 import { emit } from "@/lib/stream-utils";
 import type { SuperAnalysisStreamEvent } from "@/lib/super-analysis-types";
-import { getSuperAnalysisInputData } from "@/workflows/steps/super-analysis";
+import {
+  checkExistingSuperAnalysis,
+  getSuperAnalysisInputData,
+  runSuperAnalysisStep,
+  saveSuperAnalysisResultStep,
+} from "@/workflows/steps/super-analysis";
 
 export async function superAnalysisWorkflow(videoId: string) {
   "use workflow";
@@ -14,7 +14,7 @@ export async function superAnalysisWorkflow(videoId: string) {
   const writable = getWritable<SuperAnalysisStreamEvent>();
 
   try {
-    const existingAnalysis = await getCompletedSuperAnalysis(videoId);
+    const existingAnalysis = await checkExistingSuperAnalysis(videoId);
     if (existingAnalysis?.result) {
       await emit<SuperAnalysisStreamEvent>(
         { type: "result", data: existingAnalysis.result },
@@ -44,18 +44,9 @@ export async function superAnalysisWorkflow(videoId: string) {
       writable,
     );
 
-    const analysisStream = streamSuperAnalysis(inputData);
+    const finalResult = await runSuperAnalysisStep(inputData, writable);
 
-    for await (const chunk of analysisStream.textStream) {
-      await emit<SuperAnalysisStreamEvent>(
-        { type: "partial", data: chunk },
-        writable,
-      );
-    }
-
-    const finalResult = await analysisStream.text;
-
-    await saveSuperAnalysisResult(videoId, finalResult);
+    await saveSuperAnalysisResultStep(videoId, finalResult);
 
     await emit<SuperAnalysisStreamEvent>(
       { type: "result", data: finalResult },
