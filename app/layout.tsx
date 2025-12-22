@@ -3,8 +3,8 @@ import type { Metadata } from "next";
 import localFont from "next/font/local";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
 import type React from "react";
-import { Providers } from "./providers";
 import { ThemeProvider } from "@/components/theme-provider";
+import { Providers } from "./providers";
 import "./globals.css";
 
 const geistSans = localFont({

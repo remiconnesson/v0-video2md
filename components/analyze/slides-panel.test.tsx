@@ -1,8 +1,8 @@
-import { render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { render, screen, waitFor } from "@testing-library/react";
 import { NuqsTestingAdapter } from "nuqs/adapters/testing";
+import type React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import React from "react";
 import { SlidesPanel } from "./slides-panel";
 
 // Mock the API calls
@@ -21,9 +21,7 @@ function TestWrapper({ children }: { children: React.ReactNode }) {
   });
 
   return (
-    <QueryClientProvider client={queryClient}>
-      {children}
-    </QueryClientProvider>
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   );
 }
 

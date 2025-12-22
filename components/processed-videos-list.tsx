@@ -1,5 +1,6 @@
 "use client";
 
+import { useQuery } from "@tanstack/react-query";
 import {
   type ColumnDef,
   type ColumnFiltersState,
@@ -9,7 +10,6 @@ import {
   getPaginationRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import { useQuery } from "@tanstack/react-query";
 import { FileVideo, Image as ImageIcon, Search } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -35,8 +35,12 @@ import {
 } from "@/components/ui/table";
 
 export function ProcessedVideosList() {
-  const { data: videos, isLoading, error } = useQuery({
-    queryKey: ['videos'],
+  const {
+    data: videos,
+    isLoading,
+    error,
+  } = useQuery({
+    queryKey: ["videos"],
     queryFn: async () => {
       const response = await fetch("/api/videos");
       if (!response.ok) throw new Error("Failed to fetch videos");
