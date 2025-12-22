@@ -11,7 +11,11 @@ export default function AnalyzeLoading() {
   return (
     <SidebarProvider defaultOpen={false}>
       <div className="relative flex min-h-screen w-full">
-        <AnalyzeSidebar activeTab="analyze" tabs={tabs} />
+        <AnalyzeSidebar
+          activeTab="analyze"
+          tabs={tabs.filter((tab) => tab.id !== "super-analysis")}
+          hasSuperAnalysis={false}
+        />
         <SidebarInset className="flex flex-col">
           <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-6 py-6">
             <div className="grid gap-6 lg:grid-cols-[240px_minmax(0,1fr)]">
