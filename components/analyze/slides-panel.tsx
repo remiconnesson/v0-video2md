@@ -390,7 +390,7 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
     // Set state to extracting
     setSlidesState((prev) => ({
       ...prev,
-      status: "extracting",
+      status: SlidesStatus.EXTRACTING,
       step: 1,
       totalSteps: 4,
       message: "Starting slides extraction...",
@@ -651,7 +651,7 @@ function CompletedState({
   const [slidesConfirmed, setSlidesConfirmed] = useState(false);
   const [, setQueryState] = useQueryStates(slidesPanelTabQueryConfig);
 
-  const isAnalyzing = analysisState.status === "streaming";
+  const isAnalyzing = analysisState.status === SlideAnalysisStatus.STREAMING;
   const isAnalysisComplete =
     analysisState.status === "completed" || hasAnalysisResults;
 
@@ -856,7 +856,7 @@ function StickyActionsFooter({
   isAnalysisComplete: boolean;
   onNavigateToSuperAnalysis: () => void;
 }) {
-  const isAnalyzing = analysisState.status === "streaming";
+  const isAnalyzing = analysisState.status === SlideAnalysisStatus.STREAMING;
 
   return (
     <div className="fixed bottom-0 left-0 right-0 z-50 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
