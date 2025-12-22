@@ -16,6 +16,7 @@ import {
   videoSlides,
   videos,
 } from "./schema";
+import { getTableConfig } from "drizzle-orm/pg-core";
 
 // ============================================================================
 // Helper Functions
@@ -75,7 +76,8 @@ async function selectVideoIdsFrom(
     try {
       return await query;
     } catch (error) {
-      console.error(`Error querying ${table._.name} for video IDs:`, error);
+      const { name: tableName } = getTableConfig(table);
+      console.error(`Error querying ${tableName} for video IDs:`, error);
       return [];
     }
   }
