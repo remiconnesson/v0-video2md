@@ -148,6 +148,7 @@ export const columns: ColumnDef<VideoData>[] = [
     ),
   },
   {
+    id: "videoData.title",
     accessorKey: "videoData.title",
     header: "Title",
     cell: ({ row }) => (
@@ -173,6 +174,7 @@ export const columns: ColumnDef<VideoData>[] = [
     },
   },
   {
+    id: "videoData.channelName",
     accessorKey: "videoData.channelName",
     header: "Channel",
     cell: ({ row }) => (
