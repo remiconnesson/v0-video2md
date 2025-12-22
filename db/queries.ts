@@ -1,12 +1,4 @@
-import {
-  and,
-  asc,
-  desc,
-  eq,
-  inArray,
-  isNotNull,
-  type SQL,
-} from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNotNull, type SQL } from "drizzle-orm";
 import type { SlideData } from "@/lib/slides-types";
 import type { TranscriptSegment } from "@/lib/transcript-format";
 import { db } from "./index";
