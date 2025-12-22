@@ -15,6 +15,7 @@
     "test-transcript": "tsx dev_scripts/test-fetch-transcript.ts"
   },
   "dependencies": {
+    "@ai-sdk/openai": "^2.0.88",
     "@ai-sdk/react": "latest",
     "@edge-runtime/vm": "latest",
     "@neondatabase/serverless": "latest",
