@@ -9,13 +9,12 @@ import {
   Stars,
 } from "lucide-react";
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Streamdown } from "streamdown";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { consumeSSE } from "@/lib/sse";
-import type { SuperAnalysisStreamEvent } from "@/lib/super-analysis-types";
+import { useStreamingFetch } from "@/lib/use-streaming-fetch";
 
 // Mobile-only header with video info for super analysis
 function MobileSuperAnalysisHeader({
@@ -126,140 +125,48 @@ export function SuperAnalysisPanel({
   title,
   channelName,
 }: SuperAnalysisPanelProps) {
-  const [analysis, setAnalysis] = useState("");
-  const [status, setStatus] = useState<
-    "idle" | "loading" | "streaming" | "ready" | "error"
-  >("idle");
-  const [statusMessage, setStatusMessage] = useState<string>("");
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [copiedSection, setCopiedSection] = useState(false);
   const [triggerCount, setTriggerCount] = useState(0);
 
-  useEffect(() => {
-    const controller = new AbortController();
+  const url =
+    triggerCount > 0
+      ? `/api/video/${videoId}/super-analysis?trigger=true`
+      : `/api/video/${videoId}/super-analysis`;
 
-    async function fetchAnalysis() {
-      setStatus("loading");
-      setStatusMessage(
-        triggerCount > 0
-          ? "Starting super analysis..."
-          : "Fetching super analysis...",
-      );
-      setErrorMessage(null);
-
-      try {
-        const url = new URL(
-          `/api/video/${videoId}/super-analysis`,
-          window.location.origin,
-        );
-        if (triggerCount > 0) {
-          url.searchParams.set("trigger", "true");
+  const {
+    status,
+    data: analysis,
+    error: errorMessage,
+    statusMessage,
+    refetch,
+  } = useStreamingFetch<string>(
+    url,
+    {
+      initialData: "",
+      accumulatePartial: true,
+      onStatusMessage: (message) => {
+        // Custom status message logic for super analysis
+        if (triggerCount > 0 && message === "Fetching...") {
+          return "Starting super analysis...";
         }
-
-        const response = await fetch(url.toString(), {
-          signal: controller.signal,
-        });
-
-        if (!response.ok) {
-          const errorData = await response
-            .json()
-            .catch(() => ({ error: response.statusText }));
-          throw new Error(errorData.error || "Failed to load super analysis");
+        if (message === "Generating...") {
+          return "Generating comprehensive analysis...";
         }
-
-        const contentType = response.headers.get("content-type") ?? "";
-
-        if (contentType.includes("text/event-stream")) {
-          setStatus("streaming");
-          setStatusMessage("Generating comprehensive analysis...");
-
-          await consumeSSE<SuperAnalysisStreamEvent>(
-            response,
-            {
-              progress: (event) => {
-                setStatus("streaming");
-                if (event.message) {
-                  setStatusMessage(event.message);
-                } else if (event.phase) {
-                  setStatusMessage(event.phase);
-                }
-              },
-              partial: (event) => {
-                setAnalysis((prev) => `${prev}${event.data}`);
-                setStatus("streaming");
-              },
-              result: (event) => {
-                setAnalysis(event.data);
-                setStatus("ready");
-                setStatusMessage("");
-              },
-              complete: () => {
-                setStatus((prev) => (prev === "error" ? prev : "ready"));
-                setStatusMessage("");
-              },
-              error: (event) => {
-                setErrorMessage(event.message);
-                setStatus("error");
-                setStatusMessage("");
-              },
-            },
-            {
-              onError: (streamError) => {
-                if (controller.signal.aborted) return;
-
-                const message =
-                  streamError instanceof Error
-                    ? streamError.message
-                    : "Failed to stream super analysis";
-                setErrorMessage(message);
-                setStatus("error");
-                setStatusMessage("");
-              },
-            },
-          );
-        } else {
-          const data = await response.json();
-
-          if (data.status === "not_started") {
-            setStatus("idle");
-            setStatusMessage("");
-            return;
-          }
-
-          const result = typeof data?.result === "string" ? data.result : "";
-
-          setAnalysis(result);
-          setStatus("ready");
-          setStatusMessage("");
-        }
-      } catch (error) {
-        if (controller.signal.aborted) return;
-
-        const message =
-          error instanceof Error
-            ? error.message
-            : "Failed to load super analysis";
-        setErrorMessage(message);
-        setStatus("error");
-        setStatusMessage("");
-      }
-    }
-
-    void fetchAnalysis();
-
-    return () => {
-      controller.abort();
-    };
-  }, [videoId, triggerCount]);
+        return message;
+      },
+    },
+    [url],
+  );
 
   const handleStartAnalysis = () => {
     setTriggerCount((prev) => prev + 1);
+    refetch();
   };
 
   const handleCopyMarkdown = async () => {
     try {
-      await navigator.clipboard.writeText(analysis);
+      await navigator.clipboard.writeText(analysis || "");
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch (err) {
@@ -267,7 +174,7 @@ export function SuperAnalysisPanel({
     }
   };
 
-  const hasContent = analysis.trim().length > 0;
+  const hasContent = (analysis || "").trim().length > 0;
 
   return (
     <div className="space-y-4">

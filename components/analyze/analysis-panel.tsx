@@ -31,10 +31,9 @@ import {
   formatSectionTitle,
   sectionToMarkdown,
 } from "@/lib/analysis-format";
-import { consumeSSE } from "@/lib/sse";
 import { isRecord } from "@/lib/type-utils";
+import { useStreamingFetch } from "@/lib/use-streaming-fetch";
 import { cn } from "@/lib/utils";
-import type { AnalysisStreamEvent } from "@/workflows/steps/transcript-analysis";
 
 interface AnalysisPanelProps {
   videoId: string;
@@ -58,118 +57,22 @@ export function AnalysisPanel({
   );
   const [copied, setCopied] = useState(false);
   const [copiedSection, setCopiedSection] = useState<string | null>(null);
-  const [analysis, setAnalysis] = useState<Record<string, unknown>>({});
-  const [status, setStatus] = useState<
-    "idle" | "loading" | "streaming" | "ready" | "error"
-  >("idle");
-  const [_statusMessage, setStatusMessage] = useState<string>("");
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  useEffect(() => {
-    const controller = new AbortController();
-
-    async function fetchAnalysis() {
-      setStatus("loading");
-      setStatusMessage("Fetching analysis...");
-      setErrorMessage(null);
-      setAnalysis({});
-
-      try {
-        const response = await fetch(`/api/video/${videoId}/analysis`, {
-          signal: controller.signal,
-        });
-
-        if (!response.ok) {
-          const errorData = await response
-            .json()
-            .catch(() => ({ error: response.statusText }));
-          throw new Error(errorData.error || "Failed to load analysis");
-        }
-
-        const contentType = response.headers.get("content-type") ?? "";
-
-        if (contentType.includes("text/event-stream")) {
-          setStatus("streaming");
-          setStatusMessage("Generating analysis...");
-
-          await consumeSSE<AnalysisStreamEvent>(
-            response,
-            {
-              progress: (event) => {
-                setStatus("streaming");
-                if (event.message) {
-                  setStatusMessage(event.message);
-                } else if (event.phase) {
-                  setStatusMessage(event.phase);
-                }
-              },
-              partial: (event) => {
-                const partialData = event.data;
-                if (!isRecord(partialData)) return;
-
-                setAnalysis((prev) => ({ ...prev, ...partialData }));
-                setStatus("streaming");
-              },
-              result: (event) => {
-                if (isRecord(event.data)) {
-                  setAnalysis(event.data);
-                }
-                setStatus("ready");
-                setStatusMessage("");
-              },
-              complete: () => {
-                setStatus((prev) => (prev === "error" ? prev : "ready"));
-                setStatusMessage("");
-              },
-              error: (event) => {
-                setErrorMessage(event.message);
-                setStatus("error");
-                setStatusMessage("");
-              },
-            },
-            {
-              onError: (streamError) => {
-                if (controller.signal.aborted) return;
-
-                const message =
-                  streamError instanceof Error
-                    ? streamError.message
-                    : "Failed to stream analysis";
-                setErrorMessage(message);
-                setStatus("error");
-                setStatusMessage("");
-              },
-            },
-          );
-        } else {
-          const data = await response.json();
-          const result =
-            isRecord(data) && isRecord(data.result) ? data.result : {};
-
-          setAnalysis(result);
-          setStatus("ready");
-          setStatusMessage("");
-        }
-      } catch (error) {
-        if (controller.signal.aborted) return;
-
-        const message =
-          error instanceof Error ? error.message : "Failed to load analysis";
-        setErrorMessage(message);
-        setStatus("error");
-        setStatusMessage("");
-      }
-    }
-
-    void fetchAnalysis();
-
-    return () => {
-      controller.abort();
-    };
-  }, [videoId]);
+  const {
+    status,
+    data: analysis,
+    error: errorMessage,
+    statusMessage: _statusMessage,
+  } = useStreamingFetch<Record<string, unknown>>(
+    `/api/video/${videoId}/analysis`,
+    {
+      initialData: {},
+    },
+    [videoId],
+  );
 
   const handleCopyMarkdown = async () => {
-    const markdown = analysisToMarkdown(analysis);
+    const markdown = analysisToMarkdown(analysis || {});
 
     try {
       await navigator.clipboard.writeText(markdown);
@@ -192,10 +95,10 @@ export function AnalysisPanel({
     }
   };
 
-  const hasContent = Object.keys(analysis).length > 0;
+  const hasContent = Object.keys(analysis || {}).length > 0;
   const sections = useMemo(
     () =>
-      Object.keys(analysis).map((key) => ({
+      Object.keys(analysis || {}).map((key) => ({
         key,
         id: toSectionId(key),
         title: formatSectionTitle(key) || key,
@@ -274,7 +177,7 @@ export function AnalysisPanel({
 
           <div className="space-y-6">
             {hasContent ? (
-              Object.entries(analysis).map(([key, value]) => (
+              Object.entries(analysis || {}).map(([key, value]) => (
                 <Section
                   key={key}
                   title={key}
