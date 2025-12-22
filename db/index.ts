@@ -21,7 +21,19 @@ function getDb(): DbSchema {
 // Lazy proxy that defers database initialization until first use
 export const db: DbSchema = new Proxy({} as DbSchema, {
   get(_target, prop) {
-    return getDb()[prop as keyof DbSchema];
+    const dbInstance = getDb();
+
+    // Avoid accessing symbol properties (e.g., internal or iterator-related fields)
+    if (typeof prop === "symbol") {
+      return undefined;
+    }
+
+    // Only access properties that actually exist on the db instance
+    if (prop in dbInstance) {
+      return dbInstance[prop as keyof DbSchema];
+    }
+
+    return undefined;
   },
 });
 
