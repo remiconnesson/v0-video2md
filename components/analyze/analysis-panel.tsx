@@ -567,6 +567,7 @@ function MobileAnalysisHeader({
                   href={`https://www.youtube.com/watch?v=${videoId}`}
                   target="_blank"
                   rel="noopener noreferrer"
+                  aria-label="Watch on YouTube"
                 >
                   <ExternalLink className="h-3 w-3" />
                 </a>
