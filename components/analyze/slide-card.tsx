@@ -78,9 +78,7 @@ function FrameCard({
       </div>
 
       <div className="flex items-center justify-between gap-2 rounded-md border bg-muted/30 p-3">
-        <span className="text-sm font-medium">
-          Does this frame have useful content?
-        </span>
+        <span className="text-sm font-medium">Useful content?</span>
         <div className="flex items-center gap-2">
           <Button
             variant={hasUsefulContent === true ? "default" : "outline"}
@@ -227,7 +225,7 @@ export function SlideCard({
         <div className="space-y-3">
           <div className="flex items-center justify-between p-3 rounded-md bg-muted/30 border">
             <span className="text-sm font-medium">
-              Do first and last frames show similar content?
+              Report first and last frame having different content?
             </span>
             <div className="flex items-center gap-2">
               <Button
@@ -260,7 +258,7 @@ export function SlideCard({
                   )
                 }
               >
-                Different
+                Report
               </Button>
             </div>
           </div>
