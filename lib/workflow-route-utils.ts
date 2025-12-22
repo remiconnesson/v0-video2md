@@ -19,30 +19,6 @@ export interface WorkflowRouteOptions<TCompletedResult, TWorkflowRecord> {
   extractWorkflowId: (record: TWorkflowRecord) => string;
 }
 
-/**
- * Public API facade for handling ongoing workflow responses.
- * Delegates to dispatchOngoingWorkflowHandler for actual status dispatch.
- * Kept as a separate function for API clarity and stable public interface.
- */
-export function handleOngoingWorkflowHandler({
-  workflowId,
-  videoId,
-  readable,
-  status,
-}: {
-  workflowId: string;
-  videoId: string;
-  readable: ReadableStream;
-  status: WorkflowStatus;
-}): NextResponse {
-  return dispatchOngoingWorkflowHandler({
-    workflowId,
-    videoId,
-    readable,
-    status,
-  });
-}
-
 export function createWorkflowRouteHandler<TCompletedResult, TWorkflowRecord>(
   options: WorkflowRouteOptions<TCompletedResult, TWorkflowRecord>,
 ) {
@@ -95,7 +71,7 @@ export function createWorkflowRouteHandler<TCompletedResult, TWorkflowRecord>(
   };
 }
 
-function dispatchOngoingWorkflowHandler({
+export function dispatchOngoingWorkflowHandler({
   workflowId,
   videoId,
   readable,
