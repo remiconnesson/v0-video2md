@@ -1,5 +1,5 @@
-import { generateText } from "ai";
 import { openai } from "@ai-sdk/openai";
+import { generateText } from "ai";
 
 export const SLIDE_ANALYSIS_SYSTEM_PROMPT = `You are an expert at analyzing presentation slides and extracting useful content in markdown format.
 
