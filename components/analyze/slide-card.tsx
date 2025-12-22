@@ -45,7 +45,7 @@ function FrameCard({
           onChange={(e) => onPickedChange(e.target.checked)}
           className="h-5 w-5 rounded border-gray-300 text-primary focus:ring-2 focus:ring-primary"
         />
-        <span className="text-base font-semibold">{label} Frame</span>
+        <span className="text-base font-semibold">Pick {label} Frame</span>
       </label>
 
       {/* Image container - preserves aspect ratio */}
