@@ -101,7 +101,7 @@ function ConfirmationCard({
         <CardDescription>
           Review the curated slides below. You can go to the{" "}
           <Link
-            href="?slides"
+            href="?slides="
             className="text-primary underline underline-offset-4"
           >
             Slide Curation

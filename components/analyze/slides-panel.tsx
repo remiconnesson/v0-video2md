@@ -572,7 +572,7 @@ function CompletedState({
                   <li>
                     Pick the best slides (shown in the{" "}
                     <Link
-                      href="?slidesGrid"
+                      href="?slidesGrid="
                       className="text-primary underline underline-offset-4"
                     >
                       Slide Curation tab
