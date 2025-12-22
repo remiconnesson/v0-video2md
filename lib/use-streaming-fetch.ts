@@ -20,7 +20,7 @@ export type StreamingEvent<T> =
 export interface UseStreamingFetchOptions<T> {
   /** Initial data value */
   initialData?: T | null;
-  /** Whether to accumulate partial data (true) or replace it (false) */
+  /** Whether to accumulate partial data (true) or replace it (false). Only valid when T extends string. */
   accumulatePartial?: boolean;
   /** Custom status message setter */
   onStatusMessage?: (message: string) => void;
@@ -39,6 +39,21 @@ export interface UseStreamingFetchReturn<T> {
  * Generic hook for handling streaming fetch operations with SSE.
  * Abstracts the common streaming state machine used in analysis panels.
  */
+// Overload 1: When accumulatePartial is true, T must extend string
+export function useStreamingFetch<T extends string>(
+  url: string | null,
+  options: UseStreamingFetchOptions<T> & { accumulatePartial: true },
+  deps?: React.DependencyList,
+): UseStreamingFetchReturn<T>;
+
+// Overload 2: When accumulatePartial is false or undefined, T can be any type
+export function useStreamingFetch<T>(
+  url: string | null,
+  options?: UseStreamingFetchOptions<T> & { accumulatePartial?: false },
+  deps?: React.DependencyList,
+): UseStreamingFetchReturn<T>;
+
+// Implementation
 export function useStreamingFetch<T>(
   url: string | null,
   options: UseStreamingFetchOptions<T> = {},
@@ -108,6 +123,7 @@ export function useStreamingFetch<T>(
                 if (accumulatePartial && typeof event.data === "string") {
                   setData((prev) => {
                     if (typeof prev === "string") {
+                      // Safe: When accumulatePartial is true, T is constrained to extend string via overload
                       return `${prev}${event.data}` as T;
                     }
                     return event.data;
