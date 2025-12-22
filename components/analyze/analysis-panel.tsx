@@ -33,6 +33,7 @@ import {
 } from "@/lib/analysis-format";
 import { consumeSSE } from "@/lib/sse";
 import { isRecord } from "@/lib/type-utils";
+import { cn } from "@/lib/utils";
 import type { AnalysisStreamEvent } from "@/workflows/steps/transcript-analysis";
 
 interface AnalysisPanelProps {
@@ -686,11 +687,12 @@ export function AnalysisSidebar({
                       key={section.id}
                       type="button"
                       onClick={() => onSectionClick?.(section.id)}
-                      className={`w-full rounded-md px-2 py-1.5 text-left text-sm transition cursor-pointer hover:bg-muted ${
+                      className={cn(
+                        "w-full rounded-md px-2 py-1.5 text-left text-sm transition cursor-pointer hover:bg-muted",
                         isActive
                           ? "bg-muted text-foreground font-medium"
-                          : "text-muted-foreground"
-                      }`}
+                          : "text-muted-foreground",
+                      )}
                     >
                       {section.title}
                     </button>
