@@ -59,15 +59,15 @@ export type CoverageStatusType =
 
 // ============================================================================
 // Job Status - For external job processing (from VPS)
-// Note: Uses TypeScript enum (not const object pattern) for compatibility with
-// external systems that may rely on numeric enum reverse mapping.
 // ============================================================================
 
-export enum JobStatus {
-  PENDING = "pending",
-  DOWNLOADING = "downloading",
-  EXTRACTING = "extracting",
-  UPLOADING = "uploading",
-  COMPLETED = "completed",
-  FAILED = "failed",
-}
+export const JobStatus = {
+  PENDING: "pending",
+  DOWNLOADING: "downloading",
+  EXTRACTING: "extracting",
+  UPLOADING: "uploading",
+  COMPLETED: "completed",
+  FAILED: "failed",
+} as const;
+
+export type JobStatusType = (typeof JobStatus)[keyof typeof JobStatus];
