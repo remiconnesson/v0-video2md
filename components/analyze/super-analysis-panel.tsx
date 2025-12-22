@@ -15,7 +15,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCopyToClipboard } from "@/hooks/use-copy-to-clipboard";
-import { UI } from "@/lib/constants";
 import { useStreamingFetch } from "@/lib/use-streaming-fetch";
 
 // Mobile-only header with video info for super analysis

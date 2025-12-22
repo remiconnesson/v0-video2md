@@ -32,7 +32,6 @@ import {
   formatSectionTitle,
   sectionToMarkdown,
 } from "@/lib/analysis-format";
-import { UI } from "@/lib/constants";
 import { LoadingStatus } from "@/lib/status-types";
 import { isRecord } from "@/lib/type-utils";
 import { useStreamingFetch } from "@/lib/use-streaming-fetch";
