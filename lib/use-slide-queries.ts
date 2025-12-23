@@ -96,7 +96,7 @@ export function useSaveSlideFeedbackMutation(videoId: string) {
 export function usePickSlidesMutation(videoId: string) {
   const queryClient = useQueryClient();
 
-  return useMutation({
+  return useMutation<Response, Error, SlideAnalysisTarget[]>({
     mutationFn: async (targets: SlideAnalysisTarget[]) => {
       const response = await fetch(`/api/video/${videoId}/slides/analysis`, {
         method: "POST",
