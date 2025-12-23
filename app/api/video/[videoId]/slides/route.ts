@@ -145,7 +145,7 @@ export async function POST(
   } catch (error) {
     logError(error, "Failed to start slides workflow", { videoId });
 
-    // FIX: Revert DB state so user can try again
+    // Revert DB state so user can try again
     await deleteSlideExtraction(videoId);
 
     return errorResponse("Failed to start extraction workflow", 500);
