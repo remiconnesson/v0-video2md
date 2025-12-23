@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 
 interface VideoInfoCardProps {
   videoId?: string;
+  title?: string;
+  channelName?: string;
   onCopyMarkdown?: () => void;
   copyDisabled?: boolean;
   copied?: boolean;
@@ -13,6 +15,8 @@ interface VideoInfoCardProps {
 
 export function VideoInfoCard({
   videoId,
+  title,
+  channelName,
   onCopyMarkdown,
   copyDisabled,
   copied,
@@ -24,7 +28,7 @@ export function VideoInfoCard({
   return (
     <div className="space-y-3">
       <div className="group relative">
-        <ThumbnailCell src={thumbnailUrl} alt="Video thumbnail" />
+        <ThumbnailCell src={thumbnailUrl} alt={title} />
         {videoId && (
           <a
             href={`https://www.youtube.com/watch?v=${videoId}`}
@@ -37,6 +41,23 @@ export function VideoInfoCard({
               <ExternalLink className="h-4 w-4" />
             </div>
           </a>
+        )}
+      </div>
+
+      <div className="space-y-1 px-1">
+        {title ? (
+          <h3 className="font-bold text-sm line-clamp-2 leading-tight tracking-tight">
+            {title}
+          </h3>
+        ) : (
+          <div className="h-4 w-full animate-pulse rounded bg-muted/50" />
+        )}
+        {channelName ? (
+          <p className="text-xs text-muted-foreground line-clamp-1">
+            {channelName}
+          </p>
+        ) : (
+          <div className="h-3 w-1/2 animate-pulse rounded bg-muted/50" />
         )}
       </div>
 

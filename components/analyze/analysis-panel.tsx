@@ -152,6 +152,8 @@ export function AnalysisPanel({
           activeSection={activeSection ?? undefined}
           onSectionClick={handleSectionClick}
           videoId={videoId}
+          title={title}
+          channelName={channelName}
           onCopyMarkdown={handleCopyMarkdown}
           copyDisabled={!hasContent}
           copied={copied}
@@ -521,6 +523,8 @@ export function AnalysisSidebar({
   activeSection,
   onSectionClick,
   videoId,
+  title,
+  channelName,
   onCopyMarkdown,
   copyDisabled,
   copied,
@@ -529,6 +533,8 @@ export function AnalysisSidebar({
   activeSection?: string;
   onSectionClick?: (sectionId: string) => void;
   videoId?: string;
+  title?: string;
+  channelName?: string;
   onCopyMarkdown?: () => void;
   copyDisabled?: boolean;
   copied?: boolean;
@@ -538,6 +544,8 @@ export function AnalysisSidebar({
       <div className="shrink-0 mb-6 pr-2">
         <VideoInfoCard
           videoId={videoId}
+          title={title}
+          channelName={channelName}
           onCopyMarkdown={onCopyMarkdown}
           copyDisabled={copyDisabled}
           copied={copied}
