@@ -16,6 +16,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCopyWithFeedback } from "@/hooks/use-copy-with-feedback";
 import { useStreamingFetch } from "@/lib/use-streaming-fetch";
+import { VideoInfoCard } from "./video-info-card";
 
 // Mobile-only header with video info for super analysis
 function MobileSuperAnalysisHeader({
@@ -40,15 +41,15 @@ function MobileSuperAnalysisHeader({
   return (
     <div className="lg:hidden">
       {/* Compact video info card for mobile */}
-      <div className="flex gap-3 items-start">
-        <div className="w-24 shrink-0">
-          <div className="aspect-video relative overflow-hidden rounded-md bg-muted">
+      <div className="flex gap-4 items-start">
+        <div className="w-28 shrink-0 shadow-sm rounded-md overflow-hidden">
+          <div className="aspect-video relative bg-muted">
             {thumbnailUrl ? (
               <Image
                 src={thumbnailUrl}
                 alt={title || "Video thumbnail"}
                 fill
-                sizes="96px"
+                sizes="112px"
                 className="object-cover"
                 unoptimized
               />
@@ -59,35 +60,29 @@ function MobileSuperAnalysisHeader({
             )}
           </div>
         </div>
-        <div className="flex-1 min-w-0">
-          {title ? (
-            <h3 className="font-bold text-sm line-clamp-2 leading-tight">
-              {title}
-            </h3>
-          ) : (
-            <Skeleton className="h-4 w-full" />
-          )}
-          {channelName ? (
-            <p className="text-xs text-muted-foreground mt-1">{channelName}</p>
-          ) : (
-            <Skeleton className="h-3 w-1/2 mt-1" />
-          )}
-          <div className="flex gap-2 mt-2">
+        <div className="flex-1 min-w-0 py-0.5">
+          <h3 className="font-bold text-base leading-tight mb-1.5 line-clamp-2">
+            {title || "Video Analysis"}
+          </h3>
+          <p className="text-sm text-muted-foreground font-medium mb-3">
+            {channelName || "Unknown Channel"}
+          </p>
+          <div className="flex gap-2">
             <Button
               variant="outline"
               size="sm"
               onClick={onCopyMarkdown}
-              className="h-7 text-xs gap-1.5"
+              className="h-8 text-xs gap-1.5 px-3"
               disabled={copyDisabled || !onCopyMarkdown}
             >
               {copied ? (
                 <>
-                  <Check className="h-3 w-3" />
+                  <Check className="h-3.5 w-3.5" />
                   Copied
                 </>
               ) : (
                 <>
-                  <Copy className="h-3 w-3" />
+                  <Copy className="h-3.5 w-3.5" />
                   Copy
                 </>
               )}
@@ -96,7 +91,7 @@ function MobileSuperAnalysisHeader({
               <Button
                 variant="outline"
                 size="sm"
-                className="h-7 text-xs"
+                className="h-8 w-8 p-0"
                 asChild
               >
                 <a
@@ -104,7 +99,7 @@ function MobileSuperAnalysisHeader({
                   target="_blank"
                   rel="noopener noreferrer"
                 >
-                  <ExternalLink className="h-3 w-3" />
+                  <ExternalLink className="h-3.5 w-3.5" />
                 </a>
               </Button>
             )}
@@ -121,11 +116,7 @@ interface SuperAnalysisPanelProps {
   channelName: string;
 }
 
-export function SuperAnalysisPanel({
-  videoId,
-  title,
-  channelName,
-}: SuperAnalysisPanelProps) {
+export function SuperAnalysisPanel({ videoId }: SuperAnalysisPanelProps) {
   const [copied, copy] = useCopyWithFeedback();
   const [triggerCount, setTriggerCount] = useState(0);
 
@@ -169,21 +160,17 @@ export function SuperAnalysisPanel({
 
   return (
     <div className="space-y-4">
-      {/* Mobile video info header */}
-      <MobileSuperAnalysisHeader
+      {/* Mobile video info header - Hidden as per user request */}
+      {/* <MobileSuperAnalysisHeader
         videoId={videoId}
-        title={title}
-        channelName={channelName}
         onCopyMarkdown={handleCopyMarkdown}
         copyDisabled={!hasContent}
         copied={copied}
-      />
+      /> */}
 
       <div className="grid gap-6 lg:grid-cols-[240px_minmax(0,1fr)]">
         <SuperAnalysisSidebar
           videoId={videoId}
-          title={title}
-          channelName={channelName}
           onCopyMarkdown={handleCopyMarkdown}
           copyDisabled={!hasContent}
           copied={copied}
@@ -314,15 +301,11 @@ function SectionContent({ content }: { content: unknown }): React.ReactNode {
 
 function SuperAnalysisSidebar({
   videoId,
-  title,
-  channelName,
   onCopyMarkdown,
   copyDisabled,
   copied,
 }: {
   videoId?: string;
-  title?: string;
-  channelName?: string;
   onCopyMarkdown?: () => void;
   copyDisabled?: boolean;
   copied?: boolean;
@@ -332,110 +315,11 @@ function SuperAnalysisSidebar({
       <div className="shrink-0 mb-6 pr-2">
         <VideoInfoCard
           videoId={videoId}
-          title={title}
-          channelName={channelName}
           onCopyMarkdown={onCopyMarkdown}
           copyDisabled={copyDisabled}
           copied={copied}
         />
       </div>
     </aside>
-  );
-}
-
-function VideoInfoCard({
-  videoId,
-  title,
-  channelName,
-  onCopyMarkdown,
-  copyDisabled,
-  copied,
-}: {
-  videoId?: string;
-  title?: string;
-  channelName?: string;
-  onCopyMarkdown?: () => void;
-  copyDisabled?: boolean;
-  copied?: boolean;
-}) {
-  const thumbnailUrl = videoId
-    ? `https://i.ytimg.com/vi/${videoId}/mqdefault.jpg`
-    : undefined;
-
-  return (
-    <div className="space-y-3">
-      <div className="group relative">
-        <ThumbnailCell src={thumbnailUrl} alt={title} />
-        {videoId && (
-          <a
-            href={`https://www.youtube.com/watch?v=${videoId}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="absolute inset-0 flex items-center justify-center bg-black/0 transition-colors cursor-pointer group-hover:bg-black/20 rounded-md"
-            aria-label="Watch Video"
-          >
-            <div className="opacity-0 transition-opacity group-hover:opacity-100 bg-background/90 p-1.5 rounded-full shadow-sm text-foreground">
-              <ExternalLink className="h-4 w-4" />
-            </div>
-          </a>
-        )}
-      </div>
-
-      <div className="space-y-1 px-1">
-        {title ? (
-          <h3 className="font-bold text-sm line-clamp-2 leading-tight tracking-tight">
-            {title}
-          </h3>
-        ) : (
-          <div className="h-4 w-full animate-pulse rounded bg-muted/50" />
-        )}
-        {channelName ? (
-          <p className="text-xs text-muted-foreground line-clamp-1">
-            {channelName}
-          </p>
-        ) : (
-          <div className="h-3 w-1/2 animate-pulse rounded bg-muted/50" />
-        )}
-      </div>
-
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={onCopyMarkdown}
-        className="w-full h-9 text-xs gap-2 shadow-none border-muted-foreground/20 hover:bg-muted"
-        disabled={copyDisabled || !onCopyMarkdown}
-      >
-        {copied ? (
-          <>
-            <Check className="h-3.5 w-3.5" />
-            Copied!
-          </>
-        ) : (
-          <>
-            <Copy className="h-3.5 w-3.5" />
-            Copy Markdown
-          </>
-        )}
-      </Button>
-    </div>
-  );
-}
-
-function ThumbnailCell({ src, alt }: { src?: string; alt?: string }) {
-  return (
-    <div className="aspect-video relative overflow-hidden rounded-md bg-muted flex items-center justify-center">
-      {src ? (
-        <Image
-          src={src}
-          alt={alt || "Video thumbnail"}
-          fill
-          sizes="(max-width: 240px) 100vw, 240px"
-          className="object-cover"
-          unoptimized
-        />
-      ) : (
-        <ImageIcon className="h-8 w-8 text-muted-foreground/20" />
-      )}
-    </div>
   );
 }

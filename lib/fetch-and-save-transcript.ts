@@ -180,8 +180,18 @@ export async function fetchAndSaveTranscript(
   const cachedTranscriptData = await getTranscriptDataFromDb(videoId);
   console.log("[fetchAndSaveTranscript] 2. Cached:", !!cachedTranscriptData);
 
-  if (cachedTranscriptData) {
+  if (
+    cachedTranscriptData &&
+    cachedTranscriptData.title &&
+    cachedTranscriptData.channelName
+  ) {
     return cachedTranscriptData;
+  }
+
+  if (cachedTranscriptData) {
+    console.log(
+      "[fetchAndSaveTranscript] Cached data found but incomplete (missing title or channel). Re-fetching...",
+    );
   }
 
   console.log("[fetchAndSaveTranscript] 3. Fetching from Apify...");

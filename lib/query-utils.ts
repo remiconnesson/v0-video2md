@@ -12,21 +12,9 @@ export const parseAsPresence = createParser<boolean>({
 });
 
 /**
- * Query configuration for analyze shell tabs.
- * Note: Intentionally separate from slidesPanelTabQueryConfig for semantic clarity,
- * even though they currently have the same shape. This allows independent evolution.
- */
-export const analyzeShellTabQueryConfig = {
-  analyze: parseAsPresence,
-  slides: parseAsPresence,
-  slideAnalysis: parseAsPresence,
-  superAnalysis: parseAsPresence,
-};
-
-/**
  * Query configuration for slides panel tabs.
- * Note: Intentionally separate from analyzeShellTabQueryConfig for semantic clarity,
- * even though they currently have the same shape. This allows independent evolution.
+ * This configuration defines the query parameters used for tab navigation
+ * within the slides panel component.
  */
 export const slidesPanelTabQueryConfig = {
   analyze: parseAsPresence,

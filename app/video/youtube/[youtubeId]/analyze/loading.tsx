@@ -1,54 +1,36 @@
 "use client";
 
 import { Copy } from "lucide-react";
-import { AnalysisSidebar } from "@/components/analyze/analysis-panel";
-import { AnalyzeSidebar, tabs } from "@/components/analyze/analyze-shell";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function AnalyzeLoading() {
   return (
-    <SidebarProvider defaultOpen={false}>
-      <div className="relative flex min-h-screen w-full">
-        <AnalyzeSidebar
-          activeTab="analyze"
-          tabs={tabs.filter((tab) => tab.id !== "super-analysis")}
-          hasSuperAnalysis={false}
-        />
-        <SidebarInset className="flex flex-col">
-          <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-6 py-6">
-            <div className="grid gap-6 lg:grid-cols-[240px_minmax(0,1fr)]">
-              <AnalysisSidebar sections={[]} />
-
-              <div className="flex flex-col gap-4">
-                <div className="space-y-6">
-                  {[1, 2, 3].map((i) => (
-                    <Card key={i} className="animate-pulse border-muted/30">
-                      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-                        <Skeleton className="h-8 w-24 rounded-lg" />
-                        <div className="flex items-center gap-2 text-muted-foreground/40">
-                          <Copy className="h-4 w-4" />
-                          <span className="text-xs font-medium uppercase tracking-wider">
-                            Copy
-                          </span>
-                        </div>
-                      </CardHeader>
-                      <CardContent className="space-y-4">
-                        <div className="space-y-2">
-                          <Skeleton className="h-4 w-full" />
-                          <Skeleton className="h-4 w-[96%]" />
-                          <Skeleton className="h-4 w-[92%]" />
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
+    <div className="container mx-auto px-4 py-6">
+      <div className="flex flex-col gap-4">
+        <div className="space-y-6">
+          {[1, 2, 3].map((i) => (
+            <Card key={i} className="animate-pulse border-muted/30">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+                <Skeleton className="h-8 w-24 rounded-lg" />
+                <div className="flex items-center gap-2 text-muted-foreground/40">
+                  <Copy className="h-4 w-4" />
+                  <span className="text-xs font-medium uppercase tracking-wider">
+                    Copy
+                  </span>
                 </div>
-              </div>
-            </div>
-          </div>
-        </SidebarInset>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Skeleton className="h-4 w-full" />
+                  <Skeleton className="h-4 w-[96%]" />
+                  <Skeleton className="h-4 w-[92%]" />
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
       </div>
-    </SidebarProvider>
+    </div>
   );
 }
