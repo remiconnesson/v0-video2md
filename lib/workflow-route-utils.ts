@@ -49,7 +49,19 @@ export function createWorkflowRouteHandler<TCompletedResult, TWorkflowRecord>(
     if (workflowRecord) {
       const workflowId = options.extractWorkflowId(workflowRecord);
       const run = getRun(workflowId);
-      const status = await run.status;
+      let status: WorkflowStatus;
+      try {
+        status = await run.status;
+      } catch (error) {
+        const err = error as { name?: string; code?: string };
+        if (
+          err.name === "WorkflowRunNotFoundError" ||
+          err.code === "WorkflowRunNotFoundError"
+        ) {
+          return options.startWorkflow(videoId);
+        }
+        throw error;
+      }
       const readable = run.readable;
 
       // Allow custom status handling (e.g., for restarting failed workflows)
