@@ -1,4 +1,4 @@
-import { createParser, type ParseEvent } from "eventsource-parser";
+import { createParser, type EventSourceMessage } from "eventsource-parser";
 import { FatalError, fetch } from "workflow";
 import {
   JobStatus,
@@ -170,7 +170,7 @@ async function monitorJobProgress(
   const decoder = new TextDecoder();
 
   // We need to capture events from the parser callback
-  const pendingEvents: ParseEvent[] = [];
+  const pendingEvents: EventSourceMessage[] = [];
   const parser = createParser({
     onEvent: (event) => {
       pendingEvents.push(event);
