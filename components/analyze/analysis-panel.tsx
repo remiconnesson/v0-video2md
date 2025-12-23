@@ -37,6 +37,7 @@ import { LoadingStatus } from "@/lib/status-types";
 import { isRecord } from "@/lib/type-utils";
 import { useStreamingFetch } from "@/lib/use-streaming-fetch";
 import { cn } from "@/lib/utils";
+import { VideoInfoCard } from "./video-info-card";
 
 interface AnalysisPanelProps {
   videoId: string;
@@ -145,11 +146,14 @@ export function AnalysisPanel({
         copied={copied}
       />
 
-      <div className="grid gap-6 lg:grid-cols-[200px_minmax(0,1fr)]">
+      <div className="grid gap-6 lg:grid-cols-[240px_minmax(0,1fr)]">
         <AnalysisSidebar
           sections={sections}
           activeSection={activeSection ?? undefined}
           onSectionClick={handleSectionClick}
+          videoId={videoId}
+          title={title}
+          channelName={channelName}
           onCopyMarkdown={handleCopyMarkdown}
           copyDisabled={!hasContent}
           copied={copied}
@@ -518,6 +522,9 @@ export function AnalysisSidebar({
   sections,
   activeSection,
   onSectionClick,
+  videoId,
+  title,
+  channelName,
   onCopyMarkdown,
   copyDisabled,
   copied,
@@ -525,33 +532,24 @@ export function AnalysisSidebar({
   sections: Array<{ id: string; title: string }>;
   activeSection?: string;
   onSectionClick?: (sectionId: string) => void;
+  videoId?: string;
+  title?: string;
+  channelName?: string;
   onCopyMarkdown?: () => void;
   copyDisabled?: boolean;
   copied?: boolean;
 }) {
   return (
-    <aside className="hidden lg:flex flex-col sticky top-6 self-start max-h-[calc(100vh-6rem)] min-w-0 group/sidebar">
-      {/* Copy Markdown button */}
-      <div className="shrink-0 mb-4 pr-2">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={onCopyMarkdown}
-          className="w-full h-9 text-xs gap-2 shadow-none border-muted-foreground/20 hover:bg-muted"
-          disabled={copyDisabled || !onCopyMarkdown}
-        >
-          {copied ? (
-            <>
-              <Check className="h-3.5 w-3.5" />
-              Copied!
-            </>
-          ) : (
-            <>
-              <Copy className="h-3.5 w-3.5" />
-              Copy Markdown
-            </>
-          )}
-        </Button>
+    <aside className="hidden lg:flex flex-col sticky top-6 self-start h-[calc(100vh-3.5rem)] min-w-0 group/sidebar">
+      <div className="shrink-0 mb-6 pr-2">
+        <VideoInfoCard
+          videoId={videoId}
+          title={title}
+          channelName={channelName}
+          onCopyMarkdown={onCopyMarkdown}
+          copyDisabled={copyDisabled}
+          copied={copied}
+        />
       </div>
 
       <div className="flex flex-col flex-1 min-h-0 min-w-0 pr-2">

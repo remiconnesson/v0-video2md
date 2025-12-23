@@ -1,28 +1,31 @@
 "use client";
 
-import { Moon, Sun } from "lucide-react";
+import { Home, Moon, Sun } from "lucide-react";
 import Link from "next/link";
 import { useSelectedLayoutSegment } from "next/navigation";
 import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
-import { VideoInfoCard } from "@/components/analyze/video-info-card";
-import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarSeparator,
+} from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
 import { ANALYZE_ROUTES, isRouteAvailable } from "./analyze-route-map";
 
 interface AnalyzeLayoutSidebarProps {
   videoId: string;
-  title: string;
-  channelName: string;
   hasTranscriptAnalysis: boolean;
   hasSlideAnalysis: boolean;
 }
 
 export function AnalyzeLayoutSidebar({
   videoId,
-  title,
-  channelName,
   hasTranscriptAnalysis,
   hasSlideAnalysis,
 }: AnalyzeLayoutSidebarProps) {
@@ -40,74 +43,79 @@ export function AnalyzeLayoutSidebar({
   );
 
   return (
-    <aside className="hidden lg:flex flex-col w-[280px] shrink-0 sticky top-0 self-start h-screen border-r bg-background/50 backdrop-blur-sm">
-      <div className="flex flex-col h-full p-4">
-        {/* Video Info Card */}
-        <div className="shrink-0 mb-6">
-          <VideoInfoCard
-            videoId={videoId}
-            title={title}
-            channelName={channelName}
-          />
-        </div>
-
-        {/* Route Navigation */}
-        <div className="flex-1 min-h-0">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70 px-1 mb-3">
-            Navigation
-          </p>
-          <ScrollArea className="h-full">
-            <nav className="space-y-1 pr-2">
-              {availableRoutes.map((route) => {
-                const Icon = route.icon;
-                const isActive = segment === route.id;
-
-                return (
-                  <Link
-                    key={route.id}
-                    href={`/video/youtube/${videoId}/analyze/${route.id}`}
-                    className={cn(
-                      "flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors",
-                      isActive
-                        ? "bg-primary text-primary-foreground font-medium"
-                        : "text-muted-foreground hover:text-foreground hover:bg-muted",
-                    )}
-                  >
-                    <Icon className="h-4 w-4 shrink-0" />
-                    <span className="truncate">{route.label}</span>
-                  </Link>
-                );
-              })}
-            </nav>
-          </ScrollArea>
-        </div>
-
-        {/* Dark Mode Toggle */}
-        <div className="shrink-0 pt-4 border-t">
-          {mounted ? (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setTheme(isDark ? "light" : "dark")}
-              className="w-full justify-start gap-2 text-muted-foreground hover:text-foreground"
+    <Sidebar variant="floating" collapsible="icon">
+      <SidebarHeader className="flex items-center justify-center py-4">
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              asChild
+              tooltip="Home"
+              className="flex items-center justify-center"
             >
-              {isDark ? (
-                <>
-                  <Sun className="h-4 w-4" />
-                  Light mode
-                </>
-              ) : (
-                <>
-                  <Moon className="h-4 w-4" />
-                  Dark mode
-                </>
-              )}
-            </Button>
-          ) : (
-            <div className="h-9 w-full animate-pulse rounded bg-muted/50" />
-          )}
-        </div>
-      </div>
-    </aside>
+              <Link href="/">
+                <Home className="size-5" />
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarHeader>
+
+      <SidebarSeparator />
+
+      <SidebarContent className="px-2 py-2">
+        <SidebarMenu>
+          {availableRoutes.map((route) => {
+            const Icon = route.icon;
+            const isActive = segment === route.id;
+            return (
+              <SidebarMenuItem key={route.id}>
+                <SidebarMenuButton
+                  asChild
+                  tooltip={route.label}
+                  isActive={isActive}
+                  className={cn(
+                    "relative flex items-center justify-center",
+                    isActive && "bg-sidebar-accent",
+                  )}
+                >
+                  <Link href={`/video/youtube/${videoId}/analyze/${route.id}`}>
+                    <Icon className="size-5" />
+                    {isActive && (
+                      <div className="absolute left-0 top-1/2 h-5 w-1 -translate-y-1/2 rounded-r bg-primary" />
+                    )}
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            );
+          })}
+        </SidebarMenu>
+      </SidebarContent>
+
+      <SidebarFooter className="flex items-center justify-center py-4">
+        <SidebarMenu>
+          <SidebarMenuItem>
+            {mounted ? (
+              <SidebarMenuButton
+                tooltip={
+                  isDark ? "Switch to light mode" : "Switch to dark mode"
+                }
+                onClick={() => setTheme(isDark ? "light" : "dark")}
+                className="flex items-center justify-center"
+              >
+                {isDark ? (
+                  <Sun className="size-5" />
+                ) : (
+                  <Moon className="size-5" />
+                )}
+              </SidebarMenuButton>
+            ) : (
+              <div className="flex items-center justify-center size-9 animate-pulse rounded bg-muted/50">
+                <div className="size-5 bg-muted-foreground/30 rounded-full" />
+              </div>
+            )}
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarFooter>
+    </Sidebar>
   );
 }
