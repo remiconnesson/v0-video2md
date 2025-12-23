@@ -19,7 +19,7 @@ import { useStreamingFetch } from "@/lib/use-streaming-fetch";
 import { VideoInfoCard } from "./video-info-card";
 
 // Mobile-only header with video info for super analysis
-function MobileSuperAnalysisHeader({
+function _MobileSuperAnalysisHeader({
   videoId,
   title,
   channelName,
@@ -116,7 +116,11 @@ interface SuperAnalysisPanelProps {
   channelName: string;
 }
 
-export function SuperAnalysisPanel({ videoId }: SuperAnalysisPanelProps) {
+export function SuperAnalysisPanel({
+  videoId,
+  title: _title,
+  channelName: _channelName,
+}: SuperAnalysisPanelProps) {
   const [copied, copy] = useCopyWithFeedback();
   const [triggerCount, setTriggerCount] = useState(0);
 

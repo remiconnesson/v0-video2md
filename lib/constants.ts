@@ -6,4 +6,6 @@ export const UI = {
   SLIDE_CARD_ESTIMATED_HEIGHT: 500,
   // Slides panel scroll container heights.
   SLIDES_PANEL_HEIGHT: { mobile: 400, desktop: 600 },
+  // Slides panel viewport offset for dynamic height calculation (100vh - offset).
+  SLIDES_PANEL_VIEWPORT_OFFSET_PX: 200,
 } as const;
