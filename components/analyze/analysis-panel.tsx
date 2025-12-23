@@ -40,8 +40,6 @@ import { cn } from "@/lib/utils";
 
 interface AnalysisPanelProps {
   videoId: string;
-  title: string;
-  channelName: string;
 }
 
 const parseAsSectionId = createParser<string>({
@@ -49,11 +47,7 @@ const parseAsSectionId = createParser<string>({
   serialize: (value) => value ?? "",
 });
 
-export function AnalysisPanel({
-  videoId,
-  title,
-  channelName,
-}: AnalysisPanelProps) {
+export function AnalysisPanel({ videoId }: AnalysisPanelProps) {
   const [activeSection, setActiveSection] = useQueryState(
     "section",
     parseAsSectionId,
@@ -138,8 +132,6 @@ export function AnalysisPanel({
         activeSection={activeSection ?? undefined}
         onSectionClick={handleSectionClick}
         videoId={videoId}
-        title={title}
-        channelName={channelName}
         onCopyMarkdown={handleCopyMarkdown}
         copyDisabled={!hasContent}
         copied={copied}
@@ -151,8 +143,6 @@ export function AnalysisPanel({
           activeSection={activeSection ?? undefined}
           onSectionClick={handleSectionClick}
           videoId={videoId}
-          title={title}
-          channelName={channelName}
           onCopyMarkdown={handleCopyMarkdown}
           copyDisabled={!hasContent}
           copied={copied}
@@ -528,8 +518,6 @@ export function AnalysisSidebar({
   activeSection,
   onSectionClick,
   videoId,
-  title,
-  channelName,
   onCopyMarkdown,
   copyDisabled,
   copied,
@@ -538,8 +526,6 @@ export function AnalysisSidebar({
   activeSection?: string;
   onSectionClick?: (sectionId: string) => void;
   videoId?: string;
-  title?: string;
-  channelName?: string;
   onCopyMarkdown?: () => void;
   copyDisabled?: boolean;
   copied?: boolean;
@@ -549,8 +535,6 @@ export function AnalysisSidebar({
       <div className="shrink-0 mb-6 pr-2">
         <VideoInfoCard
           videoId={videoId}
-          title={title}
-          channelName={channelName}
           onCopyMarkdown={onCopyMarkdown}
           copyDisabled={copyDisabled}
           copied={copied}
@@ -609,15 +593,11 @@ export function AnalysisSidebar({
 
 export function VideoInfoCard({
   videoId,
-  title,
-  channelName,
   onCopyMarkdown,
   copyDisabled,
   copied,
 }: {
   videoId?: string;
-  title?: string;
-  channelName?: string;
   onCopyMarkdown?: () => void;
   copyDisabled?: boolean;
   copied?: boolean;
@@ -629,7 +609,7 @@ export function VideoInfoCard({
   return (
     <div className="space-y-3">
       <div className="group relative">
-        <ThumbnailCell src={thumbnailUrl} alt={title} />
+        <ThumbnailCell src={thumbnailUrl} alt="Video thumbnail" />
         {videoId && (
           <a
             href={`https://www.youtube.com/watch?v=${videoId}`}
@@ -642,23 +622,6 @@ export function VideoInfoCard({
               <ExternalLink className="h-4 w-4" />
             </div>
           </a>
-        )}
-      </div>
-
-      <div className="space-y-1 px-1">
-        {title ? (
-          <h3 className="font-bold text-sm line-clamp-2 leading-tight tracking-tight">
-            {title}
-          </h3>
-        ) : (
-          <div className="h-4 w-full animate-pulse rounded bg-muted/50" />
-        )}
-        {channelName ? (
-          <p className="text-xs text-muted-foreground line-clamp-1">
-            {channelName}
-          </p>
-        ) : (
-          <div className="h-3 w-1/2 animate-pulse rounded bg-muted/50" />
         )}
       </div>
 

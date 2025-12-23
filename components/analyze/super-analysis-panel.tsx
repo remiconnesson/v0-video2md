@@ -121,11 +121,7 @@ interface SuperAnalysisPanelProps {
   channelName: string;
 }
 
-export function SuperAnalysisPanel({
-  videoId,
-  title,
-  channelName,
-}: SuperAnalysisPanelProps) {
+export function SuperAnalysisPanel({ videoId }: SuperAnalysisPanelProps) {
   const [copied, copy] = useCopyWithFeedback();
   const [triggerCount, setTriggerCount] = useState(0);
 
@@ -172,8 +168,6 @@ export function SuperAnalysisPanel({
       {/* Mobile video info header */}
       <MobileSuperAnalysisHeader
         videoId={videoId}
-        title={title}
-        channelName={channelName}
         onCopyMarkdown={handleCopyMarkdown}
         copyDisabled={!hasContent}
         copied={copied}
@@ -182,8 +176,6 @@ export function SuperAnalysisPanel({
       <div className="grid gap-6 lg:grid-cols-[240px_minmax(0,1fr)]">
         <SuperAnalysisSidebar
           videoId={videoId}
-          title={title}
-          channelName={channelName}
           onCopyMarkdown={handleCopyMarkdown}
           copyDisabled={!hasContent}
           copied={copied}
@@ -314,15 +306,11 @@ function SectionContent({ content }: { content: unknown }): React.ReactNode {
 
 function SuperAnalysisSidebar({
   videoId,
-  title,
-  channelName,
   onCopyMarkdown,
   copyDisabled,
   copied,
 }: {
   videoId?: string;
-  title?: string;
-  channelName?: string;
   onCopyMarkdown?: () => void;
   copyDisabled?: boolean;
   copied?: boolean;
@@ -332,8 +320,6 @@ function SuperAnalysisSidebar({
       <div className="shrink-0 mb-6 pr-2">
         <VideoInfoCard
           videoId={videoId}
-          title={title}
-          channelName={channelName}
           onCopyMarkdown={onCopyMarkdown}
           copyDisabled={copyDisabled}
           copied={copied}
@@ -345,15 +331,11 @@ function SuperAnalysisSidebar({
 
 function VideoInfoCard({
   videoId,
-  title,
-  channelName,
   onCopyMarkdown,
   copyDisabled,
   copied,
 }: {
   videoId?: string;
-  title?: string;
-  channelName?: string;
   onCopyMarkdown?: () => void;
   copyDisabled?: boolean;
   copied?: boolean;
@@ -365,7 +347,7 @@ function VideoInfoCard({
   return (
     <div className="space-y-3">
       <div className="group relative">
-        <ThumbnailCell src={thumbnailUrl} alt={title} />
+        <ThumbnailCell src={thumbnailUrl} alt="Video thumbnail" />
         {videoId && (
           <a
             href={`https://www.youtube.com/watch?v=${videoId}`}
@@ -378,23 +360,6 @@ function VideoInfoCard({
               <ExternalLink className="h-4 w-4" />
             </div>
           </a>
-        )}
-      </div>
-
-      <div className="space-y-1 px-1">
-        {title ? (
-          <h3 className="font-bold text-sm line-clamp-2 leading-tight tracking-tight">
-            {title}
-          </h3>
-        ) : (
-          <div className="h-4 w-full animate-pulse rounded bg-muted/50" />
-        )}
-        {channelName ? (
-          <p className="text-xs text-muted-foreground line-clamp-1">
-            {channelName}
-          </p>
-        ) : (
-          <div className="h-3 w-1/2 animate-pulse rounded bg-muted/50" />
         )}
       </div>
 

@@ -9,5 +9,5 @@ export default async function TranscriptAnalysisPage({
 }: TranscriptAnalysisPageProps) {
   const { youtubeId } = await params;
 
-  return <AnalysisPanel videoId={youtubeId} title="" channelName="" />;
+  return <AnalysisPanel videoId={youtubeId} />;
 }
