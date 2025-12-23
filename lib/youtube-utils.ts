@@ -3,7 +3,7 @@ import { Brand } from "effect";
 /**
  * YouTube video ID format: exactly 11 characters of [a-zA-Z0-9_-]
  */
-export const YOUTUBE_VIDEO_ID_REGEX = /^[a-zA-Z0-9_-]{11}$/; // TODO: add test for this regex
+export const YOUTUBE_VIDEO_ID_REGEX = /^[a-zA-Z0-9_-]{11}$/;
 
 export type YouTubeVideoId = string & Brand.Brand<"YouTubeVideoId">;
 export const YouTubeVideoId = Brand.nominal<YouTubeVideoId>();

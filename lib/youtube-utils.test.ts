@@ -10,9 +10,11 @@ import {
 import {
   extractYoutubeVideoId,
   fetchYoutubeVideoTitle,
+  isValidYouTubeVideoId,
   processYoutubeInput,
   resolveShortUrl,
   validateYoutubeVideoId,
+  YOUTUBE_VIDEO_ID_REGEX,
 } from "./youtube-utils";
 
 const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
@@ -27,6 +29,41 @@ afterAll(() => {
 beforeEach(() => {
   consoleErrorSpy.mockClear();
   consoleWarnSpy.mockClear();
+});
+
+describe("YOUTUBE_VIDEO_ID_REGEX", () => {
+  it("should match valid 11-character video IDs", () => {
+    expect(YOUTUBE_VIDEO_ID_REGEX.test("dQw4w9WgXcQ")).toBe(true);
+    expect(YOUTUBE_VIDEO_ID_REGEX.test("a-b_c123456")).toBe(true);
+    expect(YOUTUBE_VIDEO_ID_REGEX.test("12345678901")).toBe(true);
+  });
+
+  it("should not match IDs shorter than 11 characters", () => {
+    expect(YOUTUBE_VIDEO_ID_REGEX.test("short")).toBe(false);
+    expect(YOUTUBE_VIDEO_ID_REGEX.test("1234567890")).toBe(false);
+  });
+
+  it("should not match IDs longer than 11 characters", () => {
+    expect(YOUTUBE_VIDEO_ID_REGEX.test("toolongvideoid")).toBe(false);
+    expect(YOUTUBE_VIDEO_ID_REGEX.test("123456789012")).toBe(false);
+  });
+
+  it("should not match IDs with invalid characters", () => {
+    expect(YOUTUBE_VIDEO_ID_REGEX.test("invalid@id!")).toBe(false);
+    expect(YOUTUBE_VIDEO_ID_REGEX.test("space id 11")).toBe(false);
+  });
+});
+
+describe("isValidYouTubeVideoId", () => {
+  it("should return true for valid video IDs", () => {
+    expect(isValidYouTubeVideoId("dQw4w9WgXcQ")).toBe(true);
+    expect(isValidYouTubeVideoId("a-b_c123456")).toBe(true);
+  });
+
+  it("should return false for invalid video IDs", () => {
+    expect(isValidYouTubeVideoId("invalid")).toBe(false);
+    expect(isValidYouTubeVideoId("")).toBe(false);
+  });
 });
 
 describe("extractYoutubeVideoId", () => {
