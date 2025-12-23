@@ -42,7 +42,9 @@ export default async function AnalyzeLayout({
                 </Link>
               </Button>
               <div>
-                <h1 className="text-xl font-bold truncate">{videoData.title}</h1>
+                <h1 className="text-xl font-bold truncate">
+                  {videoData.title}
+                </h1>
                 <p className="text-sm text-muted-foreground">
                   {videoData.channelName}
                 </p>
