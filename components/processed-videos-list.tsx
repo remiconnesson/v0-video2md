@@ -9,7 +9,7 @@ import {
   getPaginationRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import { FileVideo, Image as ImageIcon, Search } from "lucide-react";
+import { FileVideo, Image as ImageIcon, Search, Sparkles } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -71,22 +71,31 @@ function SimpleCardLayout({
   children,
   title = "Processed Videos",
   descriptionOnly = true,
+  description,
 }: {
   children: React.ReactNode;
   title?: string;
   descriptionOnly?: boolean;
+  description?: string;
 }) {
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <FileVideo className="h-5 w-5" />
+    <Card className="border bg-card/70">
+      <CardHeader className="space-y-2">
+        <CardTitle className="flex items-center gap-2 text-lg">
+          <FileVideo className="h-5 w-5 text-primary" />
           {title}
         </CardTitle>
+        <p className="text-sm text-muted-foreground">
+          {description ||
+            "Track what has been processed and jump back into any analysis."}
+        </p>
       </CardHeader>
-      <CardContent>
+      <CardContent className="space-y-4">
         {descriptionOnly ? (
-          <p className="text-muted-foreground text-center py-8">{children}</p>
+          <div className="flex flex-col items-center gap-3 rounded-lg border border-dashed bg-muted/40 px-6 py-8 text-center">
+            <Sparkles className="h-6 w-6 text-muted-foreground" />
+            <p className="text-muted-foreground">{children}</p>
+          </div>
         ) : (
           children
         )}
@@ -255,6 +264,17 @@ export function VideosDataTable({ data }: VideosDataTableProps) {
 
   return (
     <div className="space-y-6">
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-muted/30 px-4 py-3 text-sm">
+        <div className="flex items-center gap-2 text-muted-foreground">
+          <span className="font-medium text-foreground">Library</span>
+          <span>•</span>
+          <span>{totalRows} results</span>
+        </div>
+        <div className="flex items-center gap-2 text-muted-foreground">
+          <span>Tip:</span>
+          <span>search by channel or title</span>
+        </div>
+      </div>
       {/* Filters */}
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div className="relative w-full md:max-w-sm">
@@ -307,7 +327,7 @@ export function VideosDataTable({ data }: VideosDataTableProps) {
       {/* Desktop Table View */}
       <div className="hidden md:block rounded-lg border">
         <Table>
-          <TableHeader>
+          <TableHeader className="bg-muted/40">
             {table.getHeaderGroups().map((hg) => (
               <TableRow key={hg.id}>
                 {hg.headers.map((h) => (
