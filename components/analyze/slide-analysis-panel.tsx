@@ -173,14 +173,15 @@ export function SlideAnalysisPanel({ videoId }: SlideAnalysisPanelProps) {
 
       try {
         // Make POST request to start analysis (with or without targets)
-        const requestOptions: RequestInit = {
-          method: "POST",
-        };
-
-        if (targets?.length) {
-          requestOptions.headers = { "Content-Type": "application/json" };
-          requestOptions.body = JSON.stringify({ targets });
-        }
+        const requestOptions: RequestInit = targets?.length
+          ? {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ targets }),
+            }
+          : {
+              method: "POST",
+            };
 
         const response = await fetch(
           `/api/video/${videoId}/slides/analysis`,
