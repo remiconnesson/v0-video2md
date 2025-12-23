@@ -1,32 +1,9 @@
 import { describe, it, expect } from "vitest";
-import {
-  LEGACY_TAB_MAPPING,
-  isRouteAvailable,
+import { 
+  isRouteAvailable, 
   ANALYZE_ROUTES,
-  getRouteById,
+  getRouteById 
 } from "../app/video/youtube/[youtubeId]/analyze/_components/analyze-route-map";
-
-describe("Legacy Tab Mapping", () => {
-  it("maps legacy analyze to transcript-analysis", () => {
-    expect(LEGACY_TAB_MAPPING.analyze).toBe("transcript-analysis");
-  });
-
-  it("maps legacy slides to slides-selection", () => {
-    expect(LEGACY_TAB_MAPPING.slides).toBe("slides-selection");
-  });
-
-  it("maps legacy slideAnalysis to slides-to-markdown", () => {
-    expect(LEGACY_TAB_MAPPING.slideAnalysis).toBe("slides-to-markdown");
-  });
-
-  it("maps legacy slidesAnalysis to slides-to-markdown", () => {
-    expect(LEGACY_TAB_MAPPING.slidesAnalysis).toBe("slides-to-markdown");
-  });
-
-  it("maps legacy superAnalysis to super-analysis", () => {
-    expect(LEGACY_TAB_MAPPING.superAnalysis).toBe("super-analysis");
-  });
-});
 
 describe("Route Availability", () => {
   it("allows transcript-analysis without any data", () => {

@@ -46,13 +46,7 @@ export const ANALYZE_ROUTES: AnalyzeRoute[] = [
   },
 ];
 
-export const LEGACY_TAB_MAPPING: Record<string, AnalyzeRouteId> = {
-  analyze: "transcript-analysis",
-  slides: "slides-selection",
-  slideAnalysis: "slides-to-markdown",
-  slidesAnalysis: "slides-to-markdown",
-  superAnalysis: "super-analysis",
-};
+
 
 export function getRouteById(id: AnalyzeRouteId): AnalyzeRoute {
   return ANALYZE_ROUTES.find((route) => route.id === id)!;
