@@ -84,6 +84,7 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
   const { data: feedbackData } = useSlideFeedbackQuery(videoId);
 
   const saveFeedbackMutation = useSaveSlideFeedbackMutation(videoId);
+  const { mutateAsync: saveFeedback } = saveFeedbackMutation;
 
   // Derived state from query results
   const feedbackMap = useMemo(() => {
@@ -188,7 +189,7 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
     async (feedback: SlideFeedbackData) => {
       try {
         // Use TanStack Query mutation
-        await saveFeedbackMutation.mutateAsync(feedback);
+        await saveFeedback(feedback);
 
         // Optimistically update local state
         // The mutation will automatically invalidate and refetch the feedback query
@@ -197,7 +198,7 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
         // Query will be automatically refetched by TanStack Query
       }
     },
-    [saveFeedbackMutation],
+    [saveFeedback],
   );
 
   const handleUnpickAll = useCallback(async () => {
