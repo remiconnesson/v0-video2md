@@ -1,10 +1,10 @@
+import { Home } from "lucide-react";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
 import { getCompletedAnalysis, hasSlideAnalysisResults } from "@/db/queries";
 import { fetchAndSaveTranscript } from "@/lib/fetch-and-save-transcript";
 import { isValidYouTubeVideoId } from "@/lib/youtube-utils";
 import { AnalyzeNav } from "./_components/analyze-nav";
-import { Button } from "@/components/ui/button";
-import Link from "next/link";
-import { Home } from "lucide-react";
 
 interface AnalyzeLayoutProps {
   children: React.ReactNode;
@@ -34,27 +34,29 @@ export default async function AnalyzeLayout({
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
       <div className="border-b bg-background/80 backdrop-blur-sm">
         <div className="container mx-auto px-4 py-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Button variant="ghost" size="icon" asChild>
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <Button variant="ghost" size="icon" asChild className="shrink-0">
                 <Link href="/">
                   <Home className="h-5 w-5" />
                 </Link>
               </Button>
-              <div>
-                <h1 className="text-xl font-bold truncate">
+              <div className="min-w-0 hidden md:block">
+                <h1 className="text-lg md:text-xl font-bold truncate">
                   {videoData.title}
                 </h1>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-xs md:text-sm text-muted-foreground truncate">
                   {videoData.channelName}
                 </p>
               </div>
             </div>
-            <AnalyzeNav
-              videoId={youtubeId}
-              hasTranscriptAnalysis={hasTranscriptAnalysis}
-              hasSlideAnalysis={hasSlideAnalysis}
-            />
+            <div className="overflow-x-auto -mx-4 px-4 pb-1 md:pb-0 md:mx-0 md:px-0 scrollbar-hide">
+              <AnalyzeNav
+                videoId={youtubeId}
+                hasTranscriptAnalysis={hasTranscriptAnalysis}
+                hasSlideAnalysis={hasSlideAnalysis}
+              />
+            </div>
           </div>
         </div>
       </div>

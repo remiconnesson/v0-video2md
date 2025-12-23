@@ -23,7 +23,7 @@ export function AnalyzeNav({
   );
 
   return (
-    <nav className="flex gap-1">
+    <nav className="flex gap-1 min-w-max">
       {availableRoutes.map((route) => {
         const Icon = route.icon;
         const isActive = segment === route.id;
@@ -33,13 +33,13 @@ export function AnalyzeNav({
             key={route.id}
             href={`/video/youtube/${videoId}/analyze/${route.id}`}
             className={cn(
-              "flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors",
+              "flex items-center gap-1.5 px-2.5 py-1.5 md:px-3 md:py-2 rounded-md text-xs md:text-sm font-medium transition-colors whitespace-nowrap",
               isActive
                 ? "bg-primary text-primary-foreground"
                 : "text-muted-foreground hover:text-foreground hover:bg-muted",
             )}
           >
-            <Icon className="h-4 w-4" />
+            <Icon className="h-3.5 w-3.5 md:h-4 md:w-4" />
             {route.label}
           </Link>
         );

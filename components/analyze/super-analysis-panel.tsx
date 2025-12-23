@@ -9,7 +9,6 @@ import {
   Stars,
 } from "lucide-react";
 import Image from "next/image";
-import { VideoInfoCard } from "./video-info-card";
 import { useState } from "react";
 import { Streamdown } from "streamdown";
 import { Button } from "@/components/ui/button";
@@ -17,6 +16,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCopyWithFeedback } from "@/hooks/use-copy-with-feedback";
 import { useStreamingFetch } from "@/lib/use-streaming-fetch";
+import { VideoInfoCard } from "./video-info-card";
 
 // Mobile-only header with video info for super analysis
 function MobileSuperAnalysisHeader({
@@ -41,15 +41,15 @@ function MobileSuperAnalysisHeader({
   return (
     <div className="lg:hidden">
       {/* Compact video info card for mobile */}
-      <div className="flex gap-3 items-start">
-        <div className="w-24 shrink-0">
-          <div className="aspect-video relative overflow-hidden rounded-md bg-muted">
+      <div className="flex gap-4 items-start">
+        <div className="w-28 shrink-0 shadow-sm rounded-md overflow-hidden">
+          <div className="aspect-video relative bg-muted">
             {thumbnailUrl ? (
               <Image
                 src={thumbnailUrl}
                 alt={title || "Video thumbnail"}
                 fill
-                sizes="96px"
+                sizes="112px"
                 className="object-cover"
                 unoptimized
               />
@@ -60,35 +60,37 @@ function MobileSuperAnalysisHeader({
             )}
           </div>
         </div>
-        <div className="flex-1 min-w-0">
+        <div className="flex-1 min-w-0 py-0.5">
           {title ? (
-            <h3 className="font-bold text-sm line-clamp-2 leading-tight">
+            <h3 className="font-bold text-base leading-tight mb-1.5">
               {title}
             </h3>
           ) : (
-            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-5 w-full mb-1.5" />
           )}
           {channelName ? (
-            <p className="text-xs text-muted-foreground mt-1">{channelName}</p>
+            <p className="text-sm text-muted-foreground font-medium mb-3">
+              {channelName}
+            </p>
           ) : (
-            <Skeleton className="h-3 w-1/2 mt-1" />
+            <Skeleton className="h-4 w-1/2 mb-3" />
           )}
-          <div className="flex gap-2 mt-2">
+          <div className="flex gap-2">
             <Button
               variant="outline"
               size="sm"
               onClick={onCopyMarkdown}
-              className="h-7 text-xs gap-1.5"
+              className="h-8 text-xs gap-1.5 px-3"
               disabled={copyDisabled || !onCopyMarkdown}
             >
               {copied ? (
                 <>
-                  <Check className="h-3 w-3" />
+                  <Check className="h-3.5 w-3.5" />
                   Copied
                 </>
               ) : (
                 <>
-                  <Copy className="h-3 w-3" />
+                  <Copy className="h-3.5 w-3.5" />
                   Copy
                 </>
               )}
@@ -97,7 +99,7 @@ function MobileSuperAnalysisHeader({
               <Button
                 variant="outline"
                 size="sm"
-                className="h-7 text-xs"
+                className="h-8 w-8 p-0"
                 asChild
               >
                 <a
@@ -105,7 +107,7 @@ function MobileSuperAnalysisHeader({
                   target="_blank"
                   rel="noopener noreferrer"
                 >
-                  <ExternalLink className="h-3 w-3" />
+                  <ExternalLink className="h-3.5 w-3.5" />
                 </a>
               </Button>
             )}

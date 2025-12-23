@@ -9,7 +9,6 @@ import {
   Image as ImageIcon,
 } from "lucide-react";
 import Image from "next/image";
-import { VideoInfoCard } from "./video-info-card";
 import { createParser, useQueryState } from "nuqs";
 import {
   useCallback,
@@ -38,9 +37,12 @@ import { LoadingStatus } from "@/lib/status-types";
 import { isRecord } from "@/lib/type-utils";
 import { useStreamingFetch } from "@/lib/use-streaming-fetch";
 import { cn } from "@/lib/utils";
+import { VideoInfoCard } from "./video-info-card";
 
 interface AnalysisPanelProps {
   videoId: string;
+  title: string;
+  channelName: string;
 }
 
 const parseAsSectionId = createParser<string>({
@@ -48,7 +50,11 @@ const parseAsSectionId = createParser<string>({
   serialize: (value) => value ?? "",
 });
 
-export function AnalysisPanel({ videoId }: AnalysisPanelProps) {
+export function AnalysisPanel({
+  videoId,
+  title,
+  channelName,
+}: AnalysisPanelProps) {
   const [activeSection, setActiveSection] = useQueryState(
     "section",
     parseAsSectionId,
@@ -133,6 +139,8 @@ export function AnalysisPanel({ videoId }: AnalysisPanelProps) {
         activeSection={activeSection ?? undefined}
         onSectionClick={handleSectionClick}
         videoId={videoId}
+        title={title}
+        channelName={channelName}
         onCopyMarkdown={handleCopyMarkdown}
         copyDisabled={!hasContent}
         copied={copied}
@@ -233,7 +241,7 @@ function SectionContent({ content }: { content: unknown }): React.ReactNode {
             .map((item) =>
               typeof item === "string"
                 ? // Check if already starts with - * or numbered list (1. 2. etc.) or 1), 2), if so, don't add a -
-                  item.trim().match(/^\s*[-*]\s+|^\s*\d+\.\s+|^\s*\d+\)\s+/)
+                item.trim().match(/^\s*[-*]\s+|^\s*\d+\.\s+|^\s*\d+\)\s+/)
                   ? item
                   : `- ${item}`
                 : `\n\`\`\`json\n${JSON.stringify(item, null, 2)}\n\`\`\`\n`,
@@ -338,9 +346,8 @@ function ObjectSection({ data }: { data: Record<string, unknown> }) {
         const markdown =
           typeof value === "string"
             ? value || ""
-            : `\`\`\`json\n${
-                JSON.stringify(value, null, 2) ?? String(value)
-              }\n\`\`\``;
+            : `\`\`\`json\n${JSON.stringify(value, null, 2) ?? String(value)
+            }\n\`\`\``;
 
         return (
           <div key={key} className="relative flex flex-col gap-3 group">
@@ -392,15 +399,15 @@ function MobileAnalysisHeader({
   return (
     <div className="lg:hidden space-y-4">
       {/* Compact video info card for mobile */}
-      <div className="flex gap-3 items-start">
-        <div className="w-24 shrink-0">
-          <div className="aspect-video relative overflow-hidden rounded-md bg-muted">
+      <div className="flex gap-4 items-start">
+        <div className="w-28 shrink-0 shadow-sm rounded-md overflow-hidden">
+          <div className="aspect-video relative bg-muted">
             {thumbnailUrl ? (
               <Image
                 src={thumbnailUrl}
                 alt={title || "Video thumbnail"}
                 fill
-                sizes="96px"
+                sizes="112px"
                 className="object-cover"
                 unoptimized
               />
@@ -411,35 +418,37 @@ function MobileAnalysisHeader({
             )}
           </div>
         </div>
-        <div className="flex-1 min-w-0">
+        <div className="flex-1 min-w-0 py-0.5">
           {title ? (
-            <h3 className="font-bold text-sm line-clamp-2 leading-tight">
+            <h3 className="font-bold text-base leading-tight mb-1.5">
               {title}
             </h3>
           ) : (
-            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-5 w-full mb-1.5" />
           )}
           {channelName ? (
-            <p className="text-xs text-muted-foreground mt-1">{channelName}</p>
+            <p className="text-sm text-muted-foreground font-medium mb-3">
+              {channelName}
+            </p>
           ) : (
-            <Skeleton className="h-3 w-1/2 mt-1" />
+            <Skeleton className="h-4 w-1/2 mb-3" />
           )}
-          <div className="flex gap-2 mt-2">
+          <div className="flex gap-2">
             <Button
               variant="outline"
               size="sm"
               onClick={onCopyMarkdown}
-              className="h-7 text-xs gap-1.5"
+              className="h-8 text-xs gap-1.5 px-3"
               disabled={copyDisabled || !onCopyMarkdown}
             >
               {copied ? (
                 <>
-                  <Check className="h-3 w-3" />
+                  <Check className="h-3.5 w-3.5" />
                   Copied
                 </>
               ) : (
                 <>
-                  <Copy className="h-3 w-3" />
+                  <Copy className="h-3.5 w-3.5" />
                   Copy
                 </>
               )}
@@ -448,7 +457,7 @@ function MobileAnalysisHeader({
               <Button
                 variant="outline"
                 size="sm"
-                className="h-7 text-xs"
+                className="h-8 w-8 p-0"
                 asChild
               >
                 <a
@@ -457,7 +466,7 @@ function MobileAnalysisHeader({
                   rel="noopener noreferrer"
                   aria-label="Watch on YouTube"
                 >
-                  <ExternalLink className="h-3 w-3" />
+                  <ExternalLink className="h-3.5 w-3.5" />
                 </a>
               </Button>
             )}
@@ -476,7 +485,7 @@ function MobileAnalysisHeader({
               <span>
                 {activeSection
                   ? sections.find((s) => s.id === activeSection)?.title ||
-                    "Jump to section"
+                  "Jump to section"
                   : "Jump to section"}
               </span>
               <ChevronDown
@@ -496,11 +505,10 @@ function MobileAnalysisHeader({
                       onSectionClick?.(section.id);
                       setSectionsOpen(false);
                     }}
-                    className={`w-full rounded-md px-3 py-2 text-left text-sm transition ${
-                      isActive
-                        ? "bg-primary/10 text-primary font-medium"
-                        : "text-muted-foreground hover:bg-muted"
-                    }`}
+                    className={`w-full rounded-md px-3 py-2 text-left text-sm transition ${isActive
+                      ? "bg-primary/10 text-primary font-medium"
+                      : "text-muted-foreground hover:bg-muted"
+                      }`}
                   >
                     {section.title}
                   </button>
