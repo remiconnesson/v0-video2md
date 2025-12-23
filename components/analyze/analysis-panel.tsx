@@ -127,7 +127,7 @@ export function AnalysisPanel({
 
   useEffect(() => {
     scrollToActiveSection(activeSection, scrollToSection);
-  }, [activeSection, scrollToSection]);
+  }, [activeSection, scrollToSection, scrollToActiveSection]);
 
   return (
     <div className="space-y-4">

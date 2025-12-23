@@ -1,5 +1,6 @@
 "use client";
 
+import { Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useActionState, useEffect } from "react";
 import { validateVideoId } from "@/app/actions";
@@ -46,7 +47,7 @@ export function TranscriptFetcher() {
 // Sub-components
 // ============================================================================
 
-function TranscriptForm({
+export function TranscriptForm({
   action,
   isPending,
 }: {
@@ -69,15 +70,21 @@ function TranscriptForm({
       </div>
 
       <Button type="submit" disabled={isPending} className="w-full">
+        {isPending && (
+          <Loader2 className="animate-spin" data-testid="loading-spinner" />
+        )}
         {buttonText}
       </Button>
     </form>
   );
 }
 
-function ErrorMessage({ message }: { message: string }) {
+export function ErrorMessage({ message }: { message: string }) {
   return (
-    <div className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
+    <div
+      role="alert"
+      className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700"
+    >
       ❌ {message}
     </div>
   );
