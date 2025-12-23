@@ -1,15 +1,23 @@
 import { getWritable } from "workflow";
+import { DurableAgent } from "@workflow/ai/agent";
+import { z } from "zod";
+import { getCompletedAnalysis } from "@/db/queries";
+import { type YouTubeVideoId } from "@/lib/youtube-utils";
+import type { UIMessageChunk } from "ai";
 import {
   fetchYoutubeTranscriptFromApify,
   saveYoutubeTranscriptToDb,
 } from "./steps/fetch-transcript";
 import {
   type AnalysisStreamEvent,
-  doTranscriptAIAnalysis,
   getTranscriptDataFromDb,
-  saveTranscriptAIAnalysisToDb,
   type TranscriptData,
 } from "./steps/transcript-analysis";
+import { recordSection } from "./steps/durable-analysis";
+import {
+  DURABLE_ANALYSIS_SYSTEM_PROMPT,
+  buildDurableAgentUserMessage,
+} from "@/ai/durable-analysis-prompt";
 
 export async function analyzeTranscriptWorkflow(videoId: string) {
   "use workflow";
@@ -34,13 +42,61 @@ export async function analyzeTranscriptWorkflow(videoId: string) {
     transcriptData = (await getTranscriptDataFromDb(videoId))!;
   }
 
-  console.log("🤖 Analyzing transcript for video", videoId);
-  const analysisResult = await doTranscriptAIAnalysis(transcriptData, writable);
-  console.log("🤖 Saving analysis result for video", videoId);
+  console.log("🤖 Analyzing transcript for video (Durable Agent)", videoId);
 
-  await saveTranscriptAIAnalysisToDb(videoId, analysisResult, writable);
+  const agent = new DurableAgent({
+    model: "openai/gpt-4o",
+    system: DURABLE_ANALYSIS_SYSTEM_PROMPT,
+    tools: {
+      recordSection: {
+        description: "Record a section of the analysis",
+        inputSchema: z.object({
+          videoId: z.string(),
+          key: z.string(),
+          content: z.any(),
+        }),
+        execute: recordSection,
+      },
+    },
+  });
+
+  const userMessage = buildDurableAgentUserMessage({
+    videoId: transcriptData.videoId,
+    title: transcriptData.title,
+    channelName: transcriptData.channelName,
+    description: transcriptData.description ?? undefined,
+    transcript: transcriptData.transcript,
+  });
+
+  const writer = writable.getWriter();
+  await writer.write({
+    type: "progress",
+    phase: "analysis",
+    message: "Starting analysis with Durable Agent...",
+  });
+  writer.releaseLock();
+
+  const agentWritable = new WritableStream<UIMessageChunk>({
+    write(_chunk) {
+      // Consume the stream
+    },
+  });
+
+  await agent.stream({
+    messages: [{ role: "user", content: userMessage }],
+    writable: agentWritable,
+  });
 
   console.log("🤖 Analysis complete for video", videoId);
+
+  // Fetch final result to ensure we return what was saved
+  const finalResult = await getCompletedAnalysis(videoId as YouTubeVideoId);
+
+  if (finalResult?.result) {
+    const writer = writable.getWriter();
+    await writer.write({ type: "result", data: finalResult.result });
+    writer.releaseLock();
+  }
 
   return {
     success: true,
