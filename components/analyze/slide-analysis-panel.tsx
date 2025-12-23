@@ -19,7 +19,6 @@ import {
   type SlideAnalysisStatusType,
 } from "@/lib/status-types";
 import {
-  usePickSlidesMutation,
   useSlideAnalysisQuery,
   useSlideFeedbackQuery,
   useSlidesQuery,
@@ -67,7 +66,6 @@ export function SlideAnalysisPanel({ videoId }: SlideAnalysisPanelProps) {
   } = useSlideFeedbackQuery(videoId);
 
   const queryClient = useQueryClient();
-  const pickSlidesMutation = usePickSlidesMutation(videoId);
 
   // Derived state from query results and streaming
   const queryResults = analysisData?.results ?? [];
@@ -112,30 +110,35 @@ export function SlideAnalysisPanel({ videoId }: SlideAnalysisPanelProps) {
 
   // Update status based on query results
   useEffect(() => {
-    if (isLoading) {
-      setStatus(SlideAnalysisStatus.LOADING);
-      setCoverageStatus(CoverageStatus.LOADING);
-      return;
-    }
+    // Only update status when not actively analyzing
+    // We check the current value without depending on it to avoid infinite loops
+    setStatus((currentStatus) => {
+      // Don't override status during active analysis
+      if (currentStatus === SlideAnalysisStatus.ANALYZING) {
+        return currentStatus;
+      }
 
-    if (loadError) {
-      setStatus(SlideAnalysisStatus.ERROR);
-      setCoverageStatus(CoverageStatus.ERROR);
-      setError(loadError.message);
-      setCoverageError(loadError.message);
-      return;
-    }
+      if (isLoading) {
+        setCoverageStatus(CoverageStatus.LOADING);
+        return SlideAnalysisStatus.LOADING;
+      }
 
-    // Set analysis status
-    setStatus(
-      results.length > 0
+      if (loadError) {
+        setCoverageStatus(CoverageStatus.ERROR);
+        setError(loadError.message);
+        setCoverageError(loadError.message);
+        return SlideAnalysisStatus.ERROR;
+      }
+
+      // Set coverage status
+      setCoverageStatus(CoverageStatus.READY);
+
+      // Set analysis status based on query results
+      return queryResults.length > 0
         ? SlideAnalysisStatus.COMPLETED
-        : SlideAnalysisStatus.IDLE,
-    );
-
-    // Set coverage status
-    setCoverageStatus(CoverageStatus.READY);
-  }, [isLoading, loadError, results.length]);
+        : SlideAnalysisStatus.IDLE;
+    });
+  }, [isLoading, loadError, queryResults.length]);
 
   const resultKeys = useMemo(() => {
     return new Set(
@@ -169,34 +172,27 @@ export function SlideAnalysisPanel({ videoId }: SlideAnalysisPanelProps) {
       });
 
       try {
-        let response: Response;
-
-        if (targets?.length) {
-          // Use mutation for picking specific slides
-          await pickSlidesMutation.mutateAsync(targets);
-          // After mutation, refetch to get the SSE response
-          const refetchResponse = await fetch(
-            `/api/video/${videoId}/slides/analysis`,
-          );
-          if (!refetchResponse.ok) {
-            throw new Error("Failed to start analysis after picking slides");
-          }
-          response = refetchResponse;
-        } else {
-          // Direct fetch for full analysis
-          const directResponse = await fetch(
-            `/api/video/${videoId}/slides/analysis`,
-            {
+        // Make POST request to start analysis (with or without targets)
+        const requestOptions: RequestInit = targets?.length
+          ? {
               method: "POST",
-            },
-          );
-          if (!directResponse.ok) {
-            const errorData = await directResponse
-              .json()
-              .catch(() => ({ error: "Failed to start analysis" }));
-            throw new Error(errorData.error);
-          }
-          response = directResponse;
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ targets }),
+            }
+          : {
+              method: "POST",
+            };
+
+        const response = await fetch(
+          `/api/video/${videoId}/slides/analysis`,
+          requestOptions,
+        );
+
+        if (!response.ok) {
+          const errorData = await response
+            .json()
+            .catch(() => ({ error: "Failed to start analysis" }));
+          throw new Error(errorData.error);
         }
 
         await consumeSSE<SlideAnalysisStreamEvent>(response, {
@@ -232,7 +228,10 @@ export function SlideAnalysisPanel({ videoId }: SlideAnalysisPanelProps) {
           },
           complete: () => {
             setStatus(SlideAnalysisStatus.COMPLETED);
-            // Results will be automatically refetched by TanStack Query
+            // Invalidate query to refetch results after streaming completes
+            queryClient.invalidateQueries({
+              queryKey: ["slide-analysis", videoId],
+            });
           },
           error: (e) => {
             setError(e.message);
@@ -246,7 +245,7 @@ export function SlideAnalysisPanel({ videoId }: SlideAnalysisPanelProps) {
         setStatus(SlideAnalysisStatus.ERROR);
       }
     },
-    [videoId, pickSlidesMutation],
+    [videoId, queryClient],
   );
 
   // TanStack Query handles automatic data loading, no need for manual useEffect
