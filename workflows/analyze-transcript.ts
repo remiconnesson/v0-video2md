@@ -45,7 +45,7 @@ export async function analyzeTranscriptWorkflow(videoId: string) {
   console.log("🤖 Analyzing transcript for video (Durable Agent)", videoId);
 
   const agent = new DurableAgent({
-    model: "openai/gpt-4o",
+    model: "openai/gpt-5.1",
     system: DURABLE_ANALYSIS_SYSTEM_PROMPT,
     tools: {
       recordSection: {
