@@ -1,5 +1,6 @@
 "use client";
 
+import { useCopyToClipboard } from "@uidotdev/usehooks";
 import {
   Check,
   ChevronDown,
@@ -26,14 +27,16 @@ import {
 } from "@/components/ui/collapsible";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useCopyWithFeedback } from "@/hooks/use-copy-with-feedback";
 import {
   analysisToMarkdown,
   formatSectionTitle,
   sectionToMarkdown,
 } from "@/lib/analysis-format";
-import { consumeSSE } from "@/lib/sse";
+import { LoadingStatus } from "@/lib/status-types";
 import { isRecord } from "@/lib/type-utils";
-import type { AnalysisStreamEvent } from "@/workflows/steps/transcript-analysis";
+import { useStreamingFetch } from "@/lib/use-streaming-fetch";
+import { cn } from "@/lib/utils";
 
 interface AnalysisPanelProps {
   videoId: string;
@@ -55,146 +58,39 @@ export function AnalysisPanel({
     "section",
     parseAsSectionId,
   );
-  const [copied, setCopied] = useState(false);
+  const [copied, copy] = useCopyWithFeedback();
+  const [_copiedText, copyToClipboard] = useCopyToClipboard();
   const [copiedSection, setCopiedSection] = useState<string | null>(null);
-  const [analysis, setAnalysis] = useState<Record<string, unknown>>({});
-  const [status, setStatus] = useState<
-    "idle" | "loading" | "streaming" | "ready" | "error"
-  >("idle");
-  const [_statusMessage, setStatusMessage] = useState<string>("");
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  useEffect(() => {
-    const controller = new AbortController();
+  const {
+    status,
+    data: analysis,
+    error: errorMessage,
+    statusMessage: _statusMessage,
+  } = useStreamingFetch<Record<string, unknown>>(
+    `/api/video/${videoId}/analysis`,
+    {
+      initialData: {},
+    },
+    [videoId],
+  );
 
-    async function fetchAnalysis() {
-      setStatus("loading");
-      setStatusMessage("Fetching analysis...");
-      setErrorMessage(null);
-      setAnalysis({});
-
-      try {
-        const response = await fetch(`/api/video/${videoId}/analysis`, {
-          signal: controller.signal,
-        });
-
-        if (!response.ok) {
-          const errorData = await response
-            .json()
-            .catch(() => ({ error: response.statusText }));
-          throw new Error(errorData.error || "Failed to load analysis");
-        }
-
-        const contentType = response.headers.get("content-type") ?? "";
-
-        if (contentType.includes("text/event-stream")) {
-          setStatus("streaming");
-          setStatusMessage("Generating analysis...");
-
-          await consumeSSE<AnalysisStreamEvent>(
-            response,
-            {
-              progress: (event) => {
-                setStatus("streaming");
-                if (event.message) {
-                  setStatusMessage(event.message);
-                } else if (event.phase) {
-                  setStatusMessage(event.phase);
-                }
-              },
-              partial: (event) => {
-                const partialData = event.data;
-                if (!isRecord(partialData)) return;
-
-                setAnalysis((prev) => ({ ...prev, ...partialData }));
-                setStatus("streaming");
-              },
-              result: (event) => {
-                if (isRecord(event.data)) {
-                  setAnalysis(event.data);
-                }
-                setStatus("ready");
-                setStatusMessage("");
-              },
-              complete: () => {
-                setStatus((prev) => (prev === "error" ? prev : "ready"));
-                setStatusMessage("");
-              },
-              error: (event) => {
-                setErrorMessage(event.message);
-                setStatus("error");
-                setStatusMessage("");
-              },
-            },
-            {
-              onError: (streamError) => {
-                if (controller.signal.aborted) return;
-
-                const message =
-                  streamError instanceof Error
-                    ? streamError.message
-                    : "Failed to stream analysis";
-                setErrorMessage(message);
-                setStatus("error");
-                setStatusMessage("");
-              },
-            },
-          );
-        } else {
-          const data = await response.json();
-          const result =
-            isRecord(data) && isRecord(data.result) ? data.result : {};
-
-          setAnalysis(result);
-          setStatus("ready");
-          setStatusMessage("");
-        }
-      } catch (error) {
-        if (controller.signal.aborted) return;
-
-        const message =
-          error instanceof Error ? error.message : "Failed to load analysis";
-        setErrorMessage(message);
-        setStatus("error");
-        setStatusMessage("");
-      }
-    }
-
-    void fetchAnalysis();
-
-    return () => {
-      controller.abort();
-    };
-  }, [videoId]);
-
-  const handleCopyMarkdown = async () => {
-    const markdown = analysisToMarkdown(analysis);
-
-    try {
-      await navigator.clipboard.writeText(markdown);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch (err) {
-      console.error("Failed to copy:", err);
-    }
+  const handleCopyMarkdown = () => {
+    const markdown = analysisToMarkdown(analysis || {});
+    copy(markdown);
   };
 
-  const handleCopySection = async (title: string, content: unknown) => {
+  const handleCopySection = (title: string, content: unknown) => {
     const markdown = sectionToMarkdown(title, content);
-
-    try {
-      await navigator.clipboard.writeText(markdown);
-      setCopiedSection(title);
-      setTimeout(() => setCopiedSection(null), 2000);
-    } catch (err) {
-      console.error("Failed to copy section:", err);
-    }
+    copyToClipboard(markdown);
+    setCopiedSection(title);
+    setTimeout(() => setCopiedSection(null), 2000);
   };
 
-  const hasContent = Object.keys(analysis).length > 0;
+  const hasContent = Object.keys(analysis || {}).length > 0;
   const sections = useMemo(
     () =>
-      Object.keys(analysis).map((key) => ({
+      Object.keys(analysis || {}).map((key) => ({
         key,
         id: toSectionId(key),
         title: formatSectionTitle(key) || key,
@@ -229,7 +125,6 @@ export function AnalysisPanel({
     },
   );
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: scrollToActiveSection is an effect event
   useEffect(() => {
     scrollToActiveSection(activeSection, scrollToSection);
   }, [activeSection, scrollToSection]);
@@ -273,7 +168,7 @@ export function AnalysisPanel({
 
           <div className="space-y-6">
             {hasContent ? (
-              Object.entries(analysis).map(([key, value]) => (
+              Object.entries(analysis || {}).map(([key, value]) => (
                 <Section
                   key={key}
                   title={key}
@@ -282,7 +177,8 @@ export function AnalysisPanel({
                   copied={copiedSection === key}
                 />
               ))
-            ) : status === "loading" || status === "streaming" ? (
+            ) : status === LoadingStatus.LOADING ||
+              status === LoadingStatus.STREAMING ? (
               <div className="space-y-6">
                 {[1, 2, 3].map((i) => (
                   <Card key={i} className="animate-pulse border-muted/30">
@@ -305,7 +201,7 @@ export function AnalysisPanel({
                   </Card>
                 ))}
               </div>
-            ) : status === "ready" && !errorMessage ? (
+            ) : status === LoadingStatus.READY && !errorMessage ? (
               <p className="text-muted-foreground italic">
                 No analysis available.
               </p>
@@ -686,11 +582,12 @@ export function AnalysisSidebar({
                       key={section.id}
                       type="button"
                       onClick={() => onSectionClick?.(section.id)}
-                      className={`w-full rounded-md px-2 py-1.5 text-left text-sm transition cursor-pointer hover:bg-muted ${
+                      className={cn(
+                        "w-full rounded-md px-2 py-1.5 text-left text-sm transition cursor-pointer hover:bg-muted",
                         isActive
                           ? "bg-muted text-foreground font-medium"
-                          : "text-muted-foreground"
-                      }`}
+                          : "text-muted-foreground",
+                      )}
                     >
                       {section.title}
                     </button>

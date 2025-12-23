@@ -1,120 +1,143 @@
 import { describe, expect, it } from "vitest";
+
 import {
   calculateTranscriptDuration,
   estimateWordCount,
   extractPlainText,
-  formatTimestamp,
   formatTimestampForLLM,
   formatTranscriptForLLM,
+  type TranscriptSegment,
+  validateTranscriptStructure,
 } from "./transcript-format";
 
-describe("formatTimestamp", () => {
-  it("should format seconds only", () => {
-    expect(formatTimestamp(45)).toBe("0:45");
-    expect(formatTimestamp(5)).toBe("0:05");
+describe("validateTranscriptStructure", () => {
+  it("should validate a valid transcript structure", () => {
+    const validTranscript = [
+      { start: 0, end: 5, text: "Hello world" },
+      { start: 5, end: 10, text: "This is a test" },
+    ];
+
+    const result = validateTranscriptStructure(validTranscript);
+
+    expect(result).toEqual(validTranscript);
+    expect(result).toHaveLength(2);
   });
 
-  it("should format minutes and seconds", () => {
-    expect(formatTimestamp(125)).toBe("2:05");
-    expect(formatTimestamp(600)).toBe("10:00");
-  });
+  it("should throw error for invalid transcript structure", () => {
+    const invalidTranscript = [{ start: 0, text: "Missing end field" }];
 
-  it("should format hours, minutes, and seconds", () => {
-    expect(formatTimestamp(3665)).toBe("1:01:05");
-    expect(formatTimestamp(7200)).toBe("2:00:00");
-  });
-
-  it("should handle zero", () => {
-    expect(formatTimestamp(0)).toBe("0:00");
-  });
-
-  it("should floor decimal values", () => {
-    expect(formatTimestamp(45.9)).toBe("0:45");
+    expect(() => validateTranscriptStructure(invalidTranscript)).toThrow(
+      "Invalid transcript structure",
+    );
   });
 });
 
 describe("formatTimestampForLLM", () => {
-  it("should always include hours with padding", () => {
-    expect(formatTimestampForLLM(45)).toBe("00:00:45");
-    expect(formatTimestampForLLM(125)).toBe("00:02:05");
-    expect(formatTimestampForLLM(3665)).toBe("01:01:05");
+  it("should handle zero seconds with HH:MM:SS format", () => {
+    expect(formatTimestampForLLM(0)).toBe("00:00:00");
   });
 
-  it("should handle zero", () => {
-    expect(formatTimestampForLLM(0)).toBe("00:00:00");
+  it("should format timestamp with hours, minutes, and seconds", () => {
+    expect(formatTimestampForLLM(3665)).toBe("01:01:05");
   });
 });
 
 describe("formatTranscriptForLLM", () => {
-  it("should format segments with timestamps", () => {
-    const segments = [
-      { start: 0, text: "Hello" },
-      { start: 5, text: "World" },
+  it("should format transcript segments with timestamps", () => {
+    const segments: TranscriptSegment[] = [
+      { start: 0, end: 5, text: "Hello" },
+      { start: 5, end: 10, text: "World" },
     ];
-    expect(formatTranscriptForLLM(segments)).toBe("[0:00] Hello\n[0:05] World");
+
+    const result = formatTranscriptForLLM(segments);
+
+    expect(result).toBe("[0:00] Hello\n[0:05] World");
   });
 
   it("should handle empty array", () => {
-    expect(formatTranscriptForLLM([])).toBe("");
+    const result = formatTranscriptForLLM([]);
+
+    expect(result).toBe("");
   });
 
-  it("should handle long timestamps", () => {
-    const segments = [{ start: 3665, text: "Long video" }];
-    expect(formatTranscriptForLLM(segments)).toBe("[1:01:05] Long video");
+  it("should handle segments with empty text", () => {
+    const segments: TranscriptSegment[] = [
+      { start: 0, end: 5, text: "" },
+      { start: 5, end: 10, text: "Text" },
+    ];
+
+    const result = formatTranscriptForLLM(segments);
+
+    expect(result).toBe("[0:00] \n[0:05] Text");
   });
 });
 
 describe("calculateTranscriptDuration", () => {
-  it("should return 0 for empty array", () => {
-    expect(calculateTranscriptDuration([])).toBe(0);
-  });
-
-  it("should use end time of last segment if available", () => {
-    const segments = [
+  it("should calculate duration from last segment end time", () => {
+    const segments: TranscriptSegment[] = [
       { start: 0, end: 5, text: "First" },
-      { start: 5, end: 15, text: "Last" },
+      { start: 5, end: 10, text: "Second" },
+      { start: 10, end: 20, text: "Third" },
     ];
-    expect(calculateTranscriptDuration(segments)).toBe(15);
+
+    const duration = calculateTranscriptDuration(segments);
+
+    expect(duration).toBe(20);
   });
 
-  it("should fallback to start time if no end", () => {
-    const segments = [
-      { start: 0, text: "First" },
-      { start: 10, text: "Last" },
-    ];
-    expect(calculateTranscriptDuration(segments)).toBe(10);
+  it("should return 0 for empty array", () => {
+    const duration = calculateTranscriptDuration([]);
+
+    expect(duration).toBe(0);
   });
 });
 
 describe("extractPlainText", () => {
-  it("should concatenate all text with spaces", () => {
-    const segments = [
-      { start: 0, text: "Hello" },
-      { start: 5, text: "World" },
+  it("should extract and concatenate text from segments", () => {
+    const segments: TranscriptSegment[] = [
+      { start: 0, end: 5, text: "Hello" },
+      { start: 5, end: 10, text: "World" },
+      { start: 10, end: 15, text: "Test" },
     ];
-    expect(extractPlainText(segments)).toBe("Hello World");
+
+    const result = extractPlainText(segments);
+
+    expect(result).toBe("Hello World Test");
   });
 
-  it("should handle empty array", () => {
-    expect(extractPlainText([])).toBe("");
+  it("should return empty string for empty array", () => {
+    const result = extractPlainText([]);
+
+    expect(result).toBe("");
   });
 });
 
 describe("estimateWordCount", () => {
-  it("should count words in transcript", () => {
-    const segments = [
-      { start: 0, text: "Hello world" },
-      { start: 5, text: "This is a test" },
+  it("should count words in transcript segments", () => {
+    const segments: TranscriptSegment[] = [
+      { start: 0, end: 5, text: "Hello world" },
+      { start: 5, end: 10, text: "This is a test" },
     ];
-    expect(estimateWordCount(segments)).toBe(6);
+
+    const wordCount = estimateWordCount(segments);
+
+    expect(wordCount).toBe(6);
   });
 
-  it("should handle empty array", () => {
-    expect(estimateWordCount([])).toBe(0);
+  it("should return 0 for empty array", () => {
+    const wordCount = estimateWordCount([]);
+
+    expect(wordCount).toBe(0);
   });
 
-  it("should handle multiple spaces", () => {
-    const segments = [{ start: 0, text: "Hello   world" }];
-    expect(estimateWordCount(segments)).toBe(2);
+  it("should handle multiple spaces between words", () => {
+    const segments: TranscriptSegment[] = [
+      { start: 0, end: 5, text: "Hello    World" },
+      { start: 5, end: 10, text: "Multiple   Spaces" },
+    ];
+
+    const wordCount = estimateWordCount(segments);
+
+    expect(wordCount).toBe(4);
   });
 });

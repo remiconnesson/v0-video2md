@@ -1,4 +1,3 @@
-import { Match } from "effect";
 import { type NextRequest, NextResponse } from "next/server";
 import { getRun, start } from "workflow/api";
 import {
@@ -7,7 +6,7 @@ import {
   storeSuperAnalysisWorkflowId,
 } from "@/db/queries";
 import { createSSEResponse, errorResponse, logError } from "@/lib/api-utils";
-import type { YouTubeVideoId } from "@/lib/youtube-utils";
+import { dispatchOngoingWorkflowHandler } from "@/lib/workflow-route-utils";
 import { isValidYouTubeVideoId } from "@/lib/youtube-utils";
 import { superAnalysisWorkflow } from "@/workflows/super-analysis";
 
@@ -41,9 +40,10 @@ export async function GET(
 
     // If the workflow failed or was cancelled, we allow starting a new one if triggered
     if ((status === "failed" || status === "cancelled") && trigger) {
-      return startNewSuperAnalysisWorkflow({ videoId });
+      return startNewSuperAnalysisWorkflow(videoId);
     }
 
+    // Use the shared handler for ongoing workflows
     return dispatchOngoingWorkflowHandler({
       workflowId,
       videoId,
@@ -53,85 +53,15 @@ export async function GET(
   }
 
   if (trigger) {
-    return startNewSuperAnalysisWorkflow({ videoId });
+    return startNewSuperAnalysisWorkflow(videoId);
   }
 
   return NextResponse.json({ status: "not_started" });
 }
 
-function dispatchOngoingWorkflowHandler({
-  workflowId,
-  videoId,
-  readable,
-  status,
-}: {
-  workflowId: string;
-  videoId: string;
-  readable: ReadableStream;
-  status:
-    | "completed"
-    | "failed"
-    | "cancelled"
-    | "pending"
-    | "running"
-    | "paused";
-}) {
-  const response = Match.value(status).pipe(
-    Match.withReturnType<NextResponse>(),
-    Match.when("completed", () =>
-      handleWorkflowAnomaly({ workflowId, videoId }),
-    ),
-    Match.when("failed", () => handleWorkflowFailed()),
-    Match.when("cancelled", () => handleWorkflowFailed()),
-    Match.when("pending", () =>
-      handleWorkflowInProgress({ readable, workflowId }),
-    ),
-    Match.when("running", () =>
-      handleWorkflowInProgress({ readable, workflowId }),
-    ),
-    Match.when("paused", () =>
-      handleWorkflowInProgress({ readable, workflowId }),
-    ),
-    Match.exhaustive,
-  );
-
-  return response;
-}
-
-function handleWorkflowAnomaly({
-  workflowId,
-  videoId,
-}: {
-  workflowId: string;
-  videoId: string;
-}) {
-  logError(
-    new Error("Workflow appears completed but not found in database"),
-    "Workflow anomaly",
-    { workflowId, videoId },
-  );
-  return errorResponse("Internal server error", 500);
-}
-
-function handleWorkflowFailed() {
-  return errorResponse("Workflow failed or cancelled", 500);
-}
-
-function handleWorkflowInProgress({
-  readable,
-  workflowId,
-}: {
-  readable: ReadableStream;
-  workflowId: string;
-}) {
-  return createSSEResponse(readable, workflowId);
-}
-
-async function startNewSuperAnalysisWorkflow({
-  videoId,
-}: {
-  videoId: YouTubeVideoId;
-}) {
+async function startNewSuperAnalysisWorkflow(
+  videoId: string,
+): Promise<NextResponse> {
   try {
     const run = await start(superAnalysisWorkflow, [videoId]);
 

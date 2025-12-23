@@ -1,5 +1,7 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
 import { NuqsTestingAdapter } from "nuqs/adapters/testing";
+import type React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { SlidesPanel } from "./slides-panel";
 
@@ -7,6 +9,21 @@ import { SlidesPanel } from "./slides-panel";
 global.fetch = vi.fn();
 
 const mockVideoId = "test-video-id";
+
+// Create a test wrapper with QueryClientProvider
+function TestWrapper({ children }: { children: React.ReactNode }) {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+      },
+    },
+  });
+
+  return (
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  );
+}
 
 describe("SlidesPanel Auto-Trigger Extraction", () => {
   beforeEach(() => {
@@ -49,9 +66,11 @@ describe("SlidesPanel Auto-Trigger Extraction", () => {
     vi.mocked(fetch).mockResolvedValueOnce(mockPostResponse);
 
     render(
-      <NuqsTestingAdapter>
-        <SlidesPanel videoId={mockVideoId} />
-      </NuqsTestingAdapter>,
+      <TestWrapper>
+        <NuqsTestingAdapter>
+          <SlidesPanel videoId={mockVideoId} />
+        </NuqsTestingAdapter>
+      </TestWrapper>,
     );
 
     // Should show loading state initially
@@ -110,9 +129,11 @@ describe("SlidesPanel Auto-Trigger Extraction", () => {
     );
 
     render(
-      <NuqsTestingAdapter>
-        <SlidesPanel videoId={mockVideoId} />
-      </NuqsTestingAdapter>,
+      <TestWrapper>
+        <NuqsTestingAdapter>
+          <SlidesPanel videoId={mockVideoId} />
+        </NuqsTestingAdapter>
+      </TestWrapper>,
     );
 
     // Should show completed state, not trigger extraction

@@ -1,11 +1,5 @@
 import { NextResponse } from "next/server";
-import {
-  getProcessedVideos,
-  getVideoIdsWithAnalysis,
-  getVideoIdsWithSlideAnalysis,
-  getVideoIdsWithSlides,
-  getVideoIdsWithSuperAnalysis,
-} from "@/db/queries";
+import { getProcessedVideosWithStatus } from "@/db/queries";
 import { formatDuration } from "@/lib/time-utils";
 
 // ============================================================================
@@ -13,26 +7,9 @@ import { formatDuration } from "@/lib/time-utils";
 // ============================================================================
 
 export async function GET() {
-  // Query for all videos that have transcripts
-  const results = await getProcessedVideos();
-  const videoIds = results.map((row) => row.videoId);
-
-  const [slidesRows, analysisRows, slideAnalysisRows, superAnalysisRows] =
-    await Promise.all([
-      getVideoIdsWithSlides(videoIds),
-      getVideoIdsWithAnalysis(videoIds),
-      getVideoIdsWithSlideAnalysis(videoIds),
-      getVideoIdsWithSuperAnalysis(videoIds),
-    ]);
-
-  const videosWithSlides = new Set(slidesRows.map((row) => row.videoId));
-  const videosWithAnalysis = new Set(analysisRows.map((row) => row.videoId));
-  const videosWithSuperAnalysis = new Set(
-    superAnalysisRows.map((row) => row.videoId),
-  );
-  const videosWithSlideAnalysis = new Set(
-    slideAnalysisRows.map((row) => row.videoId),
-  );
+  // Query for all videos that have transcripts with their processing status
+  // This uses a single optimized query instead of multiple separate queries
+  const results = await getProcessedVideosWithStatus();
 
   // Transform to match the ProcessedVideosList expected format
   const processedVideos = results.map((row) => ({
@@ -46,10 +23,10 @@ export async function GET() {
       thumbnail: row.thumbnail ?? "",
       channelName: row.channelName,
     },
-    hasSlides: videosWithSlides.has(row.videoId),
-    hasAnalysis: videosWithAnalysis.has(row.videoId),
-    hasSuperAnalysis: videosWithSuperAnalysis.has(row.videoId),
-    hasSlideAnalysis: videosWithSlideAnalysis.has(row.videoId),
+    hasSlides: row.hasSlides,
+    hasAnalysis: row.hasAnalysis,
+    hasSuperAnalysis: row.hasSuperAnalysis,
+    hasSlideAnalysis: row.hasSlideAnalysis,
     completedAt: row.createdAt?.toISOString(),
   }));
 

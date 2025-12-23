@@ -1,6 +1,17 @@
-import { and, asc, desc, eq, inArray, isNotNull } from "drizzle-orm";
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  inArray,
+  isNotNull,
+  type SQL,
+  sql,
+} from "drizzle-orm";
+import { getTableConfig } from "drizzle-orm/pg-core";
 import type { SlideData } from "@/lib/slides-types";
 import type { TranscriptSegment } from "@/lib/transcript-format";
+import type { YouTubeVideoId } from "@/lib/youtube-utils";
 import { db } from "./index";
 import {
   channels,
@@ -27,6 +38,61 @@ import {
 async function findOne<T>(query: Promise<T[]>): Promise<T | null> {
   const [result] = await query;
   return result ?? null;
+}
+
+/**
+ * Type representing Drizzle tables that have a videoId column.
+ * Used with selectVideoIdsFrom function.
+ */
+type TableWithVideoId =
+  | typeof videoSlides
+  | typeof videoAnalysisRuns
+  | typeof superAnalysisRuns
+  | typeof slideAnalysisResults;
+
+/**
+ * Builds a query to select video IDs from a table with optional conditions.
+ * Handles empty array guard and provides consistent error handling.
+ */
+async function selectVideoIdsFrom(
+  table: TableWithVideoId,
+  videoIds: string[],
+  options: {
+    distinct?: boolean;
+    additionalWhere?: SQL<unknown>;
+    withErrorHandling?: boolean;
+  } = {},
+) {
+  if (videoIds.length === 0) return [];
+
+  const {
+    distinct = false,
+    additionalWhere,
+    withErrorHandling = false,
+  } = options;
+
+  const baseQuery = distinct
+    ? db.selectDistinct({ videoId: table.videoId })
+    : db.select({ videoId: table.videoId });
+
+  const whereConditions = [inArray(table.videoId, videoIds)];
+  if (additionalWhere) {
+    whereConditions.push(additionalWhere);
+  }
+
+  const query = baseQuery.from(table).where(and(...whereConditions));
+
+  if (withErrorHandling) {
+    try {
+      return await query;
+    } catch (error) {
+      const { name: tableName } = getTableConfig(table);
+      console.error(`Error querying ${tableName} for video IDs:`, error);
+      return [];
+    }
+  }
+
+  return await query;
 }
 
 // ============================================================================
@@ -110,30 +176,59 @@ export async function getProcessedVideos() {
 }
 
 /**
+ * Gets all processed videos with their processing status (slides, analysis, etc.) in a single query.
+ * This is more efficient than making multiple separate queries.
+ */
+export async function getProcessedVideosWithStatus() {
+  return await db
+    .select({
+      videoId: videos.videoId,
+      title: videos.title,
+      description: scrapTranscriptV1.description,
+      durationSeconds: scrapTranscriptV1.durationSeconds,
+      thumbnail: scrapTranscriptV1.thumbnail,
+      createdAt: scrapTranscriptV1.createdAt,
+      channelName: channels.channelName,
+      hasSlides: sql<boolean>`EXISTS(
+        SELECT 1 FROM ${videoSlides}
+        WHERE ${videoSlides.videoId} = ${videos.videoId}
+      )`,
+      hasAnalysis: sql<boolean>`EXISTS(
+        SELECT 1 FROM ${videoAnalysisRuns}
+        WHERE ${videoAnalysisRuns.videoId} = ${videos.videoId}
+        AND ${videoAnalysisRuns.result} IS NOT NULL
+      )`,
+      hasSlideAnalysis: sql<boolean>`EXISTS(
+        SELECT 1 FROM ${slideAnalysisResults}
+        WHERE ${slideAnalysisResults.videoId} = ${videos.videoId}
+      )`,
+      hasSuperAnalysis: sql<boolean>`EXISTS(
+        SELECT 1 FROM ${superAnalysisRuns}
+        WHERE ${superAnalysisRuns.videoId} = ${videos.videoId}
+        AND ${superAnalysisRuns.result} IS NOT NULL
+      )`,
+    })
+    .from(videos)
+    .innerJoin(scrapTranscriptV1, eq(videos.videoId, scrapTranscriptV1.videoId))
+    .innerJoin(channels, eq(videos.channelId, channels.channelId))
+    .where(isNotNull(scrapTranscriptV1.transcript))
+    .orderBy(desc(scrapTranscriptV1.createdAt));
+}
+
+/**
  * Gets video IDs that have slides.
  */
 export async function getVideoIdsWithSlides(videoIds: string[]) {
-  if (videoIds.length === 0) return [];
-  return await db
-    .select({ videoId: videoSlides.videoId })
-    .from(videoSlides)
-    .where(inArray(videoSlides.videoId, videoIds));
+  return await selectVideoIdsFrom(videoSlides, videoIds);
 }
 
 /**
  * Gets video IDs that have completed analysis.
  */
 export async function getVideoIdsWithAnalysis(videoIds: string[]) {
-  if (videoIds.length === 0) return [];
-  return await db
-    .select({ videoId: videoAnalysisRuns.videoId })
-    .from(videoAnalysisRuns)
-    .where(
-      and(
-        inArray(videoAnalysisRuns.videoId, videoIds),
-        isNotNull(videoAnalysisRuns.result),
-      ),
-    );
+  return await selectVideoIdsFrom(videoAnalysisRuns, videoIds, {
+    additionalWhere: isNotNull(videoAnalysisRuns.result),
+  });
 }
 
 /**
@@ -155,32 +250,19 @@ export async function hasSlideAnalysisResults(videoId: string) {
  * Gets video IDs that have completed super analysis.
  */
 export async function getVideoIdsWithSuperAnalysis(videoIds: string[]) {
-  if (videoIds.length === 0) return [];
-  try {
-    return await db
-      .select({ videoId: superAnalysisRuns.videoId })
-      .from(superAnalysisRuns)
-      .where(
-        and(
-          inArray(superAnalysisRuns.videoId, videoIds),
-          isNotNull(superAnalysisRuns.result),
-        ),
-      );
-  } catch (error) {
-    console.error("Error querying super_analysis_runs for IDs:", error);
-    return [];
-  }
+  return await selectVideoIdsFrom(superAnalysisRuns, videoIds, {
+    additionalWhere: isNotNull(superAnalysisRuns.result),
+    withErrorHandling: true,
+  });
 }
 
 /**
  * Gets video IDs that have slide analysis results.
  */
 export async function getVideoIdsWithSlideAnalysis(videoIds: string[]) {
-  if (videoIds.length === 0) return [];
-  return await db
-    .selectDistinct({ videoId: slideAnalysisResults.videoId })
-    .from(slideAnalysisResults)
-    .where(inArray(slideAnalysisResults.videoId, videoIds));
+  return await selectVideoIdsFrom(slideAnalysisResults, videoIds, {
+    distinct: true,
+  });
 }
 
 // ============================================================================
@@ -320,7 +402,7 @@ export async function insertVideoSlide(videoId: string, slideData: SlideData) {
 /**
  * Gets completed analysis for a video.
  */
-export async function getCompletedAnalysis(videoId: string) {
+export async function getCompletedAnalysis(videoId: YouTubeVideoId) {
   return await findOne(
     db
       .select({
@@ -336,7 +418,7 @@ export async function getCompletedAnalysis(videoId: string) {
 /**
  * Gets workflow record for a video.
  */
-export async function getWorkflowRecord(videoId: string) {
+export async function getWorkflowRecord(videoId: YouTubeVideoId) {
   return await findOne(
     db
       .select()
@@ -348,7 +430,10 @@ export async function getWorkflowRecord(videoId: string) {
 /**
  * Stores workflow ID for a video.
  */
-export async function storeWorkflowId(videoId: string, workflowId: string) {
+export async function storeWorkflowId(
+  videoId: YouTubeVideoId,
+  workflowId: string,
+) {
   await db
     .insert(videoAnalysisWorkflowIds)
     .values({

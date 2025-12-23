@@ -1,4 +1,3 @@
-import { z } from "zod";
 import { streamSuperAnalysis } from "@/ai/super-analysis";
 import {
   getCompletedAnalysis,
@@ -13,18 +12,8 @@ import type {
   SuperAnalysisInputData,
   SuperAnalysisStreamEvent,
 } from "@/lib/super-analysis-types";
-
-const TranscriptSegmentSchema = z.object({
-  start: z.number(),
-  end: z.number(),
-  text: z.string(),
-});
-
-function validateTranscriptStructure(
-  data: unknown,
-): Array<{ start: number; end: number; text: string }> {
-  return z.array(TranscriptSegmentSchema).parse(data);
-}
+import { validateTranscriptStructure } from "@/lib/transcript-format";
+import type { YouTubeVideoId } from "@/lib/youtube-utils";
 
 export async function getSuperAnalysisInputData(
   videoId: string,
@@ -36,7 +25,9 @@ export async function getSuperAnalysisInputData(
     throw new Error("Video not found or no transcript available");
   }
 
-  const transcriptAnalysisResult = await getCompletedAnalysis(videoId);
+  const transcriptAnalysisResult = await getCompletedAnalysis(
+    videoId as YouTubeVideoId,
+  );
   if (!transcriptAnalysisResult?.result) {
     throw new Error("Transcript analysis not found");
   }

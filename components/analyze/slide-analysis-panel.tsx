@@ -1,121 +1,144 @@
 "use client";
 
+import { useQueryClient } from "@tanstack/react-query";
 import { FileText, Loader2, RefreshCw } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Streamdown } from "streamdown";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import type { SlideAnalysisResult } from "@/lib/api-types";
 import type {
   SlideAnalysisStreamEvent,
   SlideAnalysisTarget,
-  SlideData,
-  SlideFeedbackData,
 } from "@/lib/slides-types";
 import { consumeSSE } from "@/lib/sse";
+import {
+  CoverageStatus,
+  type CoverageStatusType,
+  SlideAnalysisStatus,
+  type SlideAnalysisStatusType,
+} from "@/lib/status-types";
+import {
+  useSlideAnalysisQuery,
+  useSlideFeedbackQuery,
+  useSlidesQuery,
+} from "@/lib/use-slide-queries";
 
-interface SlideAnalysisResult {
-  slideNumber: number;
-  framePosition: "first" | "last";
-  markdown: string;
-  createdAt?: string;
-}
+// Removed local SlideAnalysisResult interface as it's now in api-types
 
 interface SlideAnalysisPanelProps {
   videoId: string;
 }
 
-type AnalysisStatus = "idle" | "loading" | "analyzing" | "completed" | "error";
+type AnalysisStatus = SlideAnalysisStatusType;
 
 export function SlideAnalysisPanel({ videoId }: SlideAnalysisPanelProps) {
-  const [status, setStatus] = useState<AnalysisStatus>("loading");
-  const [results, setResults] = useState<SlideAnalysisResult[]>([]);
+  const [status, setStatus] = useState<AnalysisStatus>(
+    SlideAnalysisStatus.LOADING,
+  );
   const [error, setError] = useState<string | null>(null);
   const [progress, setProgress] = useState({ current: 0, message: "" });
-  const [coverageStatus, setCoverageStatus] = useState<
-    "idle" | "loading" | "ready" | "error"
-  >("idle");
+  const [coverageStatus, setCoverageStatus] = useState<CoverageStatusType>(
+    CoverageStatus.IDLE,
+  );
   const [coverageError, setCoverageError] = useState<string | null>(null);
-  const [pickedTargets, setPickedTargets] = useState<SlideAnalysisTarget[]>([]);
+  const [streamingResults, setStreamingResults] = useState<
+    SlideAnalysisResult[]
+  >([]);
 
-  // Load existing analysis results
-  const loadResults = useCallback(async () => {
-    setStatus("loading");
-    setError(null);
+  // Use TanStack Query for data loading
+  const {
+    data: analysisData,
+    isLoading: isAnalysisLoading,
+    error: analysisError,
+  } = useSlideAnalysisQuery(videoId);
 
-    try {
-      const response = await fetch(`/api/video/${videoId}/slides/analysis`);
-      if (!response.ok) {
-        throw new Error("Failed to load analysis results");
-      }
+  const {
+    data: slidesData,
+    isLoading: isSlidesLoading,
+    error: slidesError,
+  } = useSlidesQuery(videoId);
 
-      const data = await response.json();
-      setResults(data.results);
-      setStatus(data.results.length > 0 ? "completed" : "idle");
-    } catch (err) {
-      const errorMessage =
-        err instanceof Error ? err.message : "Failed to load results";
-      setError(errorMessage);
-      setStatus("error");
+  const {
+    data: feedbackData,
+    isLoading: isFeedbackLoading,
+    error: feedbackError,
+  } = useSlideFeedbackQuery(videoId);
+
+  const queryClient = useQueryClient();
+
+  // Derived state from query results and streaming
+  const queryResults = analysisData?.results ?? [];
+  const results =
+    status === SlideAnalysisStatus.ANALYZING ? streamingResults : queryResults;
+  const isLoading = isAnalysisLoading || isSlidesLoading || isFeedbackLoading;
+  const loadError = analysisError || slidesError || feedbackError;
+
+  // Calculate picked targets from slides and feedback data
+  const pickedTargets = useMemo(() => {
+    if (!slidesData?.slides || !feedbackData?.feedback) {
+      return [];
     }
-  }, [videoId]);
 
-  const loadCoverage = useCallback(async () => {
-    setCoverageStatus("loading");
-    setCoverageError(null);
+    const feedbackMap = new Map(
+      feedbackData.feedback.map((entry) => [entry.slideNumber, entry]),
+    );
 
-    try {
-      const [slidesResponse, feedbackResponse] = await Promise.all([
-        fetch(`/api/video/${videoId}/slides`),
-        fetch(`/api/video/${videoId}/slides/feedback`),
-      ]);
+    const targets: SlideAnalysisTarget[] = [];
+    for (const slide of slidesData.slides) {
+      const entry = feedbackMap.get(slide.slideNumber);
+      const isFirstPicked = entry?.isFirstFramePicked ?? false;
+      const isLastPicked = entry?.isLastFramePicked ?? false;
 
-      if (!slidesResponse.ok) {
-        throw new Error("Failed to load slides");
+      if (isFirstPicked && slide.firstFrameImageUrl) {
+        targets.push({
+          slideNumber: slide.slideNumber,
+          framePosition: "first",
+        });
       }
 
-      if (!feedbackResponse.ok) {
-        throw new Error("Failed to load slide feedback");
+      if (isLastPicked && slide.lastFrameImageUrl) {
+        targets.push({
+          slideNumber: slide.slideNumber,
+          framePosition: "last",
+        });
       }
-
-      const slidesData = await slidesResponse.json();
-      const feedbackData = await feedbackResponse.json();
-
-      const slides: SlideData[] = slidesData.slides ?? [];
-      const feedback: SlideFeedbackData[] = feedbackData.feedback ?? [];
-      const feedbackMap = new Map(
-        feedback.map((entry) => [entry.slideNumber, entry]),
-      );
-
-      const targets: SlideAnalysisTarget[] = [];
-      for (const slide of slides) {
-        const entry = feedbackMap.get(slide.slideNumber);
-        const isFirstPicked = entry?.isFirstFramePicked ?? false;
-        const isLastPicked = entry?.isLastFramePicked ?? false;
-
-        if (isFirstPicked && slide.firstFrameImageUrl) {
-          targets.push({
-            slideNumber: slide.slideNumber,
-            framePosition: "first",
-          });
-        }
-
-        if (isLastPicked && slide.lastFrameImageUrl) {
-          targets.push({
-            slideNumber: slide.slideNumber,
-            framePosition: "last",
-          });
-        }
-      }
-
-      setPickedTargets(targets);
-      setCoverageStatus("ready");
-    } catch (err) {
-      const errorMessage =
-        err instanceof Error ? err.message : "Failed to load slide coverage";
-      setCoverageError(errorMessage);
-      setCoverageStatus("error");
     }
-  }, [videoId]);
+
+    return targets;
+  }, [slidesData, feedbackData]);
+
+  // Update status based on query results
+  useEffect(() => {
+    // Only update status when not actively analyzing
+    // We check the current value without depending on it to avoid infinite loops
+    setStatus((currentStatus) => {
+      // Don't override status during active analysis
+      if (currentStatus === SlideAnalysisStatus.ANALYZING) {
+        return currentStatus;
+      }
+
+      if (isLoading) {
+        setCoverageStatus(CoverageStatus.LOADING);
+        return SlideAnalysisStatus.LOADING;
+      }
+
+      if (loadError) {
+        setCoverageStatus(CoverageStatus.ERROR);
+        setError(loadError.message);
+        setCoverageError(loadError.message);
+        return SlideAnalysisStatus.ERROR;
+      }
+
+      // Set coverage status
+      setCoverageStatus(CoverageStatus.READY);
+
+      // Set analysis status based on query results
+      return queryResults.length > 0
+        ? SlideAnalysisStatus.COMPLETED
+        : SlideAnalysisStatus.IDLE;
+    });
+  }, [isLoading, loadError, queryResults.length]);
 
   const resultKeys = useMemo(() => {
     return new Set(
@@ -139,7 +162,7 @@ export function SlideAnalysisPanel({ videoId }: SlideAnalysisPanelProps) {
   // Start analysis
   const startAnalysis = useCallback(
     async (targets?: SlideAnalysisTarget[]) => {
-      setStatus("analyzing");
+      setStatus(SlideAnalysisStatus.ANALYZING);
       setError(null);
       setProgress({
         current: 0,
@@ -149,15 +172,21 @@ export function SlideAnalysisPanel({ videoId }: SlideAnalysisPanelProps) {
       });
 
       try {
-        const response = await fetch(`/api/video/${videoId}/slides/analysis`, {
-          method: "POST",
-          headers: targets?.length
-            ? {
-                "Content-Type": "application/json",
-              }
-            : undefined,
-          body: targets?.length ? JSON.stringify({ targets }) : undefined,
-        });
+        // Make POST request to start analysis (with or without targets)
+        const requestOptions: RequestInit = targets?.length
+          ? {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ targets }),
+            }
+          : {
+              method: "POST",
+            };
+
+        const response = await fetch(
+          `/api/video/${videoId}/slides/analysis`,
+          requestOptions,
+        );
 
         if (!response.ok) {
           const errorData = await response
@@ -171,10 +200,10 @@ export function SlideAnalysisPanel({ videoId }: SlideAnalysisPanelProps) {
             setProgress({ current: e.progress, message: e.message });
           },
           slide_markdown: (e) => {
-            setResults((prev) => {
+            setStreamingResults((prev) => {
               // Update or add result
               const existing = prev.findIndex(
-                (r) =>
+                (r: SlideAnalysisResult) =>
                   r.slideNumber === e.slideNumber &&
                   r.framePosition === e.framePosition,
               );
@@ -198,33 +227,31 @@ export function SlideAnalysisPanel({ videoId }: SlideAnalysisPanelProps) {
             });
           },
           complete: () => {
-            setStatus("completed");
-            // Reload to get server-canonical results
-            void loadResults();
-            void loadCoverage();
+            setStatus(SlideAnalysisStatus.COMPLETED);
+            // Invalidate query to refetch results after streaming completes
+            queryClient.invalidateQueries({
+              queryKey: ["slide-analysis", videoId],
+            });
           },
           error: (e) => {
             setError(e.message);
-            setStatus("error");
+            setStatus(SlideAnalysisStatus.ERROR);
           },
         });
       } catch (err) {
         const errorMessage =
           err instanceof Error ? err.message : "Analysis failed";
         setError(errorMessage);
-        setStatus("error");
+        setStatus(SlideAnalysisStatus.ERROR);
       }
     },
-    [videoId, loadResults, loadCoverage],
+    [videoId, queryClient],
   );
 
-  useEffect(() => {
-    void loadResults();
-    void loadCoverage();
-  }, [loadResults, loadCoverage]);
+  // TanStack Query handles automatic data loading, no need for manual useEffect
 
   // Loading state
-  if (status === "loading") {
+  if (status === SlideAnalysisStatus.LOADING) {
     return (
       <Card>
         <CardContent className="py-12">
@@ -238,7 +265,7 @@ export function SlideAnalysisPanel({ videoId }: SlideAnalysisPanelProps) {
   }
 
   // Idle state - no results yet
-  if (status === "idle" && results.length === 0) {
+  if (status === SlideAnalysisStatus.IDLE && results.length === 0) {
     return (
       <Card>
         <CardHeader>
@@ -263,7 +290,7 @@ export function SlideAnalysisPanel({ videoId }: SlideAnalysisPanelProps) {
   }
 
   // Analyzing state
-  if (status === "analyzing") {
+  if (status === SlideAnalysisStatus.ANALYZING) {
     return (
       <Card>
         <CardHeader>
@@ -293,7 +320,7 @@ export function SlideAnalysisPanel({ videoId }: SlideAnalysisPanelProps) {
   }
 
   // Error state
-  if (status === "error") {
+  if (status === SlideAnalysisStatus.ERROR) {
     return (
       <Card>
         <CardHeader>
@@ -305,7 +332,21 @@ export function SlideAnalysisPanel({ videoId }: SlideAnalysisPanelProps) {
         <CardContent>
           <div className="text-center py-8 space-y-4">
             <p className="text-destructive">{error}</p>
-            <Button variant="outline" onClick={loadResults}>
+            <Button
+              variant="outline"
+              onClick={() => {
+                // Refetch all queries
+                queryClient.invalidateQueries({
+                  queryKey: ["slide-analysis", videoId],
+                });
+                queryClient.invalidateQueries({
+                  queryKey: ["slides", videoId],
+                });
+                queryClient.invalidateQueries({
+                  queryKey: ["slide-feedback", videoId],
+                });
+              }}
+            >
               Retry
             </Button>
           </div>
@@ -340,7 +381,13 @@ export function SlideAnalysisPanel({ videoId }: SlideAnalysisPanelProps) {
           totalPicked={pickedTargets.length}
           matchedCount={matchedCount}
           missingTargets={missingTargets}
-          onRetry={loadCoverage}
+          onRetry={() => {
+            // Refetch slides and feedback
+            queryClient.invalidateQueries({ queryKey: ["slides", videoId] });
+            queryClient.invalidateQueries({
+              queryKey: ["slide-feedback", videoId],
+            });
+          }}
           onAnalyzeMissing={() => void startAnalysis(missingTargets)}
         />
         <AnalysisResultsList results={results} />
@@ -395,7 +442,7 @@ function SlideCoverageSummary({
   onRetry,
   onAnalyzeMissing,
 }: {
-  status: "idle" | "loading" | "ready" | "error";
+  status: CoverageStatusType;
   error: string | null;
   totalPicked: number;
   matchedCount: number;
@@ -403,11 +450,11 @@ function SlideCoverageSummary({
   onRetry: () => void;
   onAnalyzeMissing: () => void;
 }) {
-  if (status === "idle") {
+  if (status === CoverageStatus.IDLE) {
     return null;
   }
 
-  if (status === "loading") {
+  if (status === CoverageStatus.LOADING) {
     return (
       <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
         Checking for missing slides...
@@ -415,7 +462,7 @@ function SlideCoverageSummary({
     );
   }
 
-  if (status === "error") {
+  if (status === CoverageStatus.ERROR) {
     return (
       <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-4 text-sm">
         <p className="text-destructive">
@@ -428,7 +475,7 @@ function SlideCoverageSummary({
     );
   }
 
-  if (status === "ready" && totalPicked === 0) {
+  if (status === CoverageStatus.READY && totalPicked === 0) {
     return (
       <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
         No picked slides found. Go to Slide Curation to select frames for

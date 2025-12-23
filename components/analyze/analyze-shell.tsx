@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useTheme } from "next-themes";
-import { createParser, useQueryStates } from "nuqs";
+import { useQueryStates } from "nuqs";
 import { useEffect, useState } from "react";
 import { AnalysisPanel } from "@/components/analyze/analysis-panel";
 import { SlideAnalysisPanel } from "@/components/analyze/slide-analysis-panel";
@@ -33,6 +33,7 @@ import {
   SidebarSeparator,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
+import { analyzeShellTabQueryConfig } from "@/lib/query-utils";
 import { cn } from "@/lib/utils";
 
 export type AnalyzeTabId =
@@ -56,19 +57,6 @@ export const tabs = [
   },
 ];
 
-const parseAsPresence = createParser<boolean>({
-  parse: (value) =>
-    value === "" || value.toLowerCase() === "true" ? true : null,
-  serialize: () => "",
-});
-
-const tabQueryConfig = {
-  analyze: parseAsPresence,
-  slides: parseAsPresence,
-  slideAnalysis: parseAsPresence,
-  superAnalysis: parseAsPresence,
-};
-
 type AnalyzeShellProps = {
   videoId: string;
   title: string;
@@ -84,7 +72,9 @@ export function AnalyzeShell({
   hasTranscriptAnalysis,
   hasSlideAnalysis,
 }: AnalyzeShellProps) {
-  const [queryState, setQueryState] = useQueryStates(tabQueryConfig);
+  const [queryState, setQueryState] = useQueryStates(
+    analyzeShellTabQueryConfig,
+  );
   const hasSuperAnalysis = hasTranscriptAnalysis && hasSlideAnalysis;
   const activeTab: AnalyzeTabId =
     queryState.superAnalysis && hasSuperAnalysis

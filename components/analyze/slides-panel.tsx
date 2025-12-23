@@ -12,25 +12,16 @@ import {
   Loader2,
   X,
 } from "lucide-react";
-import { createParser, useQueryStates } from "nuqs";
+import { useQueryStates } from "nuqs";
+import type { CSSProperties } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-
-const parseAsPresence = createParser<boolean>({
-  parse: (value) =>
-    value === "" || value.toLowerCase() === "true" ? true : null,
-  serialize: () => "",
-});
-
-const tabQueryConfig = {
-  analyze: parseAsPresence,
-  slides: parseAsPresence,
-  slideAnalysis: parseAsPresence,
-  superAnalysis: parseAsPresence,
-};
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StepIndicator } from "@/components/ui/step-indicator";
+import type { SlideAnalysisResultsResponse } from "@/lib/api-types";
+import { UI } from "@/lib/constants";
+import { slidesPanelTabQueryConfig } from "@/lib/query-utils";
 import type {
   SlideAnalysisState,
   SlideAnalysisStreamEvent,
@@ -40,6 +31,12 @@ import type {
   SlidesState,
 } from "@/lib/slides-types";
 import { consumeSSE } from "@/lib/sse";
+import { SlideAnalysisStatus, SlidesStatus } from "@/lib/status-types";
+import {
+  useSaveSlideFeedbackMutation,
+  useSlideFeedbackQuery,
+  useSlidesQuery,
+} from "@/lib/use-slide-queries";
 import { cn } from "@/lib/utils";
 import { SlideCard } from "./slide-card";
 
@@ -56,7 +53,7 @@ interface SlidesPanelProps {
 
 export function SlidesPanel({ videoId }: SlidesPanelProps) {
   const [slidesState, setSlidesState] = useState<SlidesState>({
-    status: "loading",
+    status: SlidesStatus.LOADING,
     step: 1,
     totalSteps: 4,
     message: "Loading slides...",
@@ -64,14 +61,11 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
     slides: [],
   });
 
-  const [feedbackMap, setFeedbackMap] = useState<
-    Map<number, SlideFeedbackData>
-  >(new Map());
   const [isUnpickingAll, setIsUnpickingAll] = useState(false);
 
   // Slide analysis state
   const [analysisState, setAnalysisState] = useState<SlideAnalysisState>({
-    status: "idle",
+    status: SlideAnalysisStatus.IDLE,
     progress: 0,
     message: "",
     error: null,
@@ -80,29 +74,58 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
     Map<string, SlideAnalysisResultData>
   >(new Map());
 
-  const loadSlidesState = useCallback(async () => {
-    setSlidesState((prev) => ({
-      ...prev,
-      status: "loading",
-      message: "Loading slides...",
-      error: null,
-    }));
+  // Use TanStack Query for data loading
+  const {
+    data: slidesData,
+    isLoading: isSlidesLoading,
+    error: slidesError,
+  } = useSlidesQuery(videoId);
 
-    try {
-      const response = await fetch(`/api/video/${videoId}/slides`);
+  const { data: feedbackData } = useSlideFeedbackQuery(videoId);
 
-      if (!response.ok) {
-        throw new Error("Failed to load slides state");
-      }
+  const saveFeedbackMutation = useSaveSlideFeedbackMutation(videoId);
 
-      const data = await response.json();
-      const slides: SlideData[] = data.slides ?? [];
-      const slidesMessage = `Extracted ${data.totalSlides ?? slides.length} slides`;
+  // Derived state from query results
+  const feedbackMap = useMemo(() => {
+    if (!feedbackData?.feedback) return new Map<number, SlideFeedbackData>();
+    return new Map<number, SlideFeedbackData>(
+      feedbackData.feedback.map((fb) => [fb.slideNumber, fb]),
+    );
+  }, [feedbackData]);
 
-      switch (data.status) {
+  // Load slides state from query data
+  useEffect(() => {
+    if (isSlidesLoading) {
+      setSlidesState((prev) => ({
+        ...prev,
+        status: SlidesStatus.LOADING,
+        message: "Loading slides...",
+        error: null,
+      }));
+      return;
+    }
+
+    if (slidesError) {
+      setSlidesState((prev) => ({
+        ...prev,
+        status: SlidesStatus.ERROR,
+        step: 1,
+        totalSteps: 4,
+        message: "",
+        error: slidesError.message,
+        slides: [],
+      }));
+      return;
+    }
+
+    if (slidesData) {
+      const slides = slidesData.slides;
+      const slidesMessage = `Extracted ${slidesData.totalSlides ?? slides.length} slides`;
+
+      switch (slidesData.status) {
         case "completed": {
           setSlidesState({
-            status: "completed",
+            status: SlidesStatus.COMPLETED,
             step: 4,
             totalSteps: 4,
             message: slidesMessage,
@@ -113,7 +136,7 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
         }
         case "in_progress": {
           setSlidesState({
-            status: "extracting",
+            status: SlidesStatus.EXTRACTING,
             step: 2,
             totalSteps: 4,
             message: "Slide extraction in progress...",
@@ -124,7 +147,7 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
         }
         case "pending": {
           setSlidesState({
-            status: "extracting",
+            status: SlidesStatus.EXTRACTING,
             step: 1,
             totalSteps: 4,
             message: "Slide extraction in progress...",
@@ -135,19 +158,21 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
         }
         case "failed": {
           setSlidesState({
-            status: "error",
+            status: SlidesStatus.ERROR,
             step: 1,
             totalSteps: 4,
             message: "",
             error:
-              data.errorMessage ?? "Slide extraction failed. Please try again.",
+              slidesData.errorMessage ??
+              "Slide extraction failed. Please try again.",
             slides,
           });
           return;
         }
         default: {
           setSlidesState({
-            status: slides.length > 0 ? "completed" : "idle",
+            status:
+              slides.length > 0 ? SlidesStatus.COMPLETED : SlidesStatus.IDLE,
             step: slides.length > 0 ? 4 : 1,
             totalSteps: 4,
             message: slides.length > 0 ? slidesMessage : "",
@@ -156,67 +181,23 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
           });
         }
       }
-    } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : "Failed to load slides.";
-
-      setSlidesState({
-        status: "error",
-        step: 1,
-        totalSteps: 4,
-        message: "",
-        error: errorMessage,
-        slides: [],
-      });
     }
-  }, [videoId]);
-
-  const loadFeedback = useCallback(async () => {
-    try {
-      const response = await fetch(`/api/video/${videoId}/slides/feedback`);
-      if (!response.ok) return;
-
-      const data = await response.json();
-      const newMap = new Map<number, SlideFeedbackData>();
-
-      data.feedback.forEach((fb: SlideFeedbackData) => {
-        newMap.set(fb.slideNumber, fb);
-      });
-
-      setFeedbackMap(newMap);
-    } catch (error) {
-      console.error("Failed to load slide feedback:", error);
-    }
-  }, [videoId]);
+  }, [isSlidesLoading, slidesError, slidesData]);
 
   const submitFeedback = useCallback(
     async (feedback: SlideFeedbackData) => {
       try {
+        // Use TanStack Query mutation
+        await saveFeedbackMutation.mutateAsync(feedback);
+
         // Optimistically update local state
-        setFeedbackMap((prev) => {
-          const next = new Map(prev);
-          next.set(feedback.slideNumber, feedback);
-          return next;
-        });
-
-        const response = await fetch(`/api/video/${videoId}/slides/feedback`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(feedback),
-        });
-
-        if (!response.ok) {
-          console.error("Failed to save slide feedback");
-          // Reload to sync state
-          await loadFeedback();
-        }
+        // The mutation will automatically invalidate and refetch the feedback query
       } catch (error) {
         console.error("Failed to save slide feedback:", error);
-        // Reload to sync state
-        await loadFeedback();
+        // Query will be automatically refetched by TanStack Query
       }
     },
-    [videoId, loadFeedback],
+    [saveFeedbackMutation],
   );
 
   const handleUnpickAll = useCallback(async () => {
@@ -282,10 +263,10 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
       const response = await fetch(`/api/video/${videoId}/slides/analysis`);
       if (!response.ok) return;
 
-      const data = await response.json();
+      const data = (await response.json()) as SlideAnalysisResultsResponse;
       const resultsMap = new Map<string, SlideAnalysisResultData>();
 
-      for (const result of data.results as SlideAnalysisResultData[]) {
+      for (const result of data.results) {
         const key = `${result.slideNumber}-${result.framePosition}`;
         resultsMap.set(key, result);
       }
@@ -301,7 +282,7 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
     if (!hasPickedFrames) return;
 
     setAnalysisState({
-      status: "streaming",
+      status: SlideAnalysisStatus.STREAMING,
       progress: 0,
       message: "Starting analysis...",
       error: null,
@@ -344,7 +325,7 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
         progress: (e) => {
           setAnalysisState((prev) => ({
             ...prev,
-            status: "streaming",
+            status: SlideAnalysisStatus.STREAMING,
             progress: e.progress,
             message: e.message,
           }));
@@ -363,7 +344,7 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
         },
         complete: () => {
           setAnalysisState({
-            status: "completed",
+            status: SlideAnalysisStatus.COMPLETED,
             progress: 100,
             message: "Analysis complete",
             error: null,
@@ -372,7 +353,7 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
         error: (e) => {
           setAnalysisState((prev) => ({
             ...prev,
-            status: "error",
+            status: SlideAnalysisStatus.ERROR,
             error: e.message,
           }));
         },
@@ -383,7 +364,7 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
 
       setAnalysisState((prev) => ({
         ...prev,
-        status: "error",
+        status: SlideAnalysisStatus.ERROR,
         error: errorMessage,
       }));
     }
@@ -393,7 +374,7 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
     // Set state to extracting
     setSlidesState((prev) => ({
       ...prev,
-      status: "extracting",
+      status: SlidesStatus.EXTRACTING,
       step: 1,
       totalSteps: 4,
       message: "Starting slides extraction...",
@@ -418,7 +399,7 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
         progress: (e) => {
           setSlidesState((prev) => ({
             ...prev,
-            status: "extracting",
+            status: SlidesStatus.EXTRACTING,
             step: e.step ?? prev.step,
             totalSteps: e.totalSteps ?? prev.totalSteps,
             message: e.message ?? prev.message,
@@ -433,7 +414,7 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
         complete: (e) => {
           setSlidesState((prev) => ({
             ...prev,
-            status: "completed",
+            status: SlidesStatus.COMPLETED,
             step: 4,
             totalSteps: 4,
             message: `Extracted ${e.totalSlides} slides`,
@@ -443,7 +424,7 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
         error: (e) => {
           setSlidesState((prev) => ({
             ...prev,
-            status: "error",
+            status: SlidesStatus.ERROR,
             step: 1,
             totalSteps: 4,
             message: "",
@@ -457,7 +438,7 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
 
       setSlidesState((prev) => ({
         ...prev,
-        status: "error",
+        status: SlidesStatus.ERROR,
         step: 1,
         totalSteps: 4,
         message: "",
@@ -466,22 +447,21 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
     }
   }, [videoId]);
 
-  // Load feedback and analysis on mount
+  // TanStack Query handles automatic data loading
+  // loadAnalysisResults is still needed for analysis data
   useEffect(() => {
-    loadSlidesState();
-    loadFeedback();
     loadAnalysisResults();
-  }, [loadFeedback, loadSlidesState, loadAnalysisResults]);
+  }, [loadAnalysisResults]);
 
   // Auto-trigger extraction when in idle state
   useEffect(() => {
-    if (slidesState.status === "idle") {
+    if (slidesState.status === SlidesStatus.IDLE) {
       startExtraction();
     }
   }, [slidesState.status, startExtraction]);
 
   // Idle state - show loading state while extraction starts
-  if (slidesState.status === "idle") {
+  if (slidesState.status === SlidesStatus.IDLE) {
     return (
       <Card>
         <CardContent className="py-12">
@@ -495,12 +475,12 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
   }
 
   // Loading state
-  if (slidesState.status === "loading") {
+  if (slidesState.status === SlidesStatus.LOADING) {
     return <LoadingState />;
   }
 
   // Extracting state
-  if (slidesState.status === "extracting") {
+  if (slidesState.status === SlidesStatus.EXTRACTING) {
     return (
       <ExtractingState
         step={slidesState.step}
@@ -514,7 +494,7 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
   }
 
   // Error state
-  if (slidesState.status === "error") {
+  if (slidesState.status === SlidesStatus.ERROR) {
     return <ErrorState error={slidesState.error} onRetry={startExtraction} />;
   }
 
@@ -652,11 +632,12 @@ function CompletedState({
   );
   const [showOnlyPicked, setShowOnlyPicked] = useState(false);
   const [slidesConfirmed, setSlidesConfirmed] = useState(false);
-  const [, setQueryState] = useQueryStates(tabQueryConfig);
+  const [, setQueryState] = useQueryStates(slidesPanelTabQueryConfig);
 
-  const isAnalyzing = analysisState.status === "streaming";
+  const isAnalyzing = analysisState.status === SlideAnalysisStatus.STREAMING;
   const isAnalysisComplete =
-    analysisState.status === "completed" || hasAnalysisResults;
+    analysisState.status === SlideAnalysisStatus.COMPLETED ||
+    hasAnalysisResults;
 
   // Filter slides based on showOnlyPicked toggle
   const filteredSlides = useMemo(() => {
@@ -736,17 +717,20 @@ function CompletedState({
         )}
 
         {/* Analysis error indicator */}
-        {analysisState.status === "error" && analysisState.error && (
-          <CardContent className="pt-0 pb-4">
-            <div className="p-3 bg-destructive/10 text-destructive rounded-md text-sm">
-              {analysisState.error}
-            </div>
-          </CardContent>
-        )}
+        {analysisState.status === SlideAnalysisStatus.ERROR &&
+          analysisState.error && (
+            <CardContent className="pt-0 pb-4">
+              <div className="p-3 bg-destructive/10 text-destructive rounded-md text-sm">
+                {analysisState.error}
+              </div>
+            </CardContent>
+          )}
 
         <CardContent
           className={cn(
-            isAnalyzing || analysisState.status === "error" ? "pt-0" : "",
+            isAnalyzing || analysisState.status === SlideAnalysisStatus.ERROR
+              ? "pt-0"
+              : "",
             "pb-32", // Add padding for sticky footer
           )}
         >
@@ -859,7 +843,7 @@ function StickyActionsFooter({
   isAnalysisComplete: boolean;
   onNavigateToSuperAnalysis: () => void;
 }) {
-  const isAnalyzing = analysisState.status === "streaming";
+  const isAnalyzing = analysisState.status === SlideAnalysisStatus.STREAMING;
 
   return (
     <div className="fixed bottom-0 left-0 right-0 z-50 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
@@ -951,17 +935,20 @@ function SlideGrid({
   const virtualizer = useVirtualizer({
     count: slides.length,
     getScrollElement: () => parentRef.current,
-    estimateSize: () => 500, // Estimated height of each slide card
-    overscan: 2, // Number of items to render outside of the visible area
+    estimateSize: () => UI.SLIDE_CARD_ESTIMATED_HEIGHT, // Estimated height of each slide card
+    overscan: UI.VIRTUAL_LIST_OVERSCAN, // Number of items to render outside of the visible area
   });
+  const panelStyle = {
+    contain: "strict",
+    "--slides-panel-height": `${UI.SLIDES_PANEL_HEIGHT.mobile}px`,
+    "--slides-panel-height-desktop": `${UI.SLIDES_PANEL_HEIGHT.desktop}px`,
+  } as CSSProperties;
 
   return (
     <div
       ref={parentRef}
-      className="h-[400px] md:h-[600px] overflow-auto"
-      style={{
-        contain: "strict",
-      }}
+      className="h-[var(--slides-panel-height)] md:h-[var(--slides-panel-height-desktop)] overflow-auto"
+      style={panelStyle}
     >
       <div
         style={{
