@@ -1,9 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { 
-  LEGACY_TAB_MAPPING, 
-  isRouteAvailable, 
+import {
+  LEGACY_TAB_MAPPING,
+  isRouteAvailable,
   ANALYZE_ROUTES,
-  getRouteById 
+  getRouteById,
 } from "../app/video/youtube/[youtubeId]/analyze/_components/analyze-route-map";
 
 describe("Legacy Tab Mapping", () => {
@@ -56,7 +56,7 @@ describe("Route Availability", () => {
 
 describe("Route Configuration", () => {
   it("has all required routes", () => {
-    const routeIds = ANALYZE_ROUTES.map(r => r.id);
+    const routeIds = ANALYZE_ROUTES.map((r) => r.id);
     expect(routeIds).toContain("transcript-analysis");
     expect(routeIds).toContain("slides-selection");
     expect(routeIds).toContain("slides-to-markdown");
@@ -64,7 +64,7 @@ describe("Route Configuration", () => {
   });
 
   it("each route has required properties", () => {
-    ANALYZE_ROUTES.forEach(route => {
+    ANALYZE_ROUTES.forEach((route) => {
       expect(route).toHaveProperty("id");
       expect(route).toHaveProperty("label");
       expect(route).toHaveProperty("icon");

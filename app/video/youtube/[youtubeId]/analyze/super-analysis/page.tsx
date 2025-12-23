@@ -4,11 +4,11 @@ interface SuperAnalysisPageProps {
   params: Promise<{ youtubeId: string }>;
 }
 
-export default async function SuperAnalysisPage({ 
-  params 
+export default async function SuperAnalysisPage({
+  params,
 }: SuperAnalysisPageProps) {
   const { youtubeId } = await params;
-  
+
   return (
     <SuperAnalysisPanel
       key={youtubeId}

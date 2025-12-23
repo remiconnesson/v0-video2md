@@ -4,10 +4,10 @@ interface SlidesToMarkdownPageProps {
   params: Promise<{ youtubeId: string }>;
 }
 
-export default async function SlidesToMarkdownPage({ 
-  params 
+export default async function SlidesToMarkdownPage({
+  params,
 }: SlidesToMarkdownPageProps) {
   const { youtubeId } = await params;
-  
+
   return <SlideAnalysisPanel videoId={youtubeId} />;
 }

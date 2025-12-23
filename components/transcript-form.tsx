@@ -22,7 +22,9 @@ export function TranscriptFetcher() {
   useEffect(() => {
     if (state?.success && state?.videoId) {
       // navigate to the video page after validating video id
-      router.push(`/video/youtube/${state.videoId}/analyze/transcript-analysis`);
+      router.push(
+        `/video/youtube/${state.videoId}/analyze/transcript-analysis`,
+      );
     }
   }, [state?.success, state?.videoId, router]);
 

@@ -21,20 +21,20 @@ export const ANALYZE_ROUTES: AnalyzeRoute[] = [
     id: "transcript-analysis",
     label: "Transcript Analysis",
     icon: FileText,
-    description: "AI-powered analysis of video transcript"
+    description: "AI-powered analysis of video transcript",
   },
   {
     id: "slides-selection",
     label: "Slides Selection",
     icon: FolderOpen,
-    description: "Extract and select presentation slides"
+    description: "Extract and select presentation slides",
   },
   {
     id: "slides-to-markdown",
     label: "Slides to Markdown",
     icon: Sparkles,
     description: "Convert slides to structured markdown",
-    requiresSlides: true
+    requiresSlides: true,
   },
   {
     id: "super-analysis",
@@ -42,8 +42,8 @@ export const ANALYZE_ROUTES: AnalyzeRoute[] = [
     icon: Wand2,
     description: "Unified analysis combining transcript and slides",
     requiresSlides: true,
-    requiresTranscript: true
-  }
+    requiresTranscript: true,
+  },
 ];
 
 export const LEGACY_TAB_MAPPING: Record<string, AnalyzeRouteId> = {
@@ -51,17 +51,17 @@ export const LEGACY_TAB_MAPPING: Record<string, AnalyzeRouteId> = {
   slides: "slides-selection",
   slideAnalysis: "slides-to-markdown",
   slidesAnalysis: "slides-to-markdown",
-  superAnalysis: "super-analysis"
+  superAnalysis: "super-analysis",
 };
 
 export function getRouteById(id: AnalyzeRouteId): AnalyzeRoute {
-  return ANALYZE_ROUTES.find(route => route.id === id)!;
+  return ANALYZE_ROUTES.find((route) => route.id === id)!;
 }
 
 export function isRouteAvailable(
   route: AnalyzeRoute,
   hasTranscript: boolean,
-  hasSlides: boolean
+  hasSlides: boolean,
 ): boolean {
   if (route.requiresTranscript && !hasTranscript) return false;
   if (route.requiresSlides && !hasSlides) return false;

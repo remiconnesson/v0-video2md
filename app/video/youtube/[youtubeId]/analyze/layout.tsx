@@ -8,12 +8,12 @@ interface AnalyzeLayoutProps {
   params: Promise<{ youtubeId: string }>;
 }
 
-export default async function AnalyzeLayout({ 
-  children, 
-  params 
+export default async function AnalyzeLayout({
+  children,
+  params,
 }: AnalyzeLayoutProps) {
   const { youtubeId } = await params;
-  
+
   if (!isValidYouTubeVideoId(youtubeId)) {
     return <ErrorScreen errorMessage="Invalid YouTube Video ID" />;
   }
@@ -24,7 +24,7 @@ export default async function AnalyzeLayout({
     getCompletedAnalysis(youtubeId),
     hasSlideAnalysisResults(youtubeId),
   ]);
-  
+
   const hasTranscriptAnalysis = !!completedAnalysis?.result;
 
   return (
@@ -34,9 +34,11 @@ export default async function AnalyzeLayout({
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-xl font-bold truncate">{videoData.title}</h1>
-              <p className="text-sm text-muted-foreground">{videoData.channelName}</p>
+              <p className="text-sm text-muted-foreground">
+                {videoData.channelName}
+              </p>
             </div>
-            <AnalyzeNav 
+            <AnalyzeNav
               videoId={youtubeId}
               hasTranscriptAnalysis={hasTranscriptAnalysis}
               hasSlideAnalysis={hasSlideAnalysis}
@@ -44,19 +46,19 @@ export default async function AnalyzeLayout({
           </div>
         </div>
       </div>
-      
-      <div className="container mx-auto px-4 py-6">
-        {children}
-      </div>
+
+      <div className="container mx-auto px-4 py-6">{children}</div>
     </div>
   );
 }
 
 function ErrorScreen({ errorMessage }: { errorMessage: string }) {
-  return <div className="min-h-screen flex items-center justify-center">
-    <div className="text-center">
-      <h1 className="text-2xl font-bold text-destructive mb-2">Error</h1>
-      <p>{errorMessage}</p>
+  return (
+    <div className="min-h-screen flex items-center justify-center">
+      <div className="text-center">
+        <h1 className="text-2xl font-bold text-destructive mb-2">Error</h1>
+        <p>{errorMessage}</p>
+      </div>
     </div>
-  </div>;
+  );
 }

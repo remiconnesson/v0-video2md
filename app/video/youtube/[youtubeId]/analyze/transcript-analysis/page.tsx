@@ -4,10 +4,10 @@ interface TranscriptAnalysisPageProps {
   params: Promise<{ youtubeId: string }>;
 }
 
-export default async function TranscriptAnalysisPage({ 
-  params 
+export default async function TranscriptAnalysisPage({
+  params,
 }: TranscriptAnalysisPageProps) {
   const { youtubeId } = await params;
-  
+
   return <AnalysisPanel videoId={youtubeId} title="" channelName="" />;
 }
