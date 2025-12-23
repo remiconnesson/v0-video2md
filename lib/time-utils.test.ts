@@ -63,14 +63,14 @@ describe("parseDuration", () => {
   });
 
   it("should handle floating point numbers by flooring (implied by implementation)", () => {
-     // The implementation seems to allow float parsing but then checks for integers after floor?
-     // Actually looking at code:
-     // const flooredValue = Math.floor(numericValue);
-     // return Number.isInteger(flooredValue) ? flooredValue : null;
-     // Wait, Math.floor always returns an integer (or NaN/-Infinity/Infinity).
-     // But numericValue check !Number.isFinite(numericValue) handles Infinity.
-     // So Math.floor(numericValue) will be an integer.
-     // So this effectively allows floats but treats them as their floor.
-     expect(parseDuration("10.5:30")).toBe(10 * 60 + 30);
+    // The implementation seems to allow float parsing but then checks for integers after floor?
+    // Actually looking at code:
+    // const flooredValue = Math.floor(numericValue);
+    // return Number.isInteger(flooredValue) ? flooredValue : null;
+    // Wait, Math.floor always returns an integer (or NaN/-Infinity/Infinity).
+    // But numericValue check !Number.isFinite(numericValue) handles Infinity.
+    // So Math.floor(numericValue) will be an integer.
+    // So this effectively allows floats but treats them as their floor.
+    expect(parseDuration("10.5:30")).toBe(10 * 60 + 30);
   });
 });

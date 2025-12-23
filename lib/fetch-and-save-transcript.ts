@@ -180,11 +180,7 @@ export async function fetchAndSaveTranscript(
   const cachedTranscriptData = await getTranscriptDataFromDb(videoId);
   console.log("[fetchAndSaveTranscript] 2. Cached:", !!cachedTranscriptData);
 
-  if (
-    cachedTranscriptData &&
-    cachedTranscriptData.title &&
-    cachedTranscriptData.channelName
-  ) {
+  if (cachedTranscriptData?.title && cachedTranscriptData.channelName) {
     return cachedTranscriptData;
   }
 
