@@ -110,35 +110,35 @@ export function SlideAnalysisPanel({ videoId }: SlideAnalysisPanelProps) {
 
   // Update status based on query results
   useEffect(() => {
-    // Don't override status during active analysis
-    if (status === SlideAnalysisStatus.ANALYZING) {
-      return;
-    }
+    // Only update status when not actively analyzing
+    // We check the current value without depending on it to avoid infinite loops
+    setStatus((currentStatus) => {
+      // Don't override status during active analysis
+      if (currentStatus === SlideAnalysisStatus.ANALYZING) {
+        return currentStatus;
+      }
 
-    if (isLoading) {
-      setStatus(SlideAnalysisStatus.LOADING);
-      setCoverageStatus(CoverageStatus.LOADING);
-      return;
-    }
+      if (isLoading) {
+        setCoverageStatus(CoverageStatus.LOADING);
+        return SlideAnalysisStatus.LOADING;
+      }
 
-    if (loadError) {
-      setStatus(SlideAnalysisStatus.ERROR);
-      setCoverageStatus(CoverageStatus.ERROR);
-      setError(loadError.message);
-      setCoverageError(loadError.message);
-      return;
-    }
+      if (loadError) {
+        setCoverageStatus(CoverageStatus.ERROR);
+        setError(loadError.message);
+        setCoverageError(loadError.message);
+        return SlideAnalysisStatus.ERROR;
+      }
 
-    // Set analysis status based on query results
-    setStatus(
-      queryResults.length > 0
+      // Set coverage status
+      setCoverageStatus(CoverageStatus.READY);
+
+      // Set analysis status based on query results
+      return queryResults.length > 0
         ? SlideAnalysisStatus.COMPLETED
-        : SlideAnalysisStatus.IDLE,
-    );
-
-    // Set coverage status
-    setCoverageStatus(CoverageStatus.READY);
-  }, [isLoading, loadError, queryResults.length, status]);
+        : SlideAnalysisStatus.IDLE;
+    });
+  }, [isLoading, loadError, queryResults.length]);
 
   const resultKeys = useMemo(() => {
     return new Set(
@@ -173,13 +173,10 @@ export function SlideAnalysisPanel({ videoId }: SlideAnalysisPanelProps) {
 
       try {
         // Make POST request to start analysis (with or without targets)
-        const requestBody = targets?.length ? { targets } : {};
         const response = await fetch(`/api/video/${videoId}/slides/analysis`, {
           method: "POST",
-          headers: targets?.length
-            ? { "Content-Type": "application/json" }
-            : {},
-          body: targets?.length ? JSON.stringify(requestBody) : undefined,
+          headers: { "Content-Type": "application/json" },
+          body: targets?.length ? JSON.stringify({ targets }) : undefined,
         });
 
         if (!response.ok) {
