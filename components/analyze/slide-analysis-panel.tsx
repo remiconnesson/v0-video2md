@@ -172,16 +172,8 @@ export function SlideAnalysisPanel({ videoId }: SlideAnalysisPanelProps) {
         let response: Response;
 
         if (targets?.length) {
-          // Use mutation for picking specific slides
-          await pickSlidesMutation.mutateAsync(targets);
-          // After mutation, refetch to get the SSE response
-          const refetchResponse = await fetch(
-            `/api/video/${videoId}/slides/analysis`,
-          );
-          if (!refetchResponse.ok) {
-            throw new Error("Failed to start analysis after picking slides");
-          }
-          response = refetchResponse;
+          // Use mutation for picking specific slides - returns SSE response
+          response = await pickSlidesMutation.mutateAsync(targets);
         } else {
           // Direct fetch for full analysis
           const directResponse = await fetch(

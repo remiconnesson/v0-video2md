@@ -106,10 +106,11 @@ export function usePickSlidesMutation(videoId: string) {
         body: JSON.stringify({ targets }),
       });
       if (!response.ok) throw new Error("Failed to pick slides");
-      return response.json();
+      // Return the Response object for SSE consumption
+      return response;
     },
     onSuccess: () => {
-      // Invalidate analysis query to refetch
+      // Invalidate analysis query to refetch after SSE stream completes
       queryClient.invalidateQueries({ queryKey: ["slide-analysis", videoId] });
     },
   });
