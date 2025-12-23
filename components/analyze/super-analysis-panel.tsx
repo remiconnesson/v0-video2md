@@ -61,20 +61,12 @@ function MobileSuperAnalysisHeader({
           </div>
         </div>
         <div className="flex-1 min-w-0 py-0.5">
-          {title ? (
-            <h3 className="font-bold text-base leading-tight mb-1.5">
-              {title}
-            </h3>
-          ) : (
-            <Skeleton className="h-5 w-full mb-1.5" />
-          )}
-          {channelName ? (
-            <p className="text-sm text-muted-foreground font-medium mb-3">
-              {channelName}
-            </p>
-          ) : (
-            <Skeleton className="h-4 w-1/2 mb-3" />
-          )}
+          <h3 className="font-bold text-base leading-tight mb-1.5 line-clamp-2">
+            {title || "Video Analysis"}
+          </h3>
+          <p className="text-sm text-muted-foreground font-medium mb-3">
+            {channelName || "Unknown Channel"}
+          </p>
           <div className="flex gap-2">
             <Button
               variant="outline"

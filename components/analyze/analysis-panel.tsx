@@ -241,7 +241,7 @@ function SectionContent({ content }: { content: unknown }): React.ReactNode {
             .map((item) =>
               typeof item === "string"
                 ? // Check if already starts with - * or numbered list (1. 2. etc.) or 1), 2), if so, don't add a -
-                item.trim().match(/^\s*[-*]\s+|^\s*\d+\.\s+|^\s*\d+\)\s+/)
+                  item.trim().match(/^\s*[-*]\s+|^\s*\d+\.\s+|^\s*\d+\)\s+/)
                   ? item
                   : `- ${item}`
                 : `\n\`\`\`json\n${JSON.stringify(item, null, 2)}\n\`\`\`\n`,
@@ -346,8 +346,9 @@ function ObjectSection({ data }: { data: Record<string, unknown> }) {
         const markdown =
           typeof value === "string"
             ? value || ""
-            : `\`\`\`json\n${JSON.stringify(value, null, 2) ?? String(value)
-            }\n\`\`\``;
+            : `\`\`\`json\n${
+                JSON.stringify(value, null, 2) ?? String(value)
+              }\n\`\`\``;
 
         return (
           <div key={key} className="relative flex flex-col gap-3 group">
@@ -419,20 +420,12 @@ function MobileAnalysisHeader({
           </div>
         </div>
         <div className="flex-1 min-w-0 py-0.5">
-          {title ? (
-            <h3 className="font-bold text-base leading-tight mb-1.5">
-              {title}
-            </h3>
-          ) : (
-            <Skeleton className="h-5 w-full mb-1.5" />
-          )}
-          {channelName ? (
-            <p className="text-sm text-muted-foreground font-medium mb-3">
-              {channelName}
-            </p>
-          ) : (
-            <Skeleton className="h-4 w-1/2 mb-3" />
-          )}
+          <h3 className="font-bold text-base leading-tight mb-1.5">
+            {title || "Video Analysis"}
+          </h3>
+          <p className="text-sm text-muted-foreground font-medium mb-3">
+            {channelName || "Unknown Channel"}
+          </p>
           <div className="flex gap-2">
             <Button
               variant="outline"
@@ -485,7 +478,7 @@ function MobileAnalysisHeader({
               <span>
                 {activeSection
                   ? sections.find((s) => s.id === activeSection)?.title ||
-                  "Jump to section"
+                    "Jump to section"
                   : "Jump to section"}
               </span>
               <ChevronDown
@@ -505,10 +498,11 @@ function MobileAnalysisHeader({
                       onSectionClick?.(section.id);
                       setSectionsOpen(false);
                     }}
-                    className={`w-full rounded-md px-3 py-2 text-left text-sm transition ${isActive
-                      ? "bg-primary/10 text-primary font-medium"
-                      : "text-muted-foreground hover:bg-muted"
-                      }`}
+                    className={`w-full rounded-md px-3 py-2 text-left text-sm transition ${
+                      isActive
+                        ? "bg-primary/10 text-primary font-medium"
+                        : "text-muted-foreground hover:bg-muted"
+                    }`}
                   >
                     {section.title}
                   </button>

@@ -32,10 +32,10 @@ export default async function AnalyzeLayout({
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
-      <div className="border-b bg-background/80 backdrop-blur-sm">
-        <div className="container mx-auto px-4 py-3">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
+      <div className="container max-w-7xl mx-auto px-4 md:px-6">
+        <div className="flex flex-col gap-4 mb-6">
+          <div className="flex flex-row items-center justify-between gap-4 w-full">
+            <div className="flex items-center gap-3 shrink-0">
               <Button variant="ghost" size="icon" asChild className="shrink-0">
                 <Link href="/">
                   <Home className="h-5 w-5" />
@@ -50,13 +50,11 @@ export default async function AnalyzeLayout({
                 </p>
               </div>
             </div>
-            <div className="overflow-x-auto -mx-4 px-4 pb-1 md:pb-0 md:mx-0 md:px-0 scrollbar-hide">
-              <AnalyzeNav
-                videoId={youtubeId}
-                hasTranscriptAnalysis={hasTranscriptAnalysis}
-                hasSlideAnalysis={hasSlideAnalysis}
-              />
-            </div>
+            <AnalyzeNav
+              videoId={youtubeId}
+              hasTranscriptAnalysis={hasTranscriptAnalysis}
+              hasSlideAnalysis={hasSlideAnalysis}
+            />
           </div>
         </div>
       </div>
