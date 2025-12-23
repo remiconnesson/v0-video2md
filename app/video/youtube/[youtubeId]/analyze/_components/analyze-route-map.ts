@@ -52,6 +52,7 @@ export const ANALYZE_ROUTES: AnalyzeRoute[] = [
 ];
 
 export function getRouteById(id: AnalyzeRouteId): AnalyzeRoute {
+  // biome-ignore lint/style/noNonNullAssertion: we don't mutate the array, so we know the route is available
   return ANALYZE_ROUTES.find((route) => route.id === id)!;
 }
 
