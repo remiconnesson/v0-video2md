@@ -2,7 +2,7 @@
 
 import { ImageIcon, ZoomIn } from "lucide-react";
 import Image from "next/image";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import type { SlideData, SlideFeedbackData } from "@/lib/slides-types";
 import { formatDuration } from "@/lib/time-utils";
@@ -95,7 +95,7 @@ interface SlideCardProps {
   showOnlyPickedFrames?: boolean;
 }
 
-export function SlideCard({
+function SlideCardComponent({
   slide,
   initialFeedback,
   onSubmitFeedback,
@@ -257,3 +257,39 @@ export function SlideCard({
     </div>
   );
 }
+
+function areFeedbackEqual(
+  prev?: SlideFeedbackData,
+  next?: SlideFeedbackData,
+): boolean {
+  if (prev === next) return true;
+  if (!prev || !next) return false;
+
+  return (
+    prev.slideNumber === next.slideNumber &&
+    prev.isFirstFramePicked === next.isFirstFramePicked &&
+    prev.isLastFramePicked === next.isLastFramePicked &&
+    prev.framesSameness === next.framesSameness &&
+    prev.firstFrameHasUsefulContent === next.firstFrameHasUsefulContent &&
+    prev.lastFrameHasUsefulContent === next.lastFrameHasUsefulContent
+  );
+}
+
+function areSlideCardPropsEqual(
+  prev: SlideCardProps,
+  next: SlideCardProps,
+): boolean {
+  // Check primitive props
+  if (prev.showOnlyPickedFrames !== next.showOnlyPickedFrames) return false;
+  if (prev.onSubmitFeedback !== next.onSubmitFeedback) return false;
+
+  // Check slide prop (shallow compare usually sufficient for SlideData from DB)
+  if (prev.slide.slideNumber !== next.slide.slideNumber) return false;
+  if (prev.slide.firstFrameImageUrl !== next.slide.firstFrameImageUrl)
+    return false;
+
+  // Check initialFeedback
+  return areFeedbackEqual(prev.initialFeedback, next.initialFeedback);
+}
+
+export const SlideCard = memo(SlideCardComponent, areSlideCardPropsEqual);
