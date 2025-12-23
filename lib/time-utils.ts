@@ -24,8 +24,18 @@ export function formatDuration(seconds: number | null): string {
   return formatClockParts({ hours, mins, secs });
 }
 
+/**
+ * Parses a duration string into total seconds.
+ *
+ * Supported formats:
+ * - "MM:SS" (e.g., "10:30") -> Returns minutes * 60 + seconds.
+ *   Note: In this format, minutes must be <= 255.
+ * - "HH:MM:SS" (e.g., "1:00:00") -> Returns hours * 3600 + minutes * 60 + seconds.
+ *
+ * @param value - The duration string to parse (optional).
+ * @returns The total number of seconds, or `null` if the input is invalid, undefined, empty, or if minutes > 255 in "MM:SS" format.
+ */
 export function parseDuration(value?: string): number | null {
-  // TODO: add doctstring
   if (!value) return null;
 
   const timeParts = value.trim().split(":");
