@@ -6,7 +6,7 @@ Moved the fetch-and-save-transcript logic from the workflow directly into a lib 
 Tried to reuse the workflow steps directly but stumbled upon another issue https://github.com/vercel/workflow/issues/630, where you can't call a step function outside of a workflow if that functions uses dependencies not marked with "use step"
 */
 import { z } from "zod";
-import { getVideoWithTranscript } from "@/db/queries";
+import { getVideoMetadata, getVideoWithTranscript } from "@/db/queries";
 import {
   saveTranscriptToDb,
   type TranscriptResult,
@@ -194,4 +194,35 @@ export async function fetchAndSaveTranscript(
 
   console.log("[fetchAndSaveTranscript] 5. Returning:", transcriptData.title);
   return transcriptData;
+}
+
+/**
+ * Ensures a video is processed and returns basic metadata.
+ * Uses optimized query that avoids fetching the full transcript.
+ */
+export async function ensureVideoProcessed(
+  videoId: string,
+): Promise<{ title: string; channelName: string }> {
+  console.log("[ensureVideoProcessed] 1. Start, videoId:", videoId);
+
+  // Optimized path: check if metadata exists without fetching transcript
+  const metadata = await getVideoMetadata(videoId);
+
+  if (metadata) {
+    console.log("[ensureVideoProcessed] 2. Metadata found in DB (optimized)");
+    return {
+      title: metadata.title,
+      channelName: metadata.channelName,
+    };
+  }
+
+  // Fallback path: fetch from external source
+  console.log(
+    "[ensureVideoProcessed] 3. Not in DB, fetching full transcript...",
+  );
+  const result = await fetchAndSaveTranscript(videoId);
+  return {
+    title: result.title,
+    channelName: result.channelName,
+  };
 }

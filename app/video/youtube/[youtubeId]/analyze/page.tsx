@@ -1,6 +1,6 @@
 import { AnalyzeShell } from "@/components/analyze/analyze-shell";
 import { getCompletedAnalysis, hasSlideAnalysisResults } from "@/db/queries";
-import { fetchAndSaveTranscript } from "@/lib/fetch-and-save-transcript";
+import { ensureVideoProcessed } from "@/lib/fetch-and-save-transcript";
 import { isValidYouTubeVideoId } from "@/lib/youtube-utils";
 
 type AnalyzePageProps = {
@@ -17,9 +17,8 @@ export default async function AnalyzePage(props: AnalyzePageProps) {
   }
 
   console.log("[AnalyzePage] 3. Fetching transcript data...");
-  // Direct function call instead of workflow to work around RSC hang issue
-  // See: https://github.com/vercel/workflow/issues/618
-  const videoData = await fetchAndSaveTranscript(youtubeId);
+  // Optimized fetch that only gets metadata if transcript exists
+  const videoData = await ensureVideoProcessed(youtubeId);
   console.log("[AnalyzePage] 4. Got transcript data:", videoData.title);
 
   const [completedAnalysis, hasSlideAnalysis] = await Promise.all([

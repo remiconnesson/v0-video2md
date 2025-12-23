@@ -126,6 +126,31 @@ export async function getVideoWithTranscript(videoId: string) {
 }
 
 /**
+ * Gets video metadata without the full transcript.
+ */
+export async function getVideoMetadata(videoId: string) {
+  return await findOne(
+    db
+      .select({
+        videoId: videos.videoId,
+        title: videos.title,
+        channelName: channels.channelName,
+        description: scrapTranscriptV1.description,
+        durationSeconds: scrapTranscriptV1.durationSeconds,
+        thumbnail: scrapTranscriptV1.thumbnail,
+      })
+      .from(videos)
+      .innerJoin(channels, eq(videos.channelId, channels.channelId))
+      .innerJoin(
+        scrapTranscriptV1,
+        eq(videos.videoId, scrapTranscriptV1.videoId),
+      )
+      .where(eq(videos.videoId, videoId))
+      .limit(1),
+  );
+}
+
+/**
  * Gets basic video info with optional transcript and channel data.
  * Used for video status checking.
  */
