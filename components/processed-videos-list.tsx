@@ -39,7 +39,7 @@ export function ProcessedVideosList() {
     data: videos,
     isLoading,
     error,
-  } = useQuery({
+  } = useQuery<VideoData[]>({
     queryKey: ["videos"],
     queryFn: async () => {
       const response = await fetch("/api/videos");

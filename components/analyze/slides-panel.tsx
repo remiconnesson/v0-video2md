@@ -1,6 +1,5 @@
 "use client";
 
-import { useQueryClient } from "@tanstack/react-query";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useLocalStorage } from "@uidotdev/usehooks";
 import {
@@ -53,7 +52,6 @@ interface SlidesPanelProps {
 }
 
 export function SlidesPanel({ videoId }: SlidesPanelProps) {
-  const _queryClient = useQueryClient();
   const [slidesState, setSlidesState] = useState<SlidesState>({
     status: SlidesStatus.LOADING,
     step: 1,
