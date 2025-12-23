@@ -940,8 +940,8 @@ function SlideGrid({
   });
   const panelStyle = {
     contain: "strict",
-    "--slides-panel-height": `${UI.SLIDES_PANEL_HEIGHT.mobile}px`,
-    "--slides-panel-height-desktop": `${UI.SLIDES_PANEL_HEIGHT.desktop}px`,
+    "--slides-panel-height": "calc(100vh - 200px)",
+    "--slides-panel-height-desktop": "calc(100vh - 200px)",
   } as CSSProperties;
 
   return (
