@@ -125,6 +125,7 @@ export function AnalysisPanel({
     },
   );
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: scrollToActiveSection is an effect event
   useEffect(() => {
     scrollToActiveSection(activeSection, scrollToSection);
   }, [activeSection, scrollToSection]);

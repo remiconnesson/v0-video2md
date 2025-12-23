@@ -1,7 +1,6 @@
 "use client";
 
 import { Copy } from "lucide-react";
-import { AnalysisSidebar } from "@/components/analyze/analysis-panel";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 

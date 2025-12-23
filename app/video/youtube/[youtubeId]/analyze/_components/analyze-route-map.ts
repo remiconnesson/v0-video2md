@@ -1,5 +1,10 @@
-import { LucideIcon } from "lucide-react";
-import { FileText, FolderOpen, Sparkles, Wand2 } from "lucide-react";
+import {
+  FileText,
+  FolderOpen,
+  type LucideIcon,
+  Sparkles,
+  Wand2,
+} from "lucide-react";
 
 export type AnalyzeRouteId =
   | "transcript-analysis"
@@ -45,8 +50,6 @@ export const ANALYZE_ROUTES: AnalyzeRoute[] = [
     requiresTranscript: true,
   },
 ];
-
-
 
 export function getRouteById(id: AnalyzeRouteId): AnalyzeRoute {
   return ANALYZE_ROUTES.find((route) => route.id === id)!;

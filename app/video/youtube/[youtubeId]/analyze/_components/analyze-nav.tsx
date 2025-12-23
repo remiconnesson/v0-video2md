@@ -1,13 +1,9 @@
 "use client";
 
-import { useSelectedLayoutSegment } from "next/navigation";
 import Link from "next/link";
-import {
-  ANALYZE_ROUTES,
-  isRouteAvailable,
-  type AnalyzeRouteId,
-} from "./analyze-route-map";
+import { useSelectedLayoutSegment } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { ANALYZE_ROUTES, isRouteAvailable } from "./analyze-route-map";
 
 interface AnalyzeNavProps {
   videoId: string;

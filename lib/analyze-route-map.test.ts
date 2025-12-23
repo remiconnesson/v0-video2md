@@ -1,8 +1,8 @@
-import { describe, it, expect } from "vitest";
-import { 
-  isRouteAvailable, 
+import { describe, expect, it } from "vitest";
+import {
   ANALYZE_ROUTES,
-  getRouteById 
+  getRouteById,
+  isRouteAvailable,
 } from "../app/video/youtube/[youtubeId]/analyze/_components/analyze-route-map";
 
 describe("Route Availability", () => {

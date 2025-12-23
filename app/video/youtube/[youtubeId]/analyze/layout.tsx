@@ -1,7 +1,7 @@
-import { AnalyzeNav } from "./_components/analyze-nav";
 import { getCompletedAnalysis, hasSlideAnalysisResults } from "@/db/queries";
 import { fetchAndSaveTranscript } from "@/lib/fetch-and-save-transcript";
 import { isValidYouTubeVideoId } from "@/lib/youtube-utils";
+import { AnalyzeNav } from "./_components/analyze-nav";
 
 interface AnalyzeLayoutProps {
   children: React.ReactNode;

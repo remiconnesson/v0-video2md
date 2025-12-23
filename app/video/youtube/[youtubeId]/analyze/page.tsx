@@ -4,9 +4,7 @@ interface AnalyzePageProps {
   params: Promise<{ youtubeId: string }>;
 }
 
-export default async function AnalyzePage({
-  params,
-}: AnalyzePageProps) {
+export default async function AnalyzePage({ params }: AnalyzePageProps) {
   const { youtubeId } = await params;
 
   // Default redirect to transcript analysis
