@@ -27,11 +27,14 @@ export function TranscriptFetcher() {
   }, [state?.success, state?.videoId, router]);
 
   return (
-    <Card className="border-2 shadow-lg">
-      <CardHeader>
+    <Card className="border bg-background/80 shadow-lg">
+      <CardHeader className="space-y-2">
         <CardTitle className="text-xl font-semibold">
           Fetch YouTube Transcript
         </CardTitle>
+        <p className="text-sm text-muted-foreground">
+          Paste a YouTube URL or video ID to start analysis.
+        </p>
       </CardHeader>
 
       <CardContent className="space-y-4">
@@ -71,6 +74,9 @@ function TranscriptForm({
       <Button type="submit" disabled={isPending} className="w-full">
         {buttonText}
       </Button>
+      <p className="text-xs text-muted-foreground">
+        We&apos;ll validate the video and kick off the ingestion workflow.
+      </p>
     </form>
   );
 }
