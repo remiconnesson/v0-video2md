@@ -125,6 +125,7 @@ export function AnalysisPanel({
     },
   );
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: useEffectEvent is stable
   useEffect(() => {
     scrollToActiveSection(activeSection, scrollToSection);
   }, [activeSection, scrollToSection]);
