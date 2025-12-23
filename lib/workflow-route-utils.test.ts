@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as workflowApi from "workflow/api";
 import { createWorkflowRouteHandler } from "./workflow-route-utils";
 import type { YouTubeVideoId } from "./youtube-utils";
@@ -25,6 +25,10 @@ describe("createWorkflowRouteHandler", () => {
     extractWorkflowId: mockExtractWorkflowId,
   });
 
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   it("should restart workflow if run is not found (WorkflowRunNotFoundError)", async () => {
     const videoId = "video123" as YouTubeVideoId;
     const workflowId = "wrun_123";
@@ -48,5 +52,31 @@ describe("createWorkflowRouteHandler", () => {
     expect(workflowApi.getRun).toHaveBeenCalledWith(workflowId);
     expect(mockStartWorkflow).toHaveBeenCalledWith(videoId);
     expect(response).toBeDefined();
+  });
+
+  it("should re-throw other errors and not swallow them", async () => {
+    const videoId = "video456" as YouTubeVideoId;
+    const workflowId = "wrun_456";
+
+    mockGetWorkflowRecord.mockResolvedValue({ workflowId });
+
+    // Simulate a different error (not WorkflowRunNotFoundError)
+    const error = new Error("Network error");
+    error.name = "NetworkError";
+
+    const mockRun = {
+      status: Promise.reject(error),
+    };
+
+    // biome-ignore lint/suspicious/noExplicitAny: Mocking internal workflow type
+    vi.mocked(workflowApi.getRun).mockReturnValue(mockRun as any);
+
+    // Verify that the error is re-thrown
+    await expect(handler(videoId)).rejects.toThrow("Network error");
+
+    expect(mockGetWorkflowRecord).toHaveBeenCalledWith(videoId);
+    expect(workflowApi.getRun).toHaveBeenCalledWith(workflowId);
+    // Verify that startWorkflow was NOT called for non-WorkflowRunNotFoundError
+    expect(mockStartWorkflow).not.toHaveBeenCalled();
   });
 });
