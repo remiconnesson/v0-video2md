@@ -49,7 +49,19 @@ export function createWorkflowRouteHandler<TCompletedResult, TWorkflowRecord>(
     if (workflowRecord) {
       const workflowId = options.extractWorkflowId(workflowRecord);
       const run = getRun(workflowId);
-      const status = await run.status;
+      let status: WorkflowStatus;
+      try {
+        status = await run.status;
+      } catch (error) {
+        if (isWorkflowRunNotFoundError(error)) {
+          logError(error, "Workflow run not found, restarting", {
+            videoId,
+            workflowId,
+          });
+          return options.startWorkflow(videoId);
+        }
+        throw error;
+      }
       const readable = run.readable;
 
       // Allow custom status handling (e.g., for restarting failed workflows)
@@ -133,4 +145,13 @@ function handleWorkflowInProgress({
   workflowId: string;
 }): NextResponse {
   return createSSEResponse(readable, workflowId);
+}
+
+function isWorkflowRunNotFoundError(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false;
+  const err = error as { name?: string; code?: string };
+  return (
+    err.name === "WorkflowRunNotFoundError" ||
+    err.code === "WorkflowRunNotFoundError"
+  );
 }
