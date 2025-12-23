@@ -329,16 +329,18 @@ function SuperAnalysisSidebar({
 }) {
   return (
     <aside className="hidden lg:flex flex-col sticky top-6 self-start h-[calc(100vh-3.5rem)] min-w-0 group/sidebar">
-      <div className="shrink-0 mb-6 pr-2">
-        <VideoInfoCard
-          videoId={videoId}
-          title={title}
-          channelName={channelName}
-          onCopyMarkdown={onCopyMarkdown}
-          copyDisabled={copyDisabled}
-          copied={copied}
-        />
-      </div>
+      {(title || channelName) && (
+        <div className="shrink-0 mb-6 pr-2">
+          <VideoInfoCard
+            videoId={videoId}
+            title={title}
+            channelName={channelName}
+            onCopyMarkdown={onCopyMarkdown}
+            copyDisabled={copyDisabled}
+            copied={copied}
+          />
+        </div>
+      )}
     </aside>
   );
 }
@@ -381,22 +383,7 @@ function VideoInfoCard({
         )}
       </div>
 
-      <div className="space-y-1 px-1">
-        {title ? (
-          <h3 className="font-bold text-sm line-clamp-2 leading-tight tracking-tight">
-            {title}
-          </h3>
-        ) : (
-          <div className="h-4 w-full animate-pulse rounded bg-muted/50" />
-        )}
-        {channelName ? (
-          <p className="text-xs text-muted-foreground line-clamp-1">
-            {channelName}
-          </p>
-        ) : (
-          <div className="h-3 w-1/2 animate-pulse rounded bg-muted/50" />
-        )}
-      </div>
+
 
       <Button
         variant="outline"

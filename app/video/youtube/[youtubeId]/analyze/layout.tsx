@@ -2,6 +2,9 @@ import { getCompletedAnalysis, hasSlideAnalysisResults } from "@/db/queries";
 import { fetchAndSaveTranscript } from "@/lib/fetch-and-save-transcript";
 import { isValidYouTubeVideoId } from "@/lib/youtube-utils";
 import { AnalyzeNav } from "./_components/analyze-nav";
+import { Button } from "@/components/ui/button";
+import Link from "next/link";
+import { Home } from "lucide-react";
 
 interface AnalyzeLayoutProps {
   children: React.ReactNode;
@@ -32,11 +35,18 @@ export default async function AnalyzeLayout({
       <div className="border-b bg-background/80 backdrop-blur-sm sticky top-0 z-40">
         <div className="container mx-auto px-4 py-3">
           <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-xl font-bold truncate">{videoData.title}</h1>
-              <p className="text-sm text-muted-foreground">
-                {videoData.channelName}
-              </p>
+            <div className="flex items-center gap-4">
+              <Button variant="ghost" size="icon" asChild>
+                <Link href="/">
+                  <Home className="h-5 w-5" />
+                </Link>
+              </Button>
+              <div>
+                <h1 className="text-xl font-bold truncate">{videoData.title}</h1>
+                <p className="text-sm text-muted-foreground">
+                  {videoData.channelName}
+                </p>
+              </div>
             </div>
             <AnalyzeNav
               videoId={youtubeId}
