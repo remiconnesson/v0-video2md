@@ -125,9 +125,10 @@ export function AnalysisPanel({
     },
   );
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: scrollToActiveSection is a useEffectEvent and should not be in dependencies per React docs
   useEffect(() => {
     scrollToActiveSection(activeSection, scrollToSection);
-  }, [activeSection, scrollToSection]);
+  }, [activeSection]);
 
   return (
     <div className="space-y-4">
