@@ -59,6 +59,7 @@
     "@vitest/browser-preview": "latest",
     "@vitest/browser-webdriverio": "latest",
     "@vitest/ui": "latest",
+    "@workflow/ai": "4.0.1-beta.35",
     "ai": "latest",
     "apify-client": "^2.21.0",
     "class-variance-authority": "^0.7.1",
@@ -91,7 +92,7 @@
     "tailwindcss-animate": "^1.0.7",
     "vaul": "latest",
     "vite": "latest",
-    "workflow": "4.0.1-beta.31",
+    "workflow": "4.0.1-beta.35",
     "zod": "^4.2.0"
   },
   "devDependencies": {

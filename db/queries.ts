@@ -367,6 +367,33 @@ export async function upsertSlideExtraction(
 }
 
 /**
+ * Updates a specific section of the transcript analysis atomically.
+ */
+export async function updateTranscriptAnalysisSection(
+  videoId: string,
+  key: string,
+  value: unknown,
+) {
+  const updateObject = { [key]: value };
+
+  const [updatedRow] = await db
+    .insert(videoAnalysisRuns)
+    .values({
+      videoId,
+      result: updateObject,
+    })
+    .onConflictDoUpdate({
+      target: [videoAnalysisRuns.videoId],
+      set: {
+        result: sql`${videoAnalysisRuns.result} || ${updateObject}`,
+      },
+    })
+    .returning({ result: videoAnalysisRuns.result });
+
+  return updatedRow?.result ?? updateObject;
+}
+
+/**
  * Deletes all slides for a video.
  */
 export async function deleteVideoSlides(videoId: string) {
