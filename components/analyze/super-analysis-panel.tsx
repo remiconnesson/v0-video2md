@@ -160,13 +160,13 @@ export function SuperAnalysisPanel({ videoId }: SuperAnalysisPanelProps) {
 
   return (
     <div className="space-y-4">
-      {/* Mobile video info header */}
-      <MobileSuperAnalysisHeader
+      {/* Mobile video info header - Hidden as per user request */}
+      {/* <MobileSuperAnalysisHeader
         videoId={videoId}
         onCopyMarkdown={handleCopyMarkdown}
         copyDisabled={!hasContent}
         copied={copied}
-      />
+      /> */}
 
       <div className="grid gap-6 lg:grid-cols-[240px_minmax(0,1fr)]">
         <SuperAnalysisSidebar
