@@ -1,7 +1,6 @@
-import { getWritable } from "workflow";
+import { fetch } from "workflow";
 import { DurableAgent } from "@workflow/ai/agent";
 import { z } from "zod";
-import { getCompletedAnalysis } from "@/db/queries";
 import { type YouTubeVideoId } from "@/lib/youtube-utils";
 import type { UIMessageChunk } from "ai";
 import {
@@ -13,7 +12,11 @@ import {
   getTranscriptDataFromDb,
   type TranscriptData,
 } from "./steps/transcript-analysis";
-import { recordSection } from "./steps/durable-analysis";
+import {
+  recordSection,
+  fetchCompletedAnalysis,
+  writeAnalysisEvent,
+} from "./steps/durable-analysis";
 import {
   DURABLE_ANALYSIS_SYSTEM_PROMPT,
   buildDurableAgentUserMessage,
@@ -21,8 +24,8 @@ import {
 
 export async function analyzeTranscriptWorkflow(videoId: string) {
   "use workflow";
+  globalThis.fetch = fetch;
 
-  const writable = getWritable<AnalysisStreamEvent>();
   let transcriptData: TranscriptData | null;
 
   console.log("Checking cached transcript for video", videoId);
@@ -68,13 +71,11 @@ export async function analyzeTranscriptWorkflow(videoId: string) {
     transcript: transcriptData.transcript,
   });
 
-  const writer = writable.getWriter();
-  await writer.write({
+  await writeAnalysisEvent({
     type: "progress",
     phase: "analysis",
     message: "Starting analysis with Durable Agent...",
   });
-  writer.releaseLock();
 
   const agentWritable = new WritableStream<UIMessageChunk>({
     write(_chunk) {
@@ -90,12 +91,10 @@ export async function analyzeTranscriptWorkflow(videoId: string) {
   console.log("🤖 Analysis complete for video", videoId);
 
   // Fetch final result to ensure we return what was saved
-  const finalResult = await getCompletedAnalysis(videoId as YouTubeVideoId);
+  const finalResult = await fetchCompletedAnalysis(videoId);
 
   if (finalResult?.result) {
-    const writer = writable.getWriter();
-    await writer.write({ type: "result", data: finalResult.result });
-    writer.releaseLock();
+    await writeAnalysisEvent({ type: "result", data: finalResult.result });
   }
 
   return {

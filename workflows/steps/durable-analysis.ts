@@ -1,5 +1,8 @@
 import { getWritable } from "workflow";
-import { updateTranscriptAnalysisSection } from "@/db/queries";
+import {
+  getCompletedAnalysis,
+  updateTranscriptAnalysisSection,
+} from "@/db/queries";
 import type { YouTubeVideoId } from "@/lib/youtube-utils";
 import type { AnalysisStreamEvent } from "./transcript-analysis";
 
@@ -44,4 +47,18 @@ export async function recordSection({
   }
 
   return `Section '${key}' recorded successfully.`;
+}
+
+export async function fetchCompletedAnalysis(videoId: string) {
+  "use step";
+  const typedVideoId = videoId as YouTubeVideoId;
+  return await getCompletedAnalysis(typedVideoId);
+}
+
+export async function writeAnalysisEvent(event: AnalysisStreamEvent) {
+  "use step";
+  const writable = getWritable<AnalysisStreamEvent>();
+  const writer = writable.getWriter();
+  await writer.write(event);
+  writer.releaseLock();
 }
