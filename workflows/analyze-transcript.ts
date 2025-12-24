@@ -1,7 +1,8 @@
-import { getWritable } from "workflow";
+import { getWritable, sleep } from "workflow";
 import {
-  fetchYoutubeTranscriptFromApify,
-  saveYoutubeTranscriptToDb,
+  checkApifyExtractionStatus,
+  fetchAndSaveApifyTranscript,
+  startApifyTranscriptExtraction,
 } from "./steps/fetch-transcript";
 import {
   type AnalysisStreamEvent,
@@ -27,9 +28,27 @@ export async function analyzeTranscriptWorkflow(videoId: string) {
   } else {
     console.log("🤖 No cached transcript found for video", videoId);
     console.log("🤖 Fetching transcript for video", videoId);
-    const fetchedResult = await fetchYoutubeTranscriptFromApify(videoId);
+
+    const { runId, defaultDatasetId } =
+      await startApifyTranscriptExtraction(videoId);
+
+    while (true) {
+      const { status } = await checkApifyExtractionStatus(runId);
+      if (status === "SUCCEEDED") {
+        break;
+      }
+      if (
+        status === "FAILED" ||
+        status === "ABORTED" ||
+        status === "TIMED_OUT"
+      ) {
+        throw new Error(`Apify run failed with status: ${status}`);
+      }
+      await sleep(5);
+    }
+
     console.log("🤖 Saving transcript for video", videoId);
-    await saveYoutubeTranscriptToDb(fetchedResult);
+    await fetchAndSaveApifyTranscript(runId, defaultDatasetId);
     // biome-ignore lint/style/noNonNullAssertion: we just inserted it into the db
     transcriptData = (await getTranscriptDataFromDb(videoId))!;
   }

@@ -67,13 +67,14 @@ function formatDurationFromSeconds(seconds: number): string {
   }
   return `${mins}:${secs.toString().padStart(2, "0")}`;
 }
+
 // ============================================================================
-// Step: Fetch from Apify
+// Step: Start Apify Extraction
 // ============================================================================
 
-export async function fetchYoutubeTranscriptFromApify(
+export async function startApifyTranscriptExtraction(
   videoId: string,
-): Promise<TranscriptResult> {
+): Promise<{ runId: string; defaultDatasetId: string }> {
   "use step";
 
   const { ApifyClient } = await import("apify-client");
@@ -83,15 +84,62 @@ export async function fetchYoutubeTranscriptFromApify(
   }
 
   const client = new ApifyClient({ token: process.env.APIFY_API_TOKEN });
-  const actorRun = await client.actor("Uwpce1RSXlrzF6WBA").call({
+  const actorRun = await client.actor("Uwpce1RSXlrzF6WBA").start({
     youtube_url: `https://www.youtube.com/watch?v=${videoId}`,
   });
 
-  const { items } = await client.dataset(actorRun.defaultDatasetId).listItems();
+  return { runId: actorRun.id, defaultDatasetId: actorRun.defaultDatasetId };
+}
+
+// ============================================================================
+// Step: Check Apify Status
+// ============================================================================
+
+export async function checkApifyExtractionStatus(
+  runId: string,
+): Promise<{ status: string }> {
+  "use step";
+
+  const { ApifyClient } = await import("apify-client");
+
+  if (!process.env.APIFY_API_TOKEN) {
+    throw new Error("APIFY_API_TOKEN is not defined");
+  }
+
+  const client = new ApifyClient({ token: process.env.APIFY_API_TOKEN });
+  const run = await client.run(runId).get();
+
+  if (!run) {
+    throw new Error(`Apify run ${runId} not found`);
+  }
+
+  return { status: run.status };
+}
+
+// ============================================================================
+// Step: Fetch and Save (Combined)
+// ============================================================================
+
+export async function fetchAndSaveApifyTranscript(
+  runId: string,
+  datasetId: string,
+): Promise<{ success: true; videoId: string }> {
+  "use step";
+
+  const { ApifyClient } = await import("apify-client");
+
+  if (!process.env.APIFY_API_TOKEN) {
+    throw new Error("APIFY_API_TOKEN is not defined");
+  }
+
+  const client = new ApifyClient({ token: process.env.APIFY_API_TOKEN });
+
+  // Get items from dataset
+  const { items } = await client.dataset(datasetId).listItems();
   const rawApiResponse = items[0];
 
   if (!rawApiResponse) {
-    throw new Error(`No results found for video ID: ${videoId}`);
+    throw new Error(`No results found in dataset: ${datasetId}`);
   }
 
   // Validate the API response with Zod
@@ -112,17 +160,22 @@ export async function fetchYoutubeTranscriptFromApify(
   }
 
   // Transform snake_case API response to camelCase
-  return transformApifyResponse(parseResult.data);
+  const transcriptData = transformApifyResponse(parseResult.data);
+
+  // Save to DB
+  await saveTranscriptToDb(transcriptData);
+
+  return { success: true, videoId: transcriptData.videoId };
 }
 
-// ============================================================================
-// Step: Save to database
-// ============================================================================
-
-export async function saveYoutubeTranscriptToDb(
-  transcriptData: TranscriptResult,
-) {
-  "use step";
-
-  await saveTranscriptToDb(transcriptData);
+// Legacy function (kept for now, but will be removed or updated)
+export async function fetchYoutubeTranscriptFromApify(
+  _videoId: string,
+): Promise<TranscriptResult> {
+  // I'll leave this for now and remove it after updating consumers
+  // Actually, I'll remove it in the same overwrite since I'm rewriting the file.
+  throw new Error("Deprecated");
+}
+export async function saveYoutubeTranscriptToDb(data: TranscriptResult) {
+  await saveTranscriptToDb(data);
 }

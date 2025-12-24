@@ -1,6 +1,8 @@
+import { sleep } from "workflow";
 import {
-  fetchYoutubeTranscriptFromApify,
-  saveYoutubeTranscriptToDb,
+  checkApifyExtractionStatus,
+  fetchAndSaveApifyTranscript,
+  startApifyTranscriptExtraction,
 } from "./steps/fetch-transcript";
 import {
   getTranscriptDataFromDb,
@@ -20,9 +22,26 @@ export async function fetchAndSaveTranscriptWorkflow(videoId: string) {
     transcriptData = cachedTranscriptData;
   } else {
     console.log("[fetchAndSaveTranscript] 3. Fetching from Apify...");
-    const fetchedResult = await fetchYoutubeTranscriptFromApify(videoId);
+    const { runId, defaultDatasetId } =
+      await startApifyTranscriptExtraction(videoId);
+
+    while (true) {
+      const { status } = await checkApifyExtractionStatus(runId);
+      if (status === "SUCCEEDED") {
+        break;
+      }
+      if (
+        status === "FAILED" ||
+        status === "ABORTED" ||
+        status === "TIMED_OUT"
+      ) {
+        throw new Error(`Apify run failed with status: ${status}`);
+      }
+      await sleep(5);
+    }
+
     console.log("[fetchAndSaveTranscript] 4. Saving to DB...");
-    await saveYoutubeTranscriptToDb(fetchedResult);
+    await fetchAndSaveApifyTranscript(runId, defaultDatasetId);
     // biome-ignore lint/style/noNonNullAssertion: we know the transcript data is not null
     transcriptData = (await getTranscriptDataFromDb(videoId))!;
   }
