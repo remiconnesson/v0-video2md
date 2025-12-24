@@ -12,6 +12,15 @@ export type WorkflowStatus =
   | "running"
   | "paused";
 
+export interface Logger {
+  info(message: string, context?: Record<string, unknown>): void;
+  error(
+    message: string,
+    error?: unknown,
+    context?: Record<string, unknown>,
+  ): void;
+}
+
 export interface WorkflowRouteOptions<TCompletedResult, TWorkflowRecord> {
   getCompletedResult: (
     videoId: YouTubeVideoId,
@@ -21,11 +30,26 @@ export interface WorkflowRouteOptions<TCompletedResult, TWorkflowRecord> {
   ) => Promise<TWorkflowRecord | null>;
   startWorkflow: (videoId: YouTubeVideoId) => Promise<NextResponse>;
   extractWorkflowId: (record: TWorkflowRecord) => string;
+  logger?: Logger;
 }
+
+const defaultLogger: Logger = {
+  info(message: string, context?: Record<string, unknown>): void {
+    console.log(`[INFO] ${message}`, context || {});
+  },
+  error(
+    message: string,
+    error?: unknown,
+    context?: Record<string, unknown>,
+  ): void {
+    console.error(`[ERROR] ${message}`, error, context || {});
+  },
+};
 
 export function createWorkflowRouteHandler<TCompletedResult, TWorkflowRecord>(
   options: WorkflowRouteOptions<TCompletedResult, TWorkflowRecord>,
 ) {
+  const logger = options.logger || defaultLogger;
   return async function handleWorkflowRoute(
     videoId: YouTubeVideoId,
     additionalLogic?: {
@@ -58,8 +82,30 @@ export function createWorkflowRouteHandler<TCompletedResult, TWorkflowRecord>(
           err.name === "WorkflowRunNotFoundError" ||
           err.code === "WorkflowRunNotFoundError"
         ) {
-          return options.startWorkflow(videoId);
+          logger.info("Workflow run not found, attempting to restart", {
+            videoId,
+            workflowId,
+          });
+
+          try {
+            const response = await options.startWorkflow(videoId);
+            logger.info("Workflow restart succeeded", { videoId, workflowId });
+            return response;
+          } catch (restartError) {
+            logger.error("Workflow restart failed", restartError, {
+              videoId,
+              workflowId,
+            });
+            throw restartError;
+          }
         }
+
+        logger.error("Unexpected error while checking workflow status", error, {
+          videoId,
+          workflowId,
+          errorName: err.name,
+          errorCode: err.code,
+        });
         throw error;
       }
       const readable = run.readable;
