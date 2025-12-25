@@ -150,3 +150,219 @@ describe("SlidesPanel Auto-Trigger Extraction", () => {
     expect(postRequests.length).toBe(0);
   });
 });
+
+describe("SlidesPanel Error Handling", () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+  });
+
+  it("should display error state when slides query fails", async () => {
+    // Mock fetch to reject
+    vi.mocked(fetch).mockRejectedValueOnce(new Error("Network error"));
+
+    render(
+      <TestWrapper>
+        <NuqsTestingAdapter>
+          <SlidesPanel videoId={mockVideoId} />
+        </NuqsTestingAdapter>
+      </TestWrapper>,
+    );
+
+    // Wait for error state
+    await waitFor(() => {
+      expect(screen.getByText("Network error")).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: /retry/i }),
+      ).toBeInTheDocument();
+    });
+  });
+
+  it("should display error when API returns failed status", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          status: "failed",
+          errorMessage: "Extraction failed",
+          slides: [],
+        }),
+      ),
+    );
+
+    vi.mocked(fetch).mockResolvedValueOnce(
+      new Response(JSON.stringify({ feedback: [] })),
+    );
+
+    render(
+      <TestWrapper>
+        <NuqsTestingAdapter>
+          <SlidesPanel videoId={mockVideoId} />
+        </NuqsTestingAdapter>
+      </TestWrapper>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("Extraction failed")).toBeInTheDocument();
+    });
+  });
+});
+
+describe("SlidesPanel Completed State", () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+  });
+
+  const mockCompletedSlides = [
+    {
+      slideNumber: 1,
+      startTime: 0,
+      endTime: 10,
+      duration: 10,
+      firstFrameImageUrl: "test1-first.jpg",
+      firstFrameIsDuplicate: false,
+      lastFrameImageUrl: "test1-last.jpg",
+      lastFrameIsDuplicate: false,
+    },
+    {
+      slideNumber: 2,
+      startTime: 10,
+      endTime: 20,
+      duration: 10,
+      firstFrameImageUrl: "test2-first.jpg",
+      firstFrameIsDuplicate: false,
+      lastFrameImageUrl: "test2-last.jpg",
+      lastFrameIsDuplicate: false,
+    },
+  ];
+
+  it("should show correct frame count", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          status: "completed",
+          slides: mockCompletedSlides,
+          totalSlides: 2,
+        }),
+      ),
+    );
+
+    vi.mocked(fetch).mockResolvedValueOnce(
+      new Response(JSON.stringify({ feedback: [] })),
+    );
+
+    render(
+      <TestWrapper>
+        <NuqsTestingAdapter>
+          <SlidesPanel videoId={mockVideoId} />
+        </NuqsTestingAdapter>
+      </TestWrapper>,
+    );
+
+    await waitFor(() => {
+      // 2 slides × 2 frames each = 4 total frames, 0 picked
+      expect(screen.getByText("Frames (0/4)")).toBeInTheDocument();
+    });
+  });
+
+  it("should display tutorial by default", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          status: "completed",
+          slides: mockCompletedSlides,
+          totalSlides: 2,
+        }),
+      ),
+    );
+
+    vi.mocked(fetch).mockResolvedValueOnce(
+      new Response(JSON.stringify({ feedback: [] })),
+    );
+
+    render(
+      <TestWrapper>
+        <NuqsTestingAdapter>
+          <SlidesPanel videoId={mockVideoId} />
+        </NuqsTestingAdapter>
+      </TestWrapper>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("How this page works")).toBeInTheDocument();
+    });
+  });
+
+  it("should disable 'Show picked only' button when no frames are picked", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          status: "completed",
+          slides: mockCompletedSlides,
+          totalSlides: 2,
+        }),
+      ),
+    );
+
+    vi.mocked(fetch).mockResolvedValueOnce(
+      new Response(JSON.stringify({ feedback: [] })),
+    );
+
+    render(
+      <TestWrapper>
+        <NuqsTestingAdapter>
+          <SlidesPanel videoId={mockVideoId} />
+        </NuqsTestingAdapter>
+      </TestWrapper>,
+    );
+
+    await waitFor(() => {
+      const showPickedButton = screen.getByRole("button", {
+        name: /show picked only/i,
+      });
+      expect(showPickedButton).toBeDisabled();
+    });
+  });
+
+  it("should disable analyze button when slides not confirmed", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          status: "completed",
+          slides: mockCompletedSlides,
+          totalSlides: 2,
+        }),
+      ),
+    );
+
+    vi.mocked(fetch).mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          feedback: [
+            {
+              slideNumber: 1,
+              isFirstFramePicked: true,
+              isLastFramePicked: false,
+              firstFrameHasUsefulContent: null,
+              lastFrameHasUsefulContent: null,
+              framesSameness: null,
+            },
+          ],
+        }),
+      ),
+    );
+
+    render(
+      <TestWrapper>
+        <NuqsTestingAdapter>
+          <SlidesPanel videoId={mockVideoId} />
+        </NuqsTestingAdapter>
+      </TestWrapper>,
+    );
+
+    await waitFor(() => {
+      const analyzeButton = screen.getByRole("button", {
+        name: /analyze selected slides/i,
+      });
+      expect(analyzeButton).toBeDisabled();
+    });
+  });
+});
