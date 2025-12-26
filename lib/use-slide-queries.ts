@@ -16,7 +16,7 @@ export function useSlidesQuery(videoId: string) {
       if (!response.ok) throw new Error("Failed to load slides");
       return response.json();
     },
-    staleTime: 1 * 60 * 1000, // 1 minute
+    staleTime: Number.POSITIVE_INFINITY, // Slides never change once extracted
   });
 }
 
@@ -28,7 +28,7 @@ export function useSlideFeedbackQuery(videoId: string) {
       if (!response.ok) throw new Error("Failed to load slide feedback");
       return response.json();
     },
-    staleTime: 1 * 60 * 1000, // 1 minute
+    staleTime: Number.POSITIVE_INFINITY, // Feedback is persisted and invalidated by mutations
   });
 }
 
@@ -40,7 +40,7 @@ export function useSlideAnalysisQuery(videoId: string) {
       if (!response.ok) throw new Error("Failed to load analysis results");
       return response.json();
     },
-    staleTime: 1 * 60 * 1000, // 1 minute
+    staleTime: Number.POSITIVE_INFINITY, // Analysis results never change once completed
   });
 }
 
