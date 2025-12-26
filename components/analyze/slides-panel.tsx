@@ -812,11 +812,7 @@ function FramesHeader({
 // Tutorial Card
 // ============================================================================
 
-function TutorialCard({
-  onDismiss,
-}: {
-  onDismiss: () => void;
-}) {
+function TutorialCard({ onDismiss }: { onDismiss: () => void }) {
   return (
     <Card className="mb-6 bg-primary/[0.02] border-primary/20 shadow-none relative overflow-hidden">
       <div className="absolute top-2 right-2">
@@ -837,17 +833,17 @@ function TutorialCard({
       </CardHeader>
       <CardContent className="space-y-4 text-sm text-muted-foreground">
         <p>
-          Pick the slides you&apos;d like to include in the final
-          analysis. Changes are saved automatically.
+          Pick the slides you&apos;d like to include in the final analysis.
+          Changes are saved automatically.
         </p>
         <p>
-          Once you&apos;ve picked your slides, confirm your selection
-          below and click &quot;Analyze Selected Slides&quot; to
-          generate the Super Analysis.
+          Once you&apos;ve picked your slides, confirm your selection below and
+          click &quot;Analyze Selected Slides&quot; to generate the Super
+          Analysis.
         </p>
         <p>
-          You can use the &quot;Show picked only&quot; toggle to review
-          just your selected frames.
+          You can use the &quot;Show picked only&quot; toggle to review just
+          your selected frames.
         </p>
         <div className="pt-2 flex justify-end">
           <Button
