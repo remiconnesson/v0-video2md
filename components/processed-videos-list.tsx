@@ -231,6 +231,57 @@ interface VideosDataTableProps {
   data: VideoData[];
 }
 
+function FilterBar({
+  searchValue,
+  onSearchChange,
+  slidesFilter,
+  onSlidesFilterChange,
+  slideAnalysisFilter,
+  onSlideAnalysisFilterChange,
+  superAnalysisFilter,
+  onSuperAnalysisFilterChange,
+}: {
+  searchValue: string;
+  onSearchChange: (value: string) => void;
+  slidesFilter: string;
+  onSlidesFilterChange: (value: string) => void;
+  slideAnalysisFilter: string;
+  onSlideAnalysisFilterChange: (value: string) => void;
+  superAnalysisFilter: string;
+  onSuperAnalysisFilterChange: (value: string) => void;
+}) {
+  return (
+    <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+      <div className="relative w-full md:max-w-sm">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input
+          placeholder="Search by title, channel..."
+          value={searchValue}
+          onChange={(e) => onSearchChange(e.target.value)}
+          className="pl-9 h-9"
+        />
+      </div>
+      <div className="flex flex-wrap items-center justify-end gap-2">
+        <FilterSelect
+          label="Slides"
+          value={slidesFilter}
+          onValueChange={onSlidesFilterChange}
+        />
+        <FilterSelect
+          label="Slide AI"
+          value={slideAnalysisFilter}
+          onValueChange={onSlideAnalysisFilterChange}
+        />
+        <FilterSelect
+          label="Super AI"
+          value={superAnalysisFilter}
+          onValueChange={onSuperAnalysisFilterChange}
+        />
+      </div>
+    </div>
+  );
+}
+
 export function VideosDataTable({ data }: VideosDataTableProps) {
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
 
@@ -258,38 +309,20 @@ export function VideosDataTable({ data }: VideosDataTableProps) {
   return (
     <div className="space-y-6">
       {/* Filters */}
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div className="relative w-full md:max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search by title, channel..."
-            value={getFilter("videoData.title")}
-            onChange={(e) => setFilter("videoData.title", e.target.value)}
-            className="pl-9 h-9"
-          />
-        </div>
-        <div className="flex flex-wrap items-center justify-end gap-2">
-          <FilterSelect
-            label="Slides"
-            value={getFilter("hasSlides") || "all"}
-            onValueChange={(v) => setFilter("hasSlides", v === "all" ? "" : v)}
-          />
-          <FilterSelect
-            label="Slide AI"
-            value={getFilter("hasSlideAnalysis") || "all"}
-            onValueChange={(v) =>
-              setFilter("hasSlideAnalysis", v === "all" ? "" : v)
-            }
-          />
-          <FilterSelect
-            label="Super AI"
-            value={getFilter("hasSuperAnalysis") || "all"}
-            onValueChange={(v) =>
-              setFilter("hasSuperAnalysis", v === "all" ? "" : v)
-            }
-          />
-        </div>
-      </div>
+      <FilterBar
+        searchValue={getFilter("videoData.title")}
+        onSearchChange={(value) => setFilter("videoData.title", value)}
+        slidesFilter={getFilter("hasSlides") || "all"}
+        onSlidesFilterChange={(v) => setFilter("hasSlides", v === "all" ? "" : v)}
+        slideAnalysisFilter={getFilter("hasSlideAnalysis") || "all"}
+        onSlideAnalysisFilterChange={(v) =>
+          setFilter("hasSlideAnalysis", v === "all" ? "" : v)
+        }
+        superAnalysisFilter={getFilter("hasSuperAnalysis") || "all"}
+        onSuperAnalysisFilterChange={(v) =>
+          setFilter("hasSuperAnalysis", v === "all" ? "" : v)
+        }
+      />
 
       {/* Mobile Card View */}
       <div className="md:hidden space-y-3">
