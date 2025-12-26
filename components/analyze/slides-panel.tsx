@@ -662,45 +662,15 @@ function CompletedState({
     <div className="flex flex-col">
       <Card className="flex-1">
         <CardHeader>
-          <CardTitle className="flex items-center justify-between">
-            <span className="flex items-center gap-2">
-              <ImageIcon className="h-5 w-5" />
-              Frames ({pickedFramesCount}/{totalFramesCount})
-            </span>
-            <div className="flex flex-wrap items-center gap-2">
-              {!showTutorial && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                  onClick={() => setShowTutorial(true)}
-                  title="Show tutorial"
-                >
-                  <HelpCircle className="h-4 w-4" />
-                </Button>
-              )}
-              {/* Show only picked toggle */}
-              <Button
-                variant={showOnlyPicked ? "secondary" : "outline"}
-                size="sm"
-                onClick={() => setShowOnlyPicked(!showOnlyPicked)}
-                className="gap-1.5"
-                disabled={!hasPickedFrames}
-              >
-                {showOnlyPicked ? (
-                  <>
-                    <Eye className="h-4 w-4" />
-                    Show all
-                  </>
-                ) : (
-                  <>
-                    <EyeOff className="h-4 w-4" />
-                    Show picked only
-                  </>
-                )}
-              </Button>
-            </div>
-          </CardTitle>
+          <FramesHeader
+            pickedFramesCount={pickedFramesCount}
+            totalFramesCount={totalFramesCount}
+            showTutorial={showTutorial}
+            onShowTutorial={() => setShowTutorial(true)}
+            showOnlyPicked={showOnlyPicked}
+            onToggleShowOnlyPicked={() => setShowOnlyPicked(!showOnlyPicked)}
+            hasPickedFrames={hasPickedFrames}
+          />
         </CardHeader>
 
         {/* Analysis progress indicator */}
@@ -771,6 +741,70 @@ function CompletedState({
         onNavigateToSuperAnalysis={handleNavigateToSuperAnalysis}
       />
     </div>
+  );
+}
+
+// ============================================================================
+// Frames Header
+// ============================================================================
+
+function FramesHeader({
+  pickedFramesCount,
+  totalFramesCount,
+  showTutorial,
+  onShowTutorial,
+  showOnlyPicked,
+  onToggleShowOnlyPicked,
+  hasPickedFrames,
+}: {
+  pickedFramesCount: number;
+  totalFramesCount: number;
+  showTutorial: boolean;
+  onShowTutorial: () => void;
+  showOnlyPicked: boolean;
+  onToggleShowOnlyPicked: () => void;
+  hasPickedFrames: boolean;
+}) {
+  return (
+    <CardTitle className="flex items-center justify-between">
+      <span className="flex items-center gap-2">
+        <ImageIcon className="h-5 w-5" />
+        Frames ({pickedFramesCount}/{totalFramesCount})
+      </span>
+      <div className="flex flex-wrap items-center gap-2">
+        {!showTutorial && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 text-muted-foreground hover:text-foreground"
+            onClick={onShowTutorial}
+            title="Show tutorial"
+          >
+            <HelpCircle className="h-4 w-4" />
+          </Button>
+        )}
+        {/* Show only picked toggle */}
+        <Button
+          variant={showOnlyPicked ? "secondary" : "outline"}
+          size="sm"
+          onClick={onToggleShowOnlyPicked}
+          className="gap-1.5"
+          disabled={!hasPickedFrames}
+        >
+          {showOnlyPicked ? (
+            <>
+              <Eye className="h-4 w-4" />
+              Show all
+            </>
+          ) : (
+            <>
+              <EyeOff className="h-4 w-4" />
+              Show picked only
+            </>
+          )}
+        </Button>
+      </div>
+    </CardTitle>
   );
 }
 
