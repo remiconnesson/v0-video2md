@@ -4,11 +4,11 @@ import { useQuery } from "@tanstack/react-query";
 import {
   type ColumnDef,
   type ColumnFiltersState,
-  type Table as TableType,
   flexRender,
   getCoreRowModel,
   getFilteredRowModel,
   getPaginationRowModel,
+  type Table as TableType,
   useReactTable,
 } from "@tanstack/react-table";
 import { FileVideo, Image as ImageIcon, Search } from "lucide-react";
@@ -253,10 +253,7 @@ function DesktopTableView({ table }: { table: TableType<VideoData> }) {
               <TableRow key={row.id}>
                 {row.getVisibleCells().map((cell) => (
                   <TableCell key={cell.id}>
-                    {flexRender(
-                      cell.column.columnDef.cell,
-                      cell.getContext(),
-                    )}
+                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
                   </TableCell>
                 ))}
               </TableRow>
@@ -438,7 +435,9 @@ export function VideosDataTable({ data }: VideosDataTableProps) {
         searchValue={getFilter("videoData.title")}
         onSearchChange={(value) => setFilter("videoData.title", value)}
         slidesFilter={getFilter("hasSlides") || "all"}
-        onSlidesFilterChange={(v) => setFilter("hasSlides", v === "all" ? "" : v)}
+        onSlidesFilterChange={(v) =>
+          setFilter("hasSlides", v === "all" ? "" : v)
+        }
         slideAnalysisFilter={getFilter("hasSlideAnalysis") || "all"}
         onSlideAnalysisFilterChange={(v) =>
           setFilter("hasSlideAnalysis", v === "all" ? "" : v)
