@@ -130,11 +130,50 @@ async function fetchYoutubeTranscriptFromApify(
   }
 
   const client = new ApifyClient({ token: process.env.APIFY_API_TOKEN });
-  const actorRun = await client.actor("Uwpce1RSXlrzF6WBA").call({
+
+  // Use start() instead of call() to avoid blocking if we were in a workflow context,
+  // but since this is a library function running in a standard server environment (e.g. Server Action),
+  // we still have a timeout (usually 15-60s).
+  // If we are in a Vercel Function, we might still time out if the actor takes too long.
+  // However, unlike Workflows, we can't easily poll with sleep/suspension efficiently without blocking.
+  // So for this synchronous-ish library function, we might still be stuck with blocking call or implement a polling loop.
+  // Given this is a "workaround" function, maybe we should also use polling here to at least handle the 'wait' properly?
+  // But `client.actor(...).call()` does exactly that: starts and waits.
+
+  // The issue with `call()` is that it blocks the event loop while waiting for the network response from Apify which says "run finished".
+  // `apify-client`'s `call` uses polling internally (or long polling).
+
+  // If the user's issue "500ed without logs" happens here too, it's because the Vercel function timed out.
+  // But this library function is likely used in contexts where maybe the timeout is different or it's a backup.
+  // The user's screenshot showed a workflow failure.
+
+  // I will keep `call` here but maybe add better error handling?
+  // Actually, if I change it to `start` + polling, I can add logs.
+
+  console.log(`[Apify] Starting actor for video ${videoId}...`);
+  const actorRun = await client.actor("Uwpce1RSXlrzF6WBA").start({
     youtube_url: `https://www.youtube.com/watch?v=${videoId}`,
   });
 
-  const { items } = await client.dataset(actorRun.defaultDatasetId).listItems();
+  console.log(
+    `[Apify] Actor started, runId: ${actorRun.id}. Waiting for completion...`,
+  );
+
+  // Poll for completion
+  let run = actorRun;
+  while (run.status === "READY" || run.status === "RUNNING") {
+    await new Promise((resolve) => setTimeout(resolve, 5000)); // 5s wait
+    run = (await client.run(run.id).get()) as typeof actorRun; // cast to avoid null check noise, get() returns Run | undefined but usually Run
+    if (!run) throw new Error(`Apify run ${actorRun.id} disappeared`);
+  }
+
+  if (run.status !== "SUCCEEDED") {
+    throw new Error(`Apify run failed with status: ${run.status}`);
+  }
+
+  console.log(`[Apify] Actor finished. Fetching results...`);
+
+  const { items } = await client.dataset(run.defaultDatasetId).listItems();
   const rawApiResponse = items[0];
 
   if (!rawApiResponse) {
