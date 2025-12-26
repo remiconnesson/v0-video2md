@@ -735,49 +735,7 @@ function CompletedState({
           )}
         >
           {showTutorial && (
-            <Card className="mb-6 bg-primary/[0.02] border-primary/20 shadow-none relative overflow-hidden">
-              <div className="absolute top-2 right-2">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7 text-muted-foreground hover:text-foreground hover:bg-primary/10"
-                  onClick={() => setShowTutorial(false)}
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base flex items-center gap-2 text-primary">
-                  <HelpCircle className="h-4 w-4" />
-                  How this page works
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4 text-sm text-muted-foreground">
-                <p>
-                  Pick the slides you&apos;d like to include in the final
-                  analysis. Changes are saved automatically.
-                </p>
-                <p>
-                  Once you&apos;ve picked your slides, confirm your selection
-                  below and click &quot;Analyze Selected Slides&quot; to
-                  generate the Super Analysis.
-                </p>
-                <p>
-                  You can use the &quot;Show picked only&quot; toggle to review
-                  just your selected frames.
-                </p>
-                <div className="pt-2 flex justify-end">
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => setShowTutorial(false)}
-                    className="text-xs h-8"
-                  >
-                    Hide tutorial
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+            <TutorialCard onDismiss={() => setShowTutorial(false)} />
           )}
 
           {filteredSlides.length === 0 && showOnlyPicked ? (
@@ -813,6 +771,62 @@ function CompletedState({
         onNavigateToSuperAnalysis={handleNavigateToSuperAnalysis}
       />
     </div>
+  );
+}
+
+// ============================================================================
+// Tutorial Card
+// ============================================================================
+
+function TutorialCard({
+  onDismiss,
+}: {
+  onDismiss: () => void;
+}) {
+  return (
+    <Card className="mb-6 bg-primary/[0.02] border-primary/20 shadow-none relative overflow-hidden">
+      <div className="absolute top-2 right-2">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7 text-muted-foreground hover:text-foreground hover:bg-primary/10"
+          onClick={onDismiss}
+        >
+          <X className="h-4 w-4" />
+        </Button>
+      </div>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base flex items-center gap-2 text-primary">
+          <HelpCircle className="h-4 w-4" />
+          How this page works
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4 text-sm text-muted-foreground">
+        <p>
+          Pick the slides you&apos;d like to include in the final
+          analysis. Changes are saved automatically.
+        </p>
+        <p>
+          Once you&apos;ve picked your slides, confirm your selection
+          below and click &quot;Analyze Selected Slides&quot; to
+          generate the Super Analysis.
+        </p>
+        <p>
+          You can use the &quot;Show picked only&quot; toggle to review
+          just your selected frames.
+        </p>
+        <div className="pt-2 flex justify-end">
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={onDismiss}
+            className="text-xs h-8"
+          >
+            Hide tutorial
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
