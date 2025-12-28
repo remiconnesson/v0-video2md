@@ -100,13 +100,13 @@ export function createWorkflowRouteHandler<TCompletedResult, TWorkflowRecord>(
           }
         }
 
-        logger.error("Unexpected error while checking workflow status", error, {
+        logger.error("Unexpected error while checking workflow status", err, {
           videoId,
           workflowId,
           errorName: err.name,
           errorCode: err.code,
         });
-        throw error;
+        throw err;
       }
       const readable = run.readable;
 
