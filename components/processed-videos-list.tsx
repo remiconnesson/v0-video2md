@@ -13,7 +13,7 @@ import {
 import { FileVideo, Image as ImageIcon, Search } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -33,6 +33,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useDebounce } from "@/hooks/use-debounce";
 
 export function ProcessedVideosList() {
   const {
@@ -250,6 +251,19 @@ export function VideosDataTable({ data }: VideosDataTableProps) {
   const setFilter = (id: string, value: string) =>
     table.getColumn(id)?.setFilterValue(value || undefined);
 
+  // Local state for search input to prevent re-filtering on every keystroke
+  const [searchQuery, setSearchQuery] = useState(
+    (table.getColumn("videoData.title")?.getFilterValue() as string) ?? "",
+  );
+  const debouncedSearchQuery = useDebounce(searchQuery, 300);
+
+  // Update table filter when debounced search query changes
+  useEffect(() => {
+    table
+      .getColumn("videoData.title")
+      ?.setFilterValue(debouncedSearchQuery || undefined);
+  }, [debouncedSearchQuery, table]);
+
   const { pageIndex, pageSize } = table.getState().pagination;
   const totalRows = table.getFilteredRowModel().rows.length;
   const start = totalRows === 0 ? 0 : pageIndex * pageSize + 1;
@@ -263,8 +277,8 @@ export function VideosDataTable({ data }: VideosDataTableProps) {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Search by title, channel..."
-            value={getFilter("videoData.title")}
-            onChange={(e) => setFilter("videoData.title", e.target.value)}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-9 h-9"
           />
         </div>
