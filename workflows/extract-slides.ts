@@ -26,13 +26,15 @@ export async function extractSlidesWorkflow(videoId: string) {
   }
 
   try {
+    const totalSteps = 5;
+
     currentStep = "triggering extraction";
     await emit<SlideStreamEvent>(
       {
         type: "progress",
         status: "starting",
         step: 1,
-        totalSteps: 4,
+        totalSteps,
         message: "Starting slide extraction...",
       },
       writable,
@@ -45,12 +47,25 @@ export async function extractSlidesWorkflow(videoId: string) {
         type: "progress",
         status: "monitoring",
         step: 2,
-        totalSteps: 4,
+        totalSteps,
         message: "Processing video on server...",
       },
       writable,
     );
-    await checkJobStatus(videoId, writable);
+    const { manifestUri, jobFailed, failureReason } = await checkJobStatus(
+      videoId,
+      writable,
+    );
+
+    // Validate that the job completed successfully
+    if (jobFailed) {
+      throw new Error(`Extraction job failed: ${failureReason}`);
+    }
+    if (!manifestUri) {
+      throw new Error(
+        "Extraction job did not complete - no manifest URI was provided by the extraction service",
+      );
+    }
 
     currentStep = "fetching manifest";
     await emit<SlideStreamEvent>(
@@ -58,7 +73,7 @@ export async function extractSlidesWorkflow(videoId: string) {
         type: "progress",
         status: "fetching",
         step: 3,
-        totalSteps: 4,
+        totalSteps,
         message: "Fetching slide manifest...",
       },
       writable,
@@ -71,7 +86,7 @@ export async function extractSlidesWorkflow(videoId: string) {
         type: "progress",
         status: "saving",
         step: 4,
-        totalSteps: 4,
+        totalSteps,
         message: "Saving slides to database...",
       },
       writable,

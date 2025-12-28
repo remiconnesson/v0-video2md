@@ -13,24 +13,6 @@ import { CONFIG } from "./config";
 // Step: Trigger extraction
 // ============================================================================
 
-const TOTAL_STEPS = 4;
-
-function resolveJobStep(status: JobStatus): number {
-  switch (status) {
-    case JobStatus.PENDING:
-      return 1;
-    case JobStatus.DOWNLOADING:
-    case JobStatus.EXTRACTING:
-      return 2;
-    case JobStatus.UPLOADING:
-    case JobStatus.COMPLETED:
-    case JobStatus.FAILED:
-      return 4;
-    default:
-      return 2;
-  }
-}
-
 export async function triggerExtraction(
   videoId: YouTubeVideoId,
 ): Promise<void> {
@@ -207,12 +189,15 @@ export async function checkJobStatus(
 
             // Emit progress (fire and forget inside sync callback is safer in loop)
             if (!jobFailed && !manifestUri) {
+              // Map the job progress (0-100) to step/totalSteps format
+              // We use the progress value to estimate the current step within job monitoring
+              const totalJobSteps = 100; // Progress is 0-100
               emit<SlideStreamEvent>(
                 {
                   type: "progress",
                   status: jobUpdate.status,
-                  step: resolveJobStep(jobUpdate.status),
-                  totalSteps: TOTAL_STEPS,
+                  step: Math.floor(jobUpdate.progress),
+                  totalSteps: totalJobSteps,
                   message: jobUpdate.message,
                 },
                 writable,
