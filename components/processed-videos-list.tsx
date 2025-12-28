@@ -8,6 +8,7 @@ import {
   getCoreRowModel,
   getFilteredRowModel,
   getPaginationRowModel,
+  type Table as TableType,
   useReactTable,
 } from "@tanstack/react-table";
 import { FileVideo, Image as ImageIcon, Search } from "lucide-react";
@@ -231,6 +232,178 @@ interface VideosDataTableProps {
   data: VideoData[];
 }
 
+function DesktopTableView({ table }: { table: TableType<VideoData> }) {
+  return (
+    <div className="hidden md:block rounded-lg border">
+      <Table>
+        <TableHeader>
+          {table.getHeaderGroups().map((hg) => (
+            <TableRow key={hg.id}>
+              {hg.headers.map((h) => (
+                <TableHead key={h.id} style={{ width: h.getSize() }}>
+                  {flexRender(h.column.columnDef.header, h.getContext())}
+                </TableHead>
+              ))}
+            </TableRow>
+          ))}
+        </TableHeader>
+        <TableBody>
+          {table.getRowModel().rows.length ? (
+            table.getRowModel().rows.map((row) => (
+              <TableRow key={row.id}>
+                {row.getVisibleCells().map((cell) => (
+                  <TableCell key={cell.id}>
+                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                  </TableCell>
+                ))}
+              </TableRow>
+            ))
+          ) : (
+            <TableRow>
+              <TableCell
+                colSpan={columns.length}
+                className="h-24 text-center text-muted-foreground"
+              >
+                No videos found matching your search
+              </TableCell>
+            </TableRow>
+          )}
+        </TableBody>
+      </Table>
+    </div>
+  );
+}
+
+function PaginationControls({
+  table,
+  start,
+  end,
+  totalRows,
+}: {
+  table: TableType<VideoData>;
+  start: number;
+  end: number;
+  totalRows: number;
+}) {
+  const { pageIndex, pageSize } = table.getState().pagination;
+
+  return (
+    <div className="flex flex-col gap-3 border-t pt-4 sm:flex-row sm:items-center sm:justify-between">
+      <span className="text-sm text-muted-foreground">
+        Showing {start}-{end} of {totalRows}
+      </span>
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-muted-foreground">Rows</span>
+          <Select
+            value={pageSize.toString()}
+            onValueChange={(v) => table.setPageSize(Number(v))}
+          >
+            <SelectTrigger className="h-9 w-20">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {[10, 25, 50, 100].map((n) => (
+                <SelectItem key={n} value={n.toString()}>
+                  {n}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="flex items-center gap-1">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => table.setPageIndex(0)}
+            disabled={!table.getCanPreviousPage()}
+          >
+            First
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => table.previousPage()}
+            disabled={!table.getCanPreviousPage()}
+          >
+            Prev
+          </Button>
+          <span className="px-2 text-sm text-muted-foreground">
+            {pageIndex + 1} / {table.getPageCount() || 1}
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => table.nextPage()}
+            disabled={!table.getCanNextPage()}
+          >
+            Next
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => table.setPageIndex(table.getPageCount() - 1)}
+            disabled={!table.getCanNextPage()}
+          >
+            Last
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function FilterBar({
+  searchValue,
+  onSearchChange,
+  slidesFilter,
+  onSlidesFilterChange,
+  slideAnalysisFilter,
+  onSlideAnalysisFilterChange,
+  superAnalysisFilter,
+  onSuperAnalysisFilterChange,
+}: {
+  searchValue: string;
+  onSearchChange: (value: string) => void;
+  slidesFilter: string;
+  onSlidesFilterChange: (value: string) => void;
+  slideAnalysisFilter: string;
+  onSlideAnalysisFilterChange: (value: string) => void;
+  superAnalysisFilter: string;
+  onSuperAnalysisFilterChange: (value: string) => void;
+}) {
+  return (
+    <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+      <div className="relative w-full md:max-w-sm">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input
+          placeholder="Search by title, channel..."
+          value={searchValue}
+          onChange={(e) => onSearchChange(e.target.value)}
+          className="pl-9 h-9"
+        />
+      </div>
+      <div className="flex flex-wrap items-center justify-end gap-2">
+        <FilterSelect
+          label="Slides"
+          value={slidesFilter}
+          onValueChange={onSlidesFilterChange}
+        />
+        <FilterSelect
+          label="Slide AI"
+          value={slideAnalysisFilter}
+          onValueChange={onSlideAnalysisFilterChange}
+        />
+        <FilterSelect
+          label="Super AI"
+          value={superAnalysisFilter}
+          onValueChange={onSuperAnalysisFilterChange}
+        />
+      </div>
+    </div>
+  );
+}
+
 export function VideosDataTable({ data }: VideosDataTableProps) {
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
 
@@ -258,38 +431,22 @@ export function VideosDataTable({ data }: VideosDataTableProps) {
   return (
     <div className="space-y-6">
       {/* Filters */}
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div className="relative w-full md:max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search by title, channel..."
-            value={getFilter("videoData.title")}
-            onChange={(e) => setFilter("videoData.title", e.target.value)}
-            className="pl-9 h-9"
-          />
-        </div>
-        <div className="flex flex-wrap items-center justify-end gap-2">
-          <FilterSelect
-            label="Slides"
-            value={getFilter("hasSlides") || "all"}
-            onValueChange={(v) => setFilter("hasSlides", v === "all" ? "" : v)}
-          />
-          <FilterSelect
-            label="Slide AI"
-            value={getFilter("hasSlideAnalysis") || "all"}
-            onValueChange={(v) =>
-              setFilter("hasSlideAnalysis", v === "all" ? "" : v)
-            }
-          />
-          <FilterSelect
-            label="Super AI"
-            value={getFilter("hasSuperAnalysis") || "all"}
-            onValueChange={(v) =>
-              setFilter("hasSuperAnalysis", v === "all" ? "" : v)
-            }
-          />
-        </div>
-      </div>
+      <FilterBar
+        searchValue={getFilter("videoData.title")}
+        onSearchChange={(value) => setFilter("videoData.title", value)}
+        slidesFilter={getFilter("hasSlides") || "all"}
+        onSlidesFilterChange={(v) =>
+          setFilter("hasSlides", v === "all" ? "" : v)
+        }
+        slideAnalysisFilter={getFilter("hasSlideAnalysis") || "all"}
+        onSlideAnalysisFilterChange={(v) =>
+          setFilter("hasSlideAnalysis", v === "all" ? "" : v)
+        }
+        superAnalysisFilter={getFilter("hasSuperAnalysis") || "all"}
+        onSuperAnalysisFilterChange={(v) =>
+          setFilter("hasSuperAnalysis", v === "all" ? "" : v)
+        }
+      />
 
       {/* Mobile Card View */}
       <div className="md:hidden space-y-3">
@@ -307,110 +464,15 @@ export function VideosDataTable({ data }: VideosDataTableProps) {
       </div>
 
       {/* Desktop Table View */}
-      <div className="hidden md:block rounded-lg border">
-        <Table>
-          <TableHeader>
-            {table.getHeaderGroups().map((hg) => (
-              <TableRow key={hg.id}>
-                {hg.headers.map((h) => (
-                  <TableHead key={h.id} style={{ width: h.getSize() }}>
-                    {flexRender(h.column.columnDef.header, h.getContext())}
-                  </TableHead>
-                ))}
-              </TableRow>
-            ))}
-          </TableHeader>
-          <TableBody>
-            {table.getRowModel().rows.length ? (
-              table.getRowModel().rows.map((row) => (
-                <TableRow key={row.id}>
-                  {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext(),
-                      )}
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell
-                  colSpan={columns.length}
-                  className="h-24 text-center text-muted-foreground"
-                >
-                  No videos found matching your search
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </div>
+      <DesktopTableView table={table} />
 
       {/* Pagination */}
-      <div className="flex flex-col gap-3 border-t pt-4 sm:flex-row sm:items-center sm:justify-between">
-        <span className="text-sm text-muted-foreground">
-          Showing {start}-{end} of {totalRows}
-        </span>
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">Rows</span>
-            <Select
-              value={pageSize.toString()}
-              onValueChange={(v) => table.setPageSize(Number(v))}
-            >
-              <SelectTrigger className="h-9 w-20">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {[10, 25, 50, 100].map((n) => (
-                  <SelectItem key={n} value={n.toString()}>
-                    {n}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="flex items-center gap-1">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => table.setPageIndex(0)}
-              disabled={!table.getCanPreviousPage()}
-            >
-              First
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => table.previousPage()}
-              disabled={!table.getCanPreviousPage()}
-            >
-              Prev
-            </Button>
-            <span className="px-2 text-sm text-muted-foreground">
-              {pageIndex + 1} / {table.getPageCount() || 1}
-            </span>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => table.nextPage()}
-              disabled={!table.getCanNextPage()}
-            >
-              Next
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => table.setPageIndex(table.getPageCount() - 1)}
-              disabled={!table.getCanNextPage()}
-            >
-              Last
-            </Button>
-          </div>
-        </div>
-      </div>
+      <PaginationControls
+        table={table}
+        start={start}
+        end={end}
+        totalRows={totalRows}
+      />
     </div>
   );
 }
