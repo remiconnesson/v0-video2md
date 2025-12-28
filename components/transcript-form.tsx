@@ -1,5 +1,6 @@
 "use client";
 
+import { Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useActionState, useEffect } from "react";
 import { validateVideoId } from "@/app/actions";
@@ -37,8 +38,14 @@ export function TranscriptFetcher() {
       </CardHeader>
 
       <CardContent className="space-y-4">
-        <TranscriptForm action={action} isPending={isPending} />
-        {state?.error && <ErrorMessage message={state.error} />}
+        <TranscriptForm
+          action={action}
+          isPending={isPending}
+          error={state?.error}
+        />
+        {state?.error && (
+          <ErrorMessage message={state.error} id="transcript-error" />
+        )}
       </CardContent>
     </Card>
   );
@@ -51,9 +58,11 @@ export function TranscriptFetcher() {
 function TranscriptForm({
   action,
   isPending,
+  error,
 }: {
   action: (formData: FormData) => void;
   isPending: boolean;
+  error?: string;
 }) {
   const buttonText = isPending ? "Starting Workflow..." : "Fetch Transcript";
 
@@ -67,19 +76,26 @@ function TranscriptForm({
           placeholder="e.g. https://youtu.be/gN07gbipMoY or gN07gbipMoY"
           disabled={isPending}
           required
+          aria-invalid={!!error}
+          aria-describedby={error ? "transcript-error" : undefined}
         />
       </div>
 
       <Button type="submit" disabled={isPending} className="w-full">
+        {isPending && <Loader2 className="animate-spin" />}
         {buttonText}
       </Button>
     </form>
   );
 }
 
-function ErrorMessage({ message }: { message: string }) {
+function ErrorMessage({ message, id }: { message: string; id?: string }) {
   return (
-    <div className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
+    <div
+      id={id}
+      className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700"
+      role="alert"
+    >
       ❌ {message}
     </div>
   );
