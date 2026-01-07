@@ -29,6 +29,10 @@ describe("createWorkflowRouteHandler", () => {
     };
   });
 
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   it("should restart workflow if run is not found (WorkflowRunNotFoundError)", async () => {
     const videoId = "video123" as YouTubeVideoId;
     const workflowId = "wrun_123";
@@ -155,5 +159,31 @@ describe("createWorkflowRouteHandler", () => {
         errorCode: undefined,
       },
     );
+  });
+
+  it("should re-throw other errors and not swallow them", async () => {
+    const videoId = "video456" as YouTubeVideoId;
+    const workflowId = "wrun_456";
+
+    mockGetWorkflowRecord.mockResolvedValue({ workflowId });
+
+    // Simulate a different error (not WorkflowRunNotFoundError)
+    const error = new Error("Network error");
+    error.name = "NetworkError";
+
+    const mockRun = {
+      status: Promise.reject(error),
+    };
+
+    // biome-ignore lint/suspicious/noExplicitAny: Mocking internal workflow type
+    vi.mocked(workflowApi.getRun).mockReturnValue(mockRun as any);
+
+    // Verify that the error is re-thrown
+    await expect(handler(videoId)).rejects.toThrow("Network error");
+
+    expect(mockGetWorkflowRecord).toHaveBeenCalledWith(videoId);
+    expect(workflowApi.getRun).toHaveBeenCalledWith(workflowId);
+    // Verify that startWorkflow was NOT called for non-WorkflowRunNotFoundError
+    expect(mockStartWorkflow).not.toHaveBeenCalled();
   });
 });
