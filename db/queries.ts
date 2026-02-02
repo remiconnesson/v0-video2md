@@ -871,7 +871,9 @@ export async function upsertAnalysisStatus(
       target: [transcriptAnalysisStatus.videoId],
       set: {
         status,
-        completedSections: completedSections ?? sql`${transcriptAnalysisStatus.completedSections}`,
+        completedSections:
+          completedSections ??
+          sql`${transcriptAnalysisStatus.completedSections}`,
         errorMessage,
         completedAt: status === "completed" ? new Date() : null,
       },
@@ -906,7 +908,10 @@ export async function markAnalysisCompleted(videoId: string) {
 /**
  * Marks analysis as failed with an error message.
  */
-export async function markAnalysisFailed(videoId: string, errorMessage: string) {
+export async function markAnalysisFailed(
+  videoId: string,
+  errorMessage: string,
+) {
   await db
     .update(transcriptAnalysisStatus)
     .set({
