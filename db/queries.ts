@@ -14,6 +14,7 @@ import type { TranscriptSegment } from "@/lib/transcript-format";
 import type { YouTubeVideoId } from "@/lib/youtube-utils";
 import { db } from "./index";
 import {
+  type AnalysisStatus,
   channels,
   type FramePosition,
   scrapTranscriptV1,
@@ -21,6 +22,8 @@ import {
   slideFeedback,
   superAnalysisRuns,
   superAnalysisWorkflowIds,
+  transcriptAnalysisSections,
+  transcriptAnalysisStatus,
   videoAnalysisRuns,
   videoAnalysisWorkflowIds,
   videoSlideExtractions,
@@ -757,4 +760,167 @@ export async function deleteSlideAnalysisResults(videoId: string) {
   await db
     .delete(slideAnalysisResults)
     .where(eq(slideAnalysisResults.videoId, videoId));
+}
+
+// ============================================================================
+// Streamed Transcript Analysis Queries (Section-by-Section)
+// ============================================================================
+
+/**
+ * Saves a single analysis section to the database.
+ * Upserts based on videoId + sectionKey, so re-running analysis overwrites.
+ */
+export async function saveAnalysisSection(
+  videoId: string,
+  section: {
+    sectionKey: string;
+    sectionTitle: string | null;
+    markdown: string;
+    sectionOrder: number;
+  },
+) {
+  await db
+    .insert(transcriptAnalysisSections)
+    .values({
+      videoId,
+      sectionKey: section.sectionKey,
+      sectionTitle: section.sectionTitle,
+      markdown: section.markdown,
+      sectionOrder: section.sectionOrder,
+    })
+    .onConflictDoUpdate({
+      target: [
+        transcriptAnalysisSections.videoId,
+        transcriptAnalysisSections.sectionKey,
+      ],
+      set: {
+        sectionTitle: section.sectionTitle,
+        markdown: section.markdown,
+        sectionOrder: section.sectionOrder,
+        createdAt: new Date(),
+      },
+    });
+}
+
+/**
+ * Gets all analysis sections for a video, ordered by sectionOrder.
+ */
+export async function getAnalysisSections(videoId: string) {
+  return await db
+    .select()
+    .from(transcriptAnalysisSections)
+    .where(eq(transcriptAnalysisSections.videoId, videoId))
+    .orderBy(asc(transcriptAnalysisSections.sectionOrder));
+}
+
+/**
+ * Checks if a video has any analysis sections (new format).
+ * Used to determine whether to use new sections or legacy JSONB result.
+ */
+export async function hasAnalysisSections(videoId: string): Promise<boolean> {
+  const result = await findOne(
+    db
+      .select({ id: transcriptAnalysisSections.id })
+      .from(transcriptAnalysisSections)
+      .where(eq(transcriptAnalysisSections.videoId, videoId))
+      .limit(1),
+  );
+  return !!result;
+}
+
+/**
+ * Deletes all analysis sections for a video (for re-analysis).
+ */
+export async function deleteAnalysisSections(videoId: string) {
+  await db
+    .delete(transcriptAnalysisSections)
+    .where(eq(transcriptAnalysisSections.videoId, videoId));
+}
+
+/**
+ * Gets the analysis status for a video.
+ */
+export async function getAnalysisStatus(videoId: string) {
+  return await findOne(
+    db
+      .select()
+      .from(transcriptAnalysisStatus)
+      .where(eq(transcriptAnalysisStatus.videoId, videoId)),
+  );
+}
+
+/**
+ * Creates or updates the analysis status for a video.
+ */
+export async function upsertAnalysisStatus(
+  videoId: string,
+  status: AnalysisStatus,
+  completedSections?: number,
+  errorMessage?: string | null,
+) {
+  await db
+    .insert(transcriptAnalysisStatus)
+    .values({
+      videoId,
+      status,
+      completedSections: completedSections ?? 0,
+      errorMessage,
+      completedAt: status === "completed" ? new Date() : null,
+    })
+    .onConflictDoUpdate({
+      target: [transcriptAnalysisStatus.videoId],
+      set: {
+        status,
+        completedSections: completedSections ?? sql`${transcriptAnalysisStatus.completedSections}`,
+        errorMessage,
+        completedAt: status === "completed" ? new Date() : null,
+      },
+    });
+}
+
+/**
+ * Increments the completed sections count for a video.
+ */
+export async function incrementCompletedSections(videoId: string) {
+  await db
+    .update(transcriptAnalysisStatus)
+    .set({
+      completedSections: sql`${transcriptAnalysisStatus.completedSections} + 1`,
+    })
+    .where(eq(transcriptAnalysisStatus.videoId, videoId));
+}
+
+/**
+ * Marks analysis as completed.
+ */
+export async function markAnalysisCompleted(videoId: string) {
+  await db
+    .update(transcriptAnalysisStatus)
+    .set({
+      status: "completed",
+      completedAt: new Date(),
+    })
+    .where(eq(transcriptAnalysisStatus.videoId, videoId));
+}
+
+/**
+ * Marks analysis as failed with an error message.
+ */
+export async function markAnalysisFailed(videoId: string, errorMessage: string) {
+  await db
+    .update(transcriptAnalysisStatus)
+    .set({
+      status: "failed",
+      errorMessage,
+    })
+    .where(eq(transcriptAnalysisStatus.videoId, videoId));
+}
+
+/**
+ * Deletes the analysis status for a video (for re-analysis).
+ */
+export async function deleteAnalysisStatus(videoId: string) {
+  await db
+    .delete(transcriptAnalysisStatus)
+    .where(eq(transcriptAnalysisStatus.videoId, videoId));
 }
