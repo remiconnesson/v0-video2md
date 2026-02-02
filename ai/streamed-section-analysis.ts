@@ -1,14 +1,16 @@
 /**
- * Streamed Section Analysis
+ * Streamed Section Analysis with DurableAgent
  *
- * This module implements durable transcript analysis by streaming sections
- * one at a time. Each section is saved to the database as soon as it's generated,
- * so if the workflow times out, already-completed sections persist.
+ * This module implements durable transcript analysis using Workflow DevKit's
+ * DurableAgent. Each section tool call is a durable workflow step that
+ * immediately saves to the database.
  *
- * Uses AI SDK's streamText with a tool that the model calls for each section.
+ * If the workflow times out or crashes, already-completed sections persist
+ * and the workflow can resume from where it left off.
  */
 
-import { streamText, tool } from "ai";
+import { DurableAgent } from "@workflow/ai/agent";
+import type { UIMessageChunk } from "ai";
 import { z } from "zod";
 import { incrementCompletedSections, saveAnalysisSection } from "@/db/queries";
 
@@ -30,10 +32,6 @@ export interface SectionEmitArgs {
   markdown: string;
   sectionOrder: number;
 }
-
-export type OnSectionEmitted = (
-  section: SectionEmitArgs,
-) => void | Promise<void>;
 
 // ============================================================================
 // System Prompt for Section Streaming
@@ -124,64 +122,69 @@ const emitSectionSchema = z.object({
 type EmitSectionInput = z.infer<typeof emitSectionSchema>;
 
 // ============================================================================
-// Main Function
+// Durable Tool Execute Function (marked as "use step" for durability)
 // ============================================================================
 
 /**
- * Streams transcript analysis section by section.
- *
- * Each section is saved to the database as the tool is called,
- * providing durability even if the overall process times out.
- *
- * @param input - Video and transcript data
- * @param onSectionEmitted - Callback fired after each section is saved (for streaming to client)
+ * Durable step function that saves a section to the database.
+ * Because this is marked with "use step", each tool call becomes a
+ * durable workflow step with automatic retries.
  */
-export function streamSectionAnalysis(
-  input: StreamedAnalysisInput,
-  onSectionEmitted?: OnSectionEmitted,
-) {
-  const userPrompt = buildUserPrompt(input);
+export async function emitSectionStep(
+  videoId: string,
+  args: EmitSectionInput,
+): Promise<{ success: boolean; sectionKey: string }> {
+  "use step";
 
-  return streamText({
+  // Save to database immediately
+  await saveAnalysisSection(videoId, {
+    sectionKey: args.sectionKey,
+    sectionTitle: args.sectionTitle,
+    markdown: args.markdown,
+    sectionOrder: args.sectionOrder,
+  });
+
+  // Increment the completed sections counter
+  await incrementCompletedSections(videoId);
+
+  // Return confirmation (model sees this)
+  return { success: true, sectionKey: args.sectionKey };
+}
+
+// ============================================================================
+// Create DurableAgent for Section Analysis
+// ============================================================================
+
+/**
+ * Creates a DurableAgent configured for section-by-section transcript analysis.
+ * Each tool call is a durable workflow step that persists immediately.
+ *
+ * @param videoId - The video ID to associate with sections
+ */
+export function createSectionAnalysisAgent(videoId: string) {
+  return new DurableAgent({
     model: "openai/gpt-5.1",
     system: STREAMED_ANALYSIS_SYSTEM_PROMPT,
-    prompt: userPrompt,
     toolChoice: "required", // Force the model to use tools
     tools: {
-      emit_section: tool({
+      emit_section: {
         description:
-          "Emit a completed analysis section. Call this for each section.",
+          "Emit a completed analysis section. Call this for each section you want to include in the analysis.",
         inputSchema: emitSectionSchema,
         execute: async (args: EmitSectionInput) => {
-          // Save to database immediately
-          await saveAnalysisSection(input.videoId, {
-            sectionKey: args.sectionKey,
-            sectionTitle: args.sectionTitle,
-            markdown: args.markdown,
-            sectionOrder: args.sectionOrder,
-          });
-
-          // Increment the completed sections counter
-          await incrementCompletedSections(input.videoId);
-
-          // Notify callback if provided
-          if (onSectionEmitted) {
-            await onSectionEmitted(args);
-          }
-
-          // Return confirmation (model sees this)
-          return { success: true, sectionKey: args.sectionKey };
+          // Call the durable step with the videoId
+          return emitSectionStep(videoId, args);
         },
-      }),
+      },
     },
   });
 }
 
 // ============================================================================
-// Helpers
+// Helper to build user prompt
 // ============================================================================
 
-function buildUserPrompt(input: StreamedAnalysisInput): string {
+export function buildAnalysisUserPrompt(input: StreamedAnalysisInput): string {
   const parts: string[] = [];
 
   parts.push(`# Video: ${input.title}`);
@@ -202,3 +205,9 @@ function buildUserPrompt(input: StreamedAnalysisInput): string {
 
   return parts.join("\n\n");
 }
+
+// ============================================================================
+// Export types for workflow usage
+// ============================================================================
+
+export type { UIMessageChunk };

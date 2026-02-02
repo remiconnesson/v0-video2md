@@ -1,32 +1,37 @@
 /**
- * Streamed Transcript Analysis Workflow
+ * Streamed Transcript Analysis Workflow with DurableAgent
  *
- * This workflow analyzes video transcripts using a durable section-by-section approach.
- * Unlike the original workflow that saves results only at the end, this one saves
- * each section to the database as soon as it's generated via tool calls.
+ * This workflow analyzes video transcripts using Workflow DevKit's DurableAgent.
+ * Each section tool call is a durable workflow step that immediately saves
+ * to the database.
  *
- * If the workflow times out or fails, already-completed sections persist in the database.
+ * If the workflow times out or crashes, already-completed sections persist
+ * and the workflow can resume from where it left off.
  */
 
+import type { UIMessageChunk } from "ai";
 import { getWritable } from "workflow";
+import {
+  buildAnalysisUserPrompt,
+  createSectionAnalysisAgent,
+} from "@/ai/streamed-section-analysis";
 import {
   fetchYoutubeTranscriptFromApify,
   saveYoutubeTranscriptToDb,
 } from "./steps/fetch-transcript";
 import {
-  doStreamedSectionAnalysis,
   failStreamedAnalysis,
   finalizeStreamedAnalysis,
   getTranscriptDataFromDb,
   initializeStreamedAnalysis,
-  type SectionAnalysisStreamEvent,
   type TranscriptData,
 } from "./steps/transcript-analysis";
 
 export async function analyzeTranscriptStreamedWorkflow(videoId: string) {
   "use workflow";
 
-  const writable = getWritable<SectionAnalysisStreamEvent>();
+  // DurableAgent streams to UIMessageChunk
+  const writable = getWritable<UIMessageChunk>();
   let transcriptData: TranscriptData | null;
 
   console.log("Checking cached transcript for video", videoId);
@@ -47,19 +52,36 @@ export async function analyzeTranscriptStreamedWorkflow(videoId: string) {
   }
 
   console.log("🤖 Initializing streamed analysis for video", videoId);
-  await initializeStreamedAnalysis(videoId, writable);
+  await initializeStreamedAnalysis(videoId);
 
   try {
-    console.log("🤖 Running streamed section analysis for video", videoId);
-    await doStreamedSectionAnalysis(transcriptData, writable);
+    console.log("🤖 Running DurableAgent analysis for video", videoId);
+
+    // Create the DurableAgent with the emit_section tool
+    const agent = createSectionAnalysisAgent(videoId);
+
+    // Build the user message with the transcript
+    const userMessage = buildAnalysisUserPrompt({
+      videoId,
+      title: transcriptData.title,
+      channelName: transcriptData.channelName,
+      description: transcriptData.description ?? undefined,
+      transcript: transcriptData.transcript,
+    });
+
+    // Run the agent - tool calls are durable steps
+    await agent.stream({
+      messages: [{ role: "user", content: userMessage }],
+      writable,
+    });
 
     console.log("🤖 Finalizing analysis for video", videoId);
-    await finalizeStreamedAnalysis(videoId, writable);
+    await finalizeStreamedAnalysis(videoId);
   } catch (error) {
     const errorMessage =
       error instanceof Error ? error.message : "Unknown error";
     console.error("🤖 Analysis failed for video", videoId, errorMessage);
-    await failStreamedAnalysis(videoId, errorMessage, writable);
+    await failStreamedAnalysis(videoId, errorMessage);
     throw error; // Re-throw to let the workflow handle it
   }
 

@@ -1,8 +1,5 @@
 import { streamDynamicAnalysis } from "@/ai/dynamic-analysis";
-import {
-  type SectionEmitArgs,
-  streamSectionAnalysis,
-} from "@/ai/streamed-section-analysis";
+import type { SectionEmitArgs } from "@/ai/streamed-section-analysis";
 import {
   deleteAnalysisSections,
   deleteAnalysisStatus,
@@ -104,7 +101,7 @@ export type AnalysisStreamEvent =
   | { type: "error"; message: string };
 
 // ============================================================================
-// Streamed Section Analysis Steps (Durable Approach)
+// Streamed Section Analysis Steps (DurableAgent Approach)
 // ============================================================================
 
 /**
@@ -120,10 +117,7 @@ export type SectionAnalysisStreamEvent =
  * Initialize streamed section analysis by clearing any previous data
  * and setting status to "streaming"
  */
-export async function initializeStreamedAnalysis(
-  videoId: string,
-  writable: WritableStream<SectionAnalysisStreamEvent>,
-) {
+export async function initializeStreamedAnalysis(videoId: string) {
   "use step";
 
   // Clear any previous sections and status (for re-analysis)
@@ -132,68 +126,15 @@ export async function initializeStreamedAnalysis(
 
   // Initialize status as streaming
   await upsertAnalysisStatus(videoId, "streaming", 0);
-
-  await emit<SectionAnalysisStreamEvent>(
-    { type: "progress", phase: "init", message: "Starting analysis" },
-    writable,
-  );
-}
-
-/**
- * Run the streamed section analysis.
- * Each section is saved to the database as soon as it's generated via tool calls.
- */
-export async function doStreamedSectionAnalysis(
-  transcriptData: TranscriptData,
-  writable: WritableStream<SectionAnalysisStreamEvent>,
-) {
-  "use step";
-
-  await emit<SectionAnalysisStreamEvent>(
-    { type: "progress", phase: "analyzing", message: "Generating sections" },
-    writable,
-  );
-
-  const analysisStream = streamSectionAnalysis(
-    {
-      videoId: transcriptData.videoId,
-      title: transcriptData.title,
-      channelName: transcriptData.channelName,
-      description: transcriptData.description ?? undefined,
-      transcript: transcriptData.transcript,
-    },
-    // Callback for each section emitted - stream to client
-    async (section) => {
-      await emit<SectionAnalysisStreamEvent>(
-        { type: "section", data: section },
-        writable,
-      );
-    },
-  );
-
-  // Consume the stream to completion (tool calls happen during iteration)
-  for await (const _ of analysisStream.fullStream) {
-    // Tool calls are being executed during iteration
-    // The callback above handles streaming each section to the client
-  }
 }
 
 /**
  * Mark the analysis as completed
  */
-export async function finalizeStreamedAnalysis(
-  videoId: string,
-  writable: WritableStream<SectionAnalysisStreamEvent>,
-) {
+export async function finalizeStreamedAnalysis(videoId: string) {
   "use step";
 
   await markAnalysisCompleted(videoId);
-
-  await emit<SectionAnalysisStreamEvent>(
-    { type: "complete" },
-    writable,
-    true, // Close the stream
-  );
 }
 
 /**
@@ -202,15 +143,8 @@ export async function finalizeStreamedAnalysis(
 export async function failStreamedAnalysis(
   videoId: string,
   errorMessage: string,
-  writable: WritableStream<SectionAnalysisStreamEvent>,
 ) {
   "use step";
 
   await markAnalysisFailed(videoId, errorMessage);
-
-  await emit<SectionAnalysisStreamEvent>(
-    { type: "error", message: errorMessage },
-    writable,
-    true, // Close the stream
-  );
 }
