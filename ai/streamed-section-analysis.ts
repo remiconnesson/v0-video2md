@@ -12,7 +12,10 @@
 import { DurableAgent } from "@workflow/ai/agent";
 import type { UIMessageChunk } from "ai";
 import { z } from "zod";
-import { incrementCompletedSections, saveAnalysisSection } from "@/db/queries";
+import {
+  saveAnalysisSection,
+  updateCompletedSectionsCount,
+} from "@/db/queries";
 
 // ============================================================================
 // Types
@@ -144,8 +147,8 @@ export async function emitSectionStep(
     sectionOrder: args.sectionOrder,
   });
 
-  // Increment the completed sections counter
-  await incrementCompletedSections(videoId);
+  // Update the completed sections counter (idempotent - counts persisted rows)
+  await updateCompletedSectionsCount(videoId);
 
   // Return confirmation (model sees this)
   return { success: true, sectionKey: args.sectionKey };

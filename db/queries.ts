@@ -881,13 +881,18 @@ export async function upsertAnalysisStatus(
 }
 
 /**
- * Increments the completed sections count for a video.
+ * Updates the completed sections count for a video by counting persisted rows.
+ * This is idempotent - safe to call multiple times (e.g., on durable step retries).
  */
-export async function incrementCompletedSections(videoId: string) {
+export async function updateCompletedSectionsCount(videoId: string) {
   await db
     .update(transcriptAnalysisStatus)
     .set({
-      completedSections: sql`${transcriptAnalysisStatus.completedSections} + 1`,
+      completedSections: sql`(
+        SELECT COUNT(*)
+        FROM ${transcriptAnalysisSections}
+        WHERE ${transcriptAnalysisSections.videoId} = ${videoId}
+      )`,
     })
     .where(eq(transcriptAnalysisStatus.videoId, videoId));
 }

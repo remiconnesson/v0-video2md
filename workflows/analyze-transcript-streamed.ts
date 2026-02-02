@@ -15,6 +15,7 @@ import {
   buildAnalysisUserPrompt,
   createSectionAnalysisAgent,
 } from "@/ai/streamed-section-analysis";
+import { isValidYouTubeVideoId } from "@/lib/youtube-utils";
 import {
   fetchYoutubeTranscriptFromApify,
   saveYoutubeTranscriptToDb,
@@ -29,6 +30,11 @@ import {
 
 export async function analyzeTranscriptStreamedWorkflow(videoId: string) {
   "use workflow";
+
+  // Validate videoId at workflow boundary before any DB or network work
+  if (!isValidYouTubeVideoId(videoId)) {
+    throw new Error(`Invalid YouTube videoId: ${videoId}`);
+  }
 
   // DurableAgent streams to UIMessageChunk
   const writable = getWritable<UIMessageChunk>();
