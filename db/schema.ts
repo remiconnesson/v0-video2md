@@ -107,6 +107,61 @@ export const videoAnalysisRuns = pgTable("video_analysis_runs", {
 export type VideoAnalysisRun = typeof videoAnalysisRuns.$inferSelect;
 export type NewVideoAnalysisRun = typeof videoAnalysisRuns.$inferInsert;
 
+// ============================================================================
+// Streamed Transcript Analysis Tables (Durable Section-by-Section Storage)
+// ============================================================================
+
+/**
+ * Stores individual analysis sections for durability.
+ * Each section is saved as soon as it's generated, so if the workflow
+ * times out, already-completed sections persist.
+ *
+ * This replaces the monolithic JSONB storage in videoAnalysisRuns for new analyses.
+ * Legacy analyses in videoAnalysisRuns remain readable for backward compatibility.
+ */
+export const transcriptAnalysisSections = pgTable(
+  "transcript_analysis_sections",
+  {
+    id: serial("id").primaryKey(),
+    videoId: videoIdColumn(),
+    sectionKey: varchar("section_key", { length: 100 }).notNull(), // e.g., "tldr", "key_takeaways"
+    sectionTitle: text("section_title"), // Human-readable title (optional)
+    markdown: text("markdown").notNull(), // Section content in markdown
+    sectionOrder: integer("section_order").notNull(), // Order in output
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("transcript_analysis_sections_video_idx").on(table.videoId),
+    unique("transcript_analysis_sections_video_key").on(
+      table.videoId,
+      table.sectionKey,
+    ),
+  ],
+);
+
+export type TranscriptAnalysisSection =
+  typeof transcriptAnalysisSections.$inferSelect;
+export type NewTranscriptAnalysisSection =
+  typeof transcriptAnalysisSections.$inferInsert;
+
+/**
+ * Tracks the status of streamed transcript analysis.
+ * Used to determine if analysis is complete, in progress, or failed.
+ */
+export const transcriptAnalysisStatus = pgTable("transcript_analysis_status", {
+  videoId: videoIdColumn().primaryKey(),
+  status: analysisStatusEnum("status").notNull().default("pending"),
+  completedSections: integer("completed_sections").default(0).notNull(), // Sections saved so far
+  errorMessage: text("error_message"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  completedAt: timestamp("completed_at"),
+});
+
+export type TranscriptAnalysisStatusRow =
+  typeof transcriptAnalysisStatus.$inferSelect;
+export type NewTranscriptAnalysisStatusRow =
+  typeof transcriptAnalysisStatus.$inferInsert;
+
 export const videoAnalysisWorkflowIds = pgTable(
   "video_analysis_workflow_ids",
   {
