@@ -18,6 +18,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { StepIndicator } from "@/components/ui/step-indicator";
 import type { SlideAnalysisResultsResponse } from "@/lib/api-types";
 import { UI } from "@/lib/constants";
@@ -897,12 +898,12 @@ function StickyActionsFooter({
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           {/* Left side - Confirmation checkbox */}
           <label className="flex items-center gap-3 cursor-pointer">
-            <input
-              type="checkbox"
+            <Checkbox
               checked={slidesConfirmed}
-              onChange={(e) => onSlidesConfirmedChange(e.target.checked)}
+              onCheckedChange={(checked) =>
+                onSlidesConfirmedChange(checked === true)
+              }
               disabled={!hasPickedFrames || isAnalyzing}
-              className="h-5 w-5 rounded border-gray-300 text-primary focus:ring-2 focus:ring-primary disabled:opacity-50"
             />
             <span
               className={cn(

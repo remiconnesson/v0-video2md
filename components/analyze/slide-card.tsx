@@ -4,6 +4,7 @@ import { ImageIcon, ZoomIn } from "lucide-react";
 import Image from "next/image";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import type { SlideData, SlideFeedbackData } from "@/lib/slides-types";
 import { formatDuration } from "@/lib/time-utils";
 import { cn } from "@/lib/utils";
@@ -39,11 +40,9 @@ function FrameCard({
             : "bg-muted/30 border-muted hover:border-primary/50 hover:bg-primary/5",
         )}
       >
-        <input
-          type="checkbox"
+        <Checkbox
           checked={isPicked}
-          onChange={(e) => onPickedChange(e.target.checked)}
-          className="h-5 w-5 rounded border-gray-300 text-primary focus:ring-2 focus:ring-primary"
+          onCheckedChange={(checked) => onPickedChange(checked === true)}
         />
         <span className="text-base font-semibold">Pick {label} Frame</span>
       </label>
