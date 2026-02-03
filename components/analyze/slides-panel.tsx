@@ -897,25 +897,27 @@ function StickyActionsFooter({
       <div className="mx-auto max-w-5xl px-4 py-3 md:px-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           {/* Left side - Confirmation checkbox */}
-          <label className="flex items-center gap-3 cursor-pointer">
+          <div className="flex items-center gap-3">
             <Checkbox
+              id="slides-confirmation"
               checked={slidesConfirmed}
               onCheckedChange={(checked) =>
                 onSlidesConfirmedChange(checked === true)
               }
               disabled={!hasPickedFrames || isAnalyzing}
             />
-            <span
+            <label
+              htmlFor="slides-confirmation"
               className={cn(
-                "text-sm",
+                "text-sm cursor-pointer",
                 !hasPickedFrames && "text-muted-foreground",
               )}
             >
               {hasPickedFrames
                 ? `These ${pickedFramesCount} slides look good to me`
                 : "Pick some slides first"}
-            </span>
-          </label>
+            </label>
+          </div>
 
           {/* Right side - Action buttons */}
           <div className="flex items-center gap-2 flex-wrap">
