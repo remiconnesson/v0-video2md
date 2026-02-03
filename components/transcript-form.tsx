@@ -67,6 +67,8 @@ function TranscriptForm({
           placeholder="e.g. https://youtu.be/gN07gbipMoY or gN07gbipMoY"
           disabled={isPending}
           required
+          autoComplete="off"
+          spellCheck={false}
         />
       </div>
 
