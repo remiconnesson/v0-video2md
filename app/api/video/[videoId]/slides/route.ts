@@ -22,11 +22,11 @@ export async function GET(
 ) {
   const { videoId } = await ctx.params;
 
-  // Get extraction status
-  const extraction = await getSlideExtractionStatus(videoId);
-
-  // Get existing slides
-  const slides = await getVideoSlides(videoId);
+  // Get extraction status and existing slides in parallel
+  const [extraction, slides] = await Promise.all([
+    getSlideExtractionStatus(videoId),
+    getVideoSlides(videoId),
+  ]);
 
   // If extraction status is "in_progress" but we have slides, fix the status
   // This handles the case where extraction completed but status wasn't updated
