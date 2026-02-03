@@ -56,7 +56,7 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
     status: SlidesStatus.LOADING,
     step: 1,
     totalSteps: 4,
-    message: "Loading slides...",
+    message: "Loading slides…",
     error: null,
     slides: [],
   });
@@ -99,7 +99,7 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
       setSlidesState((prev) => ({
         ...prev,
         status: SlidesStatus.LOADING,
-        message: "Loading slides...",
+        message: "Loading slides…",
         error: null,
       }));
       return;
@@ -139,7 +139,7 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
             status: SlidesStatus.EXTRACTING,
             step: 2,
             totalSteps: 4,
-            message: "Slide extraction in progress...",
+            message: "Slide extraction in progress…",
             error: null,
             slides,
           });
@@ -150,7 +150,7 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
             status: SlidesStatus.EXTRACTING,
             step: 1,
             totalSteps: 4,
-            message: "Slide extraction in progress...",
+            message: "Slide extraction in progress…",
             error: null,
             slides,
           });
@@ -284,7 +284,7 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
     setAnalysisState({
       status: SlideAnalysisStatus.STREAMING,
       progress: 0,
-      message: "Starting analysis...",
+      message: "Starting analysis…",
       error: null,
     });
 
@@ -377,7 +377,7 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
       status: SlidesStatus.EXTRACTING,
       step: 1,
       totalSteps: 4,
-      message: "Starting slides extraction...",
+      message: "Starting slides extraction…",
       error: null,
       slides: [],
     }));
@@ -467,7 +467,7 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
         <CardContent className="py-12">
           <div className="flex items-center justify-center gap-3">
             <Loader2 className="h-5 w-5 animate-spin" />
-            <span>Starting slides extraction...</span>
+            <span>Starting slides extraction…</span>
           </div>
         </CardContent>
       </Card>
@@ -522,7 +522,7 @@ function LoadingState() {
       <CardContent className="py-12">
         <div className="flex items-center justify-center gap-3">
           <Loader2 className="h-5 w-5 animate-spin" />
-          <span>Loading slides...</span>
+          <span>Loading slides…</span>
         </div>
       </CardContent>
     </Card>
@@ -924,7 +924,7 @@ function StickyActionsFooter({
               onClick={onUnpickAll}
               disabled={!hasPickedFrames || isUnpickingAll || isAnalyzing}
             >
-              {isUnpickingAll ? "Unpicking..." : "Unpick all"}
+              {isUnpickingAll ? "Unpicking…" : "Unpick all"}
             </Button>
 
             {isAnalysisComplete ? (

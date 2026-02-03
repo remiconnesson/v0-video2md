@@ -55,7 +55,7 @@ function TranscriptForm({
   action: (formData: FormData) => void;
   isPending: boolean;
 }) {
-  const buttonText = isPending ? "Starting Workflow..." : "Fetch Transcript";
+  const buttonText = isPending ? "Starting Workflow…" : "Fetch Transcript";
 
   return (
     <form action={action} className="space-y-4">

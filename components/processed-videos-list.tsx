@@ -377,7 +377,7 @@ function FilterBar({
       <div className="relative w-full md:max-w-sm">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
-          placeholder="Search by title, channel..."
+          placeholder="Search by title, channel…"
           value={searchValue}
           onChange={(e) => onSearchChange(e.target.value)}
           className="pl-9 h-9"
