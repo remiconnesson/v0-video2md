@@ -115,3 +115,43 @@ This document outlines extensive opportunities to improve the React and Next.js 
 - **Skills Reference**: `AGENTS.md -> Dumb components`.
 - **Reasoning**: Extracting UI scaffolding into private, single-use sub-components within the same file improves the "narrative readability" of the core logic.
 - **Next Steps**: Perform an editorial pass on large components to push low-signal UI scaffolding into private sub-components.
+
+---
+
+## 3. The Prompt to use to create such a document
+
+To recreate or update this document, an AI agent should follow this structured audit process:
+
+### Audit Prompt
+
+> **Role**: Act as an expert Frontend Architect specializing in React 19, Next.js 16, and Vercel Engineering standards.
+>
+> **Objective**: Perform a comprehensive audit of the codebase to identify opportunities for improvement in performance, architecture, accessibility, and design polish.
+>
+> **Instructions**:
+> 1. **Codebase Exploration**:
+>    - Scan `app/`, `components/`, and `lib/` to understand data fetching and component organization.
+>    - Identify large components (>200 lines) and duplicated UI logic.
+> 2. **Best Practice Alignment**:
+>    - Reference `.agents/skills/vercel-react-best-practices/` for performance rules (waterfalls, bundle size).
+>    - Reference `.agents/skills/vercel-composition-patterns/` for component architecture.
+>    - Consult the latest [Web Interface Guidelines](https://raw.githubusercontent.com/vercel-labs/web-interface-guidelines/main/command.md).
+> 3. **Specific Audit Checkpoints**:
+>    - **Performance**: Look for sequential awaits in layouts/actions and client-side-only fetches that could be pre-fetched.
+>    - **Accessibility**: Check for icon-only buttons without labels, missing alt text, and semantic HTML usage.
+>    - **Forms**: Verify placeholder patterns, validation feedback, and autocomplete usage.
+>    - **Typography**: Check for standard ellipsis (`…`) and curly quote usage.
+>    - **Consistency**: Identify where native elements are used instead of established UI library components.
+> 4. **Output Format**:
+>    - **Section 1: Todo List**: A high-level markdown checklist of improvements.
+>    - **Section 2: Opportunity Details**: For each item, provide:
+>      - **File Involved**: Specific file path.
+>      - **Rationale**: Short explanation of the benefit.
+>      - **Skills Reference**: The specific rule or guideline being followed.
+>      - **Reasoning**: In-depth technical justification.
+>      - **Next Steps**: Actionable instructions for an implementation agent.
+
+### Verification Steps for the Auditor
+- Ensure every "Rationale" points to a tangible improvement (TTI, FCP, Accessibility Score).
+- Verify that "Next Steps" are specific enough for another agent to execute without further research.
+- Double-check that all typography findings follow the "professional polish" guidelines (e.g., `…` vs `...`).
