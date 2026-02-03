@@ -779,6 +779,7 @@ function FramesHeader({
             className="h-8 w-8 text-muted-foreground hover:text-foreground"
             onClick={onShowTutorial}
             title="Show tutorial"
+            aria-label="Show tutorial"
           >
             <HelpCircle className="h-4 w-4" />
           </Button>
