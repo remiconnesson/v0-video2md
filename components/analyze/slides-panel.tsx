@@ -822,6 +822,7 @@ function TutorialCard({ onDismiss }: { onDismiss: () => void }) {
           size="icon"
           className="h-7 w-7 text-muted-foreground hover:text-foreground hover:bg-primary/10"
           onClick={onDismiss}
+          aria-label="Dismiss tutorial"
         >
           <X className="h-4 w-4" />
         </Button>
