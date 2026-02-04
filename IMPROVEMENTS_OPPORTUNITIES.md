@@ -8,7 +8,7 @@ This document outlines opportunities to improve the React and Next.js codebase o
 
 ### Performance & Data Fetching
 - [x] ~~Eliminate Waterfall in `AnalyzeLayout`~~ *(resolved: uses Promise.all for parallel fetching)*
-- [ ] **Implement Server-Side Pre-fetching for `ProcessedVideosList`**
+- [x] ~~Implement Server-Side Pre-fetching for `ProcessedVideosList`~~ *(resolved: server component pre-fetches videos)*
 - [ ] **Optimize `useStreamingFetch` with `eventsource-parser`**
 - [ ] **Parallelize Data Fetching in Workflows**
 - [x] ~~Parallelize sequential awaits in `/api/video/[videoId]/slides/route.ts`~~ *(resolved: uses Promise.all)*
@@ -37,12 +37,11 @@ This document outlines opportunities to improve the React and Next.js codebase o
 
 ## 2. Opportunity Details
 
-### Implement Server-Side Pre-fetching for `ProcessedVideosList`
-- **Files Involved**: `app/page.tsx`, `components/processed-videos-list.tsx`
-- **Rationale**: The videos list is currently fetched only on the client-side via `useQuery` (fetch-on-mount).
+### ~~Implement Server-Side Pre-fetching for `ProcessedVideosList`~~ *(resolved)*
+- **Files Involved**: `app/page.tsx`, `components/processed-videos-list.tsx`, `lib/video-data.ts`
+- **Rationale**: The videos list was fetched only on the client-side via `useQuery` (fetch-on-mount).
 - **Skills Reference**: `client-swr-dedup` / Next.js Server Components.
-- **Reasoning**: Pre-fetching the initial list of videos in the Server Component and passing it as `initialData` to `useQuery` improves SEO and makes the page feel much faster (FCP).
-- **Next Steps**: Fetch the initial video list in `app/page.tsx` and pass it to `ProcessedVideosList`.
+- **Resolution**: Created `lib/video-data.ts` with shared data fetching logic, converted home page to async server component, and added `initialData` prop to `ProcessedVideosList` for useQuery hydration.
 
 ### Optimize `useStreamingFetch` with `eventsource-parser`
 - **Files Involved**: `lib/sse.ts`, `lib/use-streaming-fetch.ts`
@@ -118,6 +117,10 @@ This document outlines opportunities to improve the React and Next.js codebase o
 
 ## 3. Resolved Items (for reference)
 
+### Implement Server-Side Pre-fetching for `ProcessedVideosList`
+- **Files**: `app/page.tsx`, `components/processed-videos-list.tsx`, `lib/video-data.ts`
+- **Resolution**: Created shared `getProcessedVideosData()` function in `lib/video-data.ts`, converted home page to async server component to pre-fetch videos, and added `initialData` prop to `ProcessedVideosList` for useQuery hydration. This improves FCP by rendering video data immediately on server render.
+
 ### Eliminate Waterfall in `AnalyzeLayout`
 - **File**: `app/video/youtube/[youtubeId]/analyze/layout.tsx`
 - **Resolution**: Uses `Promise.all` for `getCompletedAnalysis` and `hasSlideAnalysisResults` after fetching transcript.
@@ -152,14 +155,14 @@ This document outlines opportunities to improve the React and Next.js codebase o
 
 | Category | Pending | Resolved | Priority |
 |----------|---------|----------|----------|
-| Performance & Data Fetching | 4 | 2 | HIGH |
+| Performance & Data Fetching | 3 | 3 | HIGH |
 | Component Architecture | 4 | 1 | MEDIUM |
 | Accessibility & UX | 2 | 3 | HIGH |
 | Typography & Polish | 2 | 1 | LOW |
 
 ### Priority Actions
 
-1. **HIGH**: Implement server-side pre-fetching for `ProcessedVideosList` to improve FCP
+1. ~~**HIGH**: Implement server-side pre-fetching for `ProcessedVideosList` to improve FCP~~ *(done)*
 2. **HIGH**: Implement global error boundaries for better reliability
 3. **MEDIUM**: Extract shared section components to reduce duplication
 4. **MEDIUM**: Implement `useOptimistic` for slide selection (React 19 API)

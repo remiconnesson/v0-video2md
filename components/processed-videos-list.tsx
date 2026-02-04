@@ -35,7 +35,11 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-export function ProcessedVideosList() {
+interface ProcessedVideosListProps {
+  initialData?: VideoData[];
+}
+
+export function ProcessedVideosList({ initialData }: ProcessedVideosListProps) {
   const {
     data: videos,
     isLoading,
@@ -47,6 +51,7 @@ export function ProcessedVideosList() {
       if (!response.ok) throw new Error("Failed to fetch videos");
       return response.json();
     },
+    initialData,
     staleTime: 5 * 60 * 1000, // 5 minutes
     retry: 2,
   });
