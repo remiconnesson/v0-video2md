@@ -2,6 +2,8 @@ import { ProcessedVideosList } from "@/components/processed-videos-list";
 import { TranscriptFetcher } from "@/components/transcript-form";
 import { getProcessedVideosData } from "@/lib/video-data";
 
+export const dynamic = "force-dynamic";
+
 export default async function Home() {
   const videos = await getProcessedVideosData();
 
