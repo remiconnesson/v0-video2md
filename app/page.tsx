@@ -1,7 +1,10 @@
 import { ProcessedVideosList } from "@/components/processed-videos-list";
 import { TranscriptFetcher } from "@/components/transcript-form";
+import { getProcessedVideosData } from "@/lib/video-data";
 
-export default function Home() {
+export default async function Home() {
+  const videos = await getProcessedVideosData();
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
       <div className="container mx-auto px-4 py-6 md:py-12 max-w-4xl">
@@ -18,7 +21,7 @@ export default function Home() {
           <TranscriptFetcher />
         </div>
 
-        <ProcessedVideosList />
+        <ProcessedVideosList initialData={videos} />
       </div>
     </div>
   );
