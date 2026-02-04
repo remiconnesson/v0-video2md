@@ -74,12 +74,12 @@ describe("SlidesPanel Auto-Trigger Extraction", () => {
     );
 
     // Should show loading state initially
-    expect(screen.getByText("Loading slides...")).toBeInTheDocument();
+    expect(screen.getByText("Loading slides…")).toBeInTheDocument();
 
     // Wait for the idle state to be detected and extraction to start
     await waitFor(() => {
       expect(
-        screen.getByText("Starting slides extraction..."),
+        screen.getByText("Starting slides extraction…"),
       ).toBeInTheDocument();
     });
 

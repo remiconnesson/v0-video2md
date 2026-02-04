@@ -50,6 +50,7 @@ export function ZoomDialog({
               size="icon"
               className="absolute left-2 top-1/2 -translate-y-1/2 z-10 text-white hover:bg-white/20"
               onClick={() => setViewingIndex((i) => i - 1)}
+              aria-label="Previous image"
             >
               <ChevronLeft className="h-8 w-8" />
             </Button>
@@ -60,6 +61,7 @@ export function ZoomDialog({
               size="icon"
               className="absolute right-2 top-1/2 -translate-y-1/2 z-10 text-white hover:bg-white/20"
               onClick={() => setViewingIndex((i) => i + 1)}
+              aria-label="Next image"
             >
               <ChevronRight className="h-8 w-8" />
             </Button>

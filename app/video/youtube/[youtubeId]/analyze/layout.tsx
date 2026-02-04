@@ -51,7 +51,7 @@ export default async function AnalyzeLayout({
                   asChild
                   className="shrink-0"
                 >
-                  <Link href="/">
+                  <Link href="/" aria-label="Go to home page">
                     <Home className="h-5 w-5" />
                   </Link>
                 </Button>
