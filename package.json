@@ -60,7 +60,6 @@
     "@vitest/browser-webdriverio": "latest",
     "@vitest/ui": "latest",
     "ai": "latest",
-    "youtube-dl-exec": "^3.0.14",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "latest",
@@ -89,9 +88,11 @@
     "streamdown": "latest",
     "tailwind-merge": "^2.6.0",
     "tailwindcss-animate": "^1.0.7",
+    "undici": "^7.20.0",
     "vaul": "latest",
     "vite": "latest",
     "workflow": "4.0.1-beta.31",
+    "youtube-dl-exec": "^3.0.14",
     "zod": "^4.2.0"
   },
   "devDependencies": {
