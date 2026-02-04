@@ -167,8 +167,8 @@ export function SlideAnalysisPanel({ videoId }: SlideAnalysisPanelProps) {
       setProgress({
         current: 0,
         message: targets?.length
-          ? "Starting analysis for missing slides..."
-          : "Starting analysis...",
+          ? "Starting analysis for missing slides…"
+          : "Starting analysis…",
       });
 
       try {
@@ -257,7 +257,7 @@ export function SlideAnalysisPanel({ videoId }: SlideAnalysisPanelProps) {
         <CardContent className="py-12">
           <div className="flex items-center justify-center gap-3">
             <Loader2 className="h-5 w-5 animate-spin" />
-            <span>Loading slide analysis...</span>
+            <span>Loading slide analysis…</span>
           </div>
         </CardContent>
       </Card>
@@ -457,7 +457,7 @@ function SlideCoverageSummary({
   if (status === CoverageStatus.LOADING) {
     return (
       <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
-        Checking for missing slides...
+        Checking for missing slides…
       </div>
     );
   }

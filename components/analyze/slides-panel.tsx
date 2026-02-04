@@ -18,6 +18,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { StepIndicator } from "@/components/ui/step-indicator";
 import type { SlideAnalysisResultsResponse } from "@/lib/api-types";
 import { UI } from "@/lib/constants";
@@ -56,7 +57,7 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
     status: SlidesStatus.LOADING,
     step: 1,
     totalSteps: 4,
-    message: "Loading slides...",
+    message: "Loading slides…",
     error: null,
     slides: [],
   });
@@ -99,7 +100,7 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
       setSlidesState((prev) => ({
         ...prev,
         status: SlidesStatus.LOADING,
-        message: "Loading slides...",
+        message: "Loading slides…",
         error: null,
       }));
       return;
@@ -139,7 +140,7 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
             status: SlidesStatus.EXTRACTING,
             step: 2,
             totalSteps: 4,
-            message: "Slide extraction in progress...",
+            message: "Slide extraction in progress…",
             error: null,
             slides,
           });
@@ -150,7 +151,7 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
             status: SlidesStatus.EXTRACTING,
             step: 1,
             totalSteps: 4,
-            message: "Slide extraction in progress...",
+            message: "Slide extraction in progress…",
             error: null,
             slides,
           });
@@ -284,7 +285,7 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
     setAnalysisState({
       status: SlideAnalysisStatus.STREAMING,
       progress: 0,
-      message: "Starting analysis...",
+      message: "Starting analysis…",
       error: null,
     });
 
@@ -377,7 +378,7 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
       status: SlidesStatus.EXTRACTING,
       step: 1,
       totalSteps: 4,
-      message: "Starting slides extraction...",
+      message: "Starting slides extraction…",
       error: null,
       slides: [],
     }));
@@ -467,7 +468,7 @@ export function SlidesPanel({ videoId }: SlidesPanelProps) {
         <CardContent className="py-12">
           <div className="flex items-center justify-center gap-3">
             <Loader2 className="h-5 w-5 animate-spin" />
-            <span>Starting slides extraction...</span>
+            <span>Starting slides extraction…</span>
           </div>
         </CardContent>
       </Card>
@@ -522,7 +523,7 @@ function LoadingState() {
       <CardContent className="py-12">
         <div className="flex items-center justify-center gap-3">
           <Loader2 className="h-5 w-5 animate-spin" />
-          <span>Loading slides...</span>
+          <span>Loading slides…</span>
         </div>
       </CardContent>
     </Card>
@@ -662,45 +663,15 @@ function CompletedState({
     <div className="flex flex-col">
       <Card className="flex-1">
         <CardHeader>
-          <CardTitle className="flex items-center justify-between">
-            <span className="flex items-center gap-2">
-              <ImageIcon className="h-5 w-5" />
-              Frames ({pickedFramesCount}/{totalFramesCount})
-            </span>
-            <div className="flex flex-wrap items-center gap-2">
-              {!showTutorial && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                  onClick={() => setShowTutorial(true)}
-                  title="Show tutorial"
-                >
-                  <HelpCircle className="h-4 w-4" />
-                </Button>
-              )}
-              {/* Show only picked toggle */}
-              <Button
-                variant={showOnlyPicked ? "secondary" : "outline"}
-                size="sm"
-                onClick={() => setShowOnlyPicked(!showOnlyPicked)}
-                className="gap-1.5"
-                disabled={!hasPickedFrames}
-              >
-                {showOnlyPicked ? (
-                  <>
-                    <Eye className="h-4 w-4" />
-                    Show all
-                  </>
-                ) : (
-                  <>
-                    <EyeOff className="h-4 w-4" />
-                    Show picked only
-                  </>
-                )}
-              </Button>
-            </div>
-          </CardTitle>
+          <FramesHeader
+            pickedFramesCount={pickedFramesCount}
+            totalFramesCount={totalFramesCount}
+            showTutorial={showTutorial}
+            onShowTutorial={() => setShowTutorial(true)}
+            showOnlyPicked={showOnlyPicked}
+            onToggleShowOnlyPicked={() => setShowOnlyPicked(!showOnlyPicked)}
+            hasPickedFrames={hasPickedFrames}
+          />
         </CardHeader>
 
         {/* Analysis progress indicator */}
@@ -735,49 +706,7 @@ function CompletedState({
           )}
         >
           {showTutorial && (
-            <Card className="mb-6 bg-primary/[0.02] border-primary/20 shadow-none relative overflow-hidden">
-              <div className="absolute top-2 right-2">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7 text-muted-foreground hover:text-foreground hover:bg-primary/10"
-                  onClick={() => setShowTutorial(false)}
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base flex items-center gap-2 text-primary">
-                  <HelpCircle className="h-4 w-4" />
-                  How this page works
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4 text-sm text-muted-foreground">
-                <p>
-                  Pick the slides you&apos;d like to include in the final
-                  analysis. Changes are saved automatically.
-                </p>
-                <p>
-                  Once you&apos;ve picked your slides, confirm your selection
-                  below and click &quot;Analyze Selected Slides&quot; to
-                  generate the Super Analysis.
-                </p>
-                <p>
-                  You can use the &quot;Show picked only&quot; toggle to review
-                  just your selected frames.
-                </p>
-                <div className="pt-2 flex justify-end">
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => setShowTutorial(false)}
-                    className="text-xs h-8"
-                  >
-                    Hide tutorial
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+            <TutorialCard onDismiss={() => setShowTutorial(false)} />
           )}
 
           {filteredSlides.length === 0 && showOnlyPicked ? (
@@ -817,6 +746,124 @@ function CompletedState({
 }
 
 // ============================================================================
+// Frames Header
+// ============================================================================
+
+function FramesHeader({
+  pickedFramesCount,
+  totalFramesCount,
+  showTutorial,
+  onShowTutorial,
+  showOnlyPicked,
+  onToggleShowOnlyPicked,
+  hasPickedFrames,
+}: {
+  pickedFramesCount: number;
+  totalFramesCount: number;
+  showTutorial: boolean;
+  onShowTutorial: () => void;
+  showOnlyPicked: boolean;
+  onToggleShowOnlyPicked: () => void;
+  hasPickedFrames: boolean;
+}) {
+  return (
+    <CardTitle className="flex items-center justify-between">
+      <span className="flex items-center gap-2">
+        <ImageIcon className="h-5 w-5" />
+        Frames ({pickedFramesCount}/{totalFramesCount})
+      </span>
+      <div className="flex flex-wrap items-center gap-2">
+        {!showTutorial && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 text-muted-foreground hover:text-foreground"
+            onClick={onShowTutorial}
+            title="Show tutorial"
+            aria-label="Show tutorial"
+          >
+            <HelpCircle className="h-4 w-4" />
+          </Button>
+        )}
+        {/* Show only picked toggle */}
+        <Button
+          variant={showOnlyPicked ? "secondary" : "outline"}
+          size="sm"
+          onClick={onToggleShowOnlyPicked}
+          className="gap-1.5"
+          disabled={!hasPickedFrames}
+        >
+          {showOnlyPicked ? (
+            <>
+              <Eye className="h-4 w-4" />
+              Show all
+            </>
+          ) : (
+            <>
+              <EyeOff className="h-4 w-4" />
+              Show picked only
+            </>
+          )}
+        </Button>
+      </div>
+    </CardTitle>
+  );
+}
+
+// ============================================================================
+// Tutorial Card
+// ============================================================================
+
+function TutorialCard({ onDismiss }: { onDismiss: () => void }) {
+  return (
+    <Card className="mb-6 bg-primary/[0.02] border-primary/20 shadow-none relative overflow-hidden">
+      <div className="absolute top-2 right-2">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7 text-muted-foreground hover:text-foreground hover:bg-primary/10"
+          onClick={onDismiss}
+          aria-label="Dismiss tutorial"
+        >
+          <X className="h-4 w-4" />
+        </Button>
+      </div>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base flex items-center gap-2 text-primary">
+          <HelpCircle className="h-4 w-4" />
+          How this page works
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4 text-sm text-muted-foreground">
+        <p>
+          Pick the slides you&apos;d like to include in the final analysis.
+          Changes are saved automatically.
+        </p>
+        <p>
+          Once you&apos;ve picked your slides, confirm your selection below and
+          click &quot;Analyze Selected Slides&quot; to generate the Super
+          Analysis.
+        </p>
+        <p>
+          You can use the &quot;Show picked only&quot; toggle to review just
+          your selected frames.
+        </p>
+        <div className="pt-2 flex justify-end">
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={onDismiss}
+            className="text-xs h-8"
+          >
+            Hide tutorial
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ============================================================================
 // Sticky Actions Footer
 // ============================================================================
 
@@ -850,25 +897,27 @@ function StickyActionsFooter({
       <div className="mx-auto max-w-5xl px-4 py-3 md:px-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           {/* Left side - Confirmation checkbox */}
-          <label className="flex items-center gap-3 cursor-pointer">
-            <input
-              type="checkbox"
+          <div className="flex items-center gap-3">
+            <Checkbox
+              id="slides-confirmation"
               checked={slidesConfirmed}
-              onChange={(e) => onSlidesConfirmedChange(e.target.checked)}
+              onCheckedChange={(checked) =>
+                onSlidesConfirmedChange(checked === true)
+              }
               disabled={!hasPickedFrames || isAnalyzing}
-              className="h-5 w-5 rounded border-gray-300 text-primary focus:ring-2 focus:ring-primary disabled:opacity-50"
             />
-            <span
+            <label
+              htmlFor="slides-confirmation"
               className={cn(
-                "text-sm",
+                "text-sm cursor-pointer",
                 !hasPickedFrames && "text-muted-foreground",
               )}
             >
               {hasPickedFrames
                 ? `These ${pickedFramesCount} slides look good to me`
                 : "Pick some slides first"}
-            </span>
-          </label>
+            </label>
+          </div>
 
           {/* Right side - Action buttons */}
           <div className="flex items-center gap-2 flex-wrap">
@@ -878,7 +927,7 @@ function StickyActionsFooter({
               onClick={onUnpickAll}
               disabled={!hasPickedFrames || isUnpickingAll || isAnalyzing}
             >
-              {isUnpickingAll ? "Unpicking..." : "Unpick all"}
+              {isUnpickingAll ? "Unpicking…" : "Unpick all"}
             </Button>
 
             {isAnalysisComplete ? (
