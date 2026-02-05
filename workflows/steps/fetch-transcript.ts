@@ -257,7 +257,7 @@ export async function fetchYoutubeTranscriptFromYtdlCore(
     channelName: String(
       author?.name ?? videoDetails.author ?? "Unknown Channel",
     ),
-    description: videoDetails.description ?? videoDetails.shortDescription ?? "",
+    description: videoDetails.description ?? "",
     numberOfSubscribers: Number(author?.subscriber_count ?? 0),
     viewCount: Number(videoDetails.viewCount ?? 0),
     likes: Number(videoDetails.likes ?? 0),
