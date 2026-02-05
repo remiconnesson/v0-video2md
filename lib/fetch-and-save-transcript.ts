@@ -151,6 +151,12 @@ async function ensureYtDlpBinary(): Promise<string> {
   } catch {
     const binaryDir = path.dirname(binaryPath);
     await mkdir(binaryDir, { recursive: true });
+    try {
+      await access(binaryPath);
+      return binaryPath;
+    } catch {
+      // proceed with download
+    }
 
     const downloadUrl = `${YT_DLP_DOWNLOAD_BASE_URL}/${getYtDlpDownloadName()}`;
     console.log(`[yt-dlp] Downloading yt-dlp binary from: ${downloadUrl}`);
@@ -173,7 +179,17 @@ async function ensureYtDlpBinary(): Promise<string> {
     await writeFile(tempPath, buffer);
 
     if (process.platform !== "win32") {
-      await chmod(tempPath, 0o755);
+      try {
+        await chmod(tempPath, 0o755);
+      } catch (error) {
+        await access(binaryPath);
+        await access(tempPath).then(
+          () => {
+            throw error;
+          },
+          () => undefined,
+        );
+      }
     }
 
     try {
@@ -327,16 +343,21 @@ async function fetchYoutubeTranscriptFromYtDlp(
 
   console.log(`[yt-dlp] Fetching metadata for video: ${videoId}`);
 
-  // Fetch video metadata and subtitle info using yt-dlp
-  const result = await ytDlp(videoUrl, {
+  const ytDlpOptions: Record<string, unknown> = {
     dumpSingleJson: true,
     noWarnings: true,
     skipDownload: true,
     proxy: proxyUrl,
     noCacheDir: true,
-    noCheckCertificates: disableTlsVerify,
     forceIpv4: true,
-  });
+  };
+
+  if (disableTlsVerify) {
+    ytDlpOptions.noCheckCertificates = true;
+  }
+
+  // Fetch video metadata and subtitle info using yt-dlp
+  const result = await ytDlp(videoUrl, ytDlpOptions);
 
   // When using dumpSingleJson, the result is a Payload object, not a string
   if (typeof result === "string") {
