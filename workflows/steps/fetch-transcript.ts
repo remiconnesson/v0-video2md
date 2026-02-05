@@ -175,6 +175,8 @@ export async function fetchYoutubeTranscriptFromYoutubei(
       return undiFetch(url, {
         ...fetchInit,
         dispatcher: proxyAgent,
+        // @ts-expect-error
+        connect: disableTlsVerify ? { rejectUnauthorized: false } : undefined,
       });
     }) as any,
   });
@@ -214,6 +216,8 @@ export async function fetchYoutubeTranscriptFromYoutubei(
           "User-Agent":
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
         },
+        // @ts-expect-error
+        connect: disableTlsVerify ? { rejectUnauthorized: false } : undefined,
       });
 
       if (subtitleResponse.ok) {
