@@ -1,6 +1,6 @@
 import { getWritable } from "workflow";
 import {
-  fetchYoutubeTranscriptFromYtDlp,
+  fetchYoutubeTranscriptFromYtdlCore,
   saveYoutubeTranscriptToDb,
 } from "./steps/fetch-transcript";
 import {
@@ -26,8 +26,8 @@ export async function analyzeTranscriptWorkflow(videoId: string) {
     console.log("🤖 Found cached transcript for video", videoId);
   } else {
     console.log("🤖 No cached transcript found for video", videoId);
-    console.log("🤖 Fetching transcript via yt-dlp for video", videoId);
-    const fetchedResult = await fetchYoutubeTranscriptFromYtDlp(videoId);
+    console.log("🤖 Fetching transcript via ytdl-core for video", videoId);
+    const fetchedResult = await fetchYoutubeTranscriptFromYtdlCore(videoId);
     console.log("🤖 Saving transcript for video", videoId);
     await saveYoutubeTranscriptToDb(fetchedResult);
     // biome-ignore lint/style/noNonNullAssertion: we just inserted it into the db

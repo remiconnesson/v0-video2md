@@ -1,5 +1,5 @@
 import {
-  fetchYoutubeTranscriptFromYtDlp,
+  fetchYoutubeTranscriptFromYtdlCore,
   saveYoutubeTranscriptToDb,
 } from "./steps/fetch-transcript";
 import {
@@ -19,8 +19,8 @@ export async function fetchAndSaveTranscriptWorkflow(videoId: string) {
   if (cachedTranscriptData) {
     transcriptData = cachedTranscriptData;
   } else {
-    console.log("[fetchAndSaveTranscript] 3. Fetching via yt-dlp...");
-    const fetchedResult = await fetchYoutubeTranscriptFromYtDlp(videoId);
+    console.log("[fetchAndSaveTranscript] 3. Fetching via ytdl-core...");
+    const fetchedResult = await fetchYoutubeTranscriptFromYtdlCore(videoId);
     console.log("[fetchAndSaveTranscript] 4. Saving to DB...");
     await saveYoutubeTranscriptToDb(fetchedResult);
     // biome-ignore lint/style/noNonNullAssertion: we know the transcript data is not null
