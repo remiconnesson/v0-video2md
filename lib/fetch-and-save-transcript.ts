@@ -6,7 +6,7 @@ Moved the fetch-and-save-transcript logic from the workflow directly into a lib 
 Tried to reuse the workflow steps directly but stumbled upon another issue https://github.com/vercel/workflow/issues/630, where you can't call a step function outside of a workflow if that functions uses dependencies not marked with "use step"
 */
 
-import { ProxyAgent, fetch as undiFetch } from "undici";
+import { Client, ProxyAgent, fetch as undiFetch } from "undici";
 import { Innertube } from "youtubei.js";
 import { z } from "zod";
 import { getVideoWithTranscript } from "@/db/queries";
@@ -206,10 +206,23 @@ async function fetchYoutubeTranscriptFromYoutubei(
   const proxyAgent = new ProxyAgent({
     uri: `http://${zyteHost}:8011`,
     token: `Basic ${Buffer.from(`${zyteApiKey.trim()}:`).toString("base64")}`,
-    connect: disableTlsVerify ? { rejectUnauthorized: false } : undefined,
+    // factory is used to create the Client for the target origin (e.g. youtube.com)
+    factory: (origin, opts) => {
+      return new Client(origin, {
+        ...opts,
+        connect: disableTlsVerify ? { rejectUnauthorized: false } : undefined,
+      });
+    },
   });
 
   console.log(`[youtubei.js] Fetching metadata for video: ${videoId}`);
+
+  // If TLS verification is disabled, set the global Node.js flag as a last resort
+  // to ensure all internal library calls respect it.
+  const originalTlsReject = process.env.NODE_TLS_REJECT_UNAUTHORIZED;
+  if (disableTlsVerify) {
+    process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
+  }
 
   // Create Innertube instance with custom fetch to use Zyte proxy
   const yt = await Innertube.create({
@@ -238,6 +251,11 @@ async function fetchYoutubeTranscriptFromYoutubei(
   });
 
   const info = await yt.getInfo(videoId);
+
+  // Restore TLS verification flag
+  if (disableTlsVerify) {
+    process.env.NODE_TLS_REJECT_UNAUTHORIZED = originalTlsReject;
+  }
   const { basic_info } = info;
 
   console.log(`[youtubei.js] Got metadata for: ${basic_info.title}`);
@@ -266,6 +284,11 @@ async function fetchYoutubeTranscriptFromYoutubei(
       );
 
       const subtitleUrl = `${preferredTrack.base_url}&fmt=vtt`;
+
+      if (disableTlsVerify) {
+        process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
+      }
+
       const subtitleResponse = await undiFetch(subtitleUrl, {
         dispatcher: proxyAgent,
         headers: {
@@ -274,6 +297,10 @@ async function fetchYoutubeTranscriptFromYoutubei(
         },
         connect: disableTlsVerify ? { rejectUnauthorized: false } : undefined,
       } as any);
+
+      if (disableTlsVerify) {
+        process.env.NODE_TLS_REJECT_UNAUTHORIZED = originalTlsReject;
+      }
 
       if (subtitleResponse.ok) {
         const subtitleText = await subtitleResponse.text();
