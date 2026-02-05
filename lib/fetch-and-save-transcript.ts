@@ -316,7 +316,10 @@ async function fetchYoutubeTranscriptFromYoutubei(
     try {
       info = await (yt as any).getInfo(videoId, "TV");
     } catch (e) {
-      console.warn("[youtubei.js] TV client fallback failed:", (e as any).message);
+      console.warn(
+        "[youtubei.js] TV client fallback failed:",
+        (e as any).message,
+      );
     }
   }
 
@@ -338,7 +341,9 @@ async function fetchYoutubeTranscriptFromYoutubei(
   let captionTracks = (info as any).captions?.caption_tracks;
 
   if (!captionTracks || captionTracks.length === 0) {
-    console.log("[youtubei.js] Captions missing in info.captions, searching deeper...");
+    console.log(
+      "[youtubei.js] Captions missing in info.captions, searching deeper...",
+    );
     captionTracks = findCaptionTracksDeep(info);
   }
 
