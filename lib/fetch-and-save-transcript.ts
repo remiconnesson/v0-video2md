@@ -201,8 +201,10 @@ async function fetchYoutubeTranscriptFromYoutubei(
     );
   }
 
-  const proxyUrl = `http://${zyteApiKey.trim()}:@${zyteHost}:8011`;
-  const proxyAgent = new ProxyAgent(proxyUrl);
+  const proxyAgent = new ProxyAgent({
+    uri: `http://${zyteHost}:8011`,
+    token: `Basic ${Buffer.from(`${zyteApiKey.trim()}:`).toString("base64")}`,
+  });
 
   console.log(`[youtubei.js] Fetching metadata for video: ${videoId}`);
 
@@ -245,7 +247,6 @@ async function fetchYoutubeTranscriptFromYoutubei(
       );
 
       const subtitleUrl = `${preferredTrack.base_url}&fmt=vtt`;
-      const { fetch: undiFetch } = await import("undici");
       const subtitleResponse = await undiFetch(subtitleUrl, {
         dispatcher: proxyAgent,
         headers: {
