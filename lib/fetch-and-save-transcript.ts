@@ -5,6 +5,10 @@ Moved the fetch-and-save-transcript logic from the workflow directly into a lib 
 
 Tried to reuse the workflow steps directly but stumbled upon another issue https://github.com/vercel/workflow/issues/630, where you can't call a step function outside of a workflow if that functions uses dependencies not marked with "use step"
 */
+
+import { access, chmod, mkdir, rename, writeFile } from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
 import type { Payload as YtDlpPayload } from "youtube-dl-exec";
 import { z } from "zod";
 import { getVideoWithTranscript } from "@/db/queries";
@@ -63,6 +67,9 @@ const YtDlpSubtitlesSchema = z.object({
 // yt-dlp Helpers
 // ============================================================================
 
+const YT_DLP_DOWNLOAD_BASE_URL =
+  "https://github.com/yt-dlp/yt-dlp/releases/latest/download";
+
 function formatDurationFromSeconds(seconds: number): string {
   const hours = Math.floor(seconds / 3600);
   const mins = Math.floor((seconds % 3600) / 60);
@@ -97,6 +104,107 @@ function parseVttTimestamp(timestamp: string): number {
     );
   }
   return 0;
+}
+
+function getYtDlpBinaryName(): string {
+  if (process.env.YOUTUBE_DL_FILENAME?.trim()) {
+    return process.env.YOUTUBE_DL_FILENAME.trim();
+  }
+
+  return process.platform === "win32" ? "yt-dlp.exe" : "yt-dlp";
+}
+
+function getYtDlpDownloadName(): string {
+  if (process.env.YOUTUBE_DL_FILENAME?.trim()) {
+    return process.env.YOUTUBE_DL_FILENAME.trim();
+  }
+
+  if (process.platform === "win32") {
+    return "yt-dlp.exe";
+  }
+
+  if (process.platform === "darwin") {
+    return "yt-dlp_macos";
+  }
+
+  return "yt-dlp_linux";
+}
+
+function getYtDlpBinaryPath(): string {
+  if (process.env.YOUTUBE_DL_PATH?.trim()) {
+    return process.env.YOUTUBE_DL_PATH.trim();
+  }
+
+  const binaryDir =
+    process.env.YOUTUBE_DL_DIR?.trim() ??
+    path.join(os.tmpdir(), "video2md-yt-dlp");
+
+  return path.join(binaryDir, getYtDlpBinaryName());
+}
+
+async function ensureYtDlpBinary(): Promise<string> {
+  const binaryPath = getYtDlpBinaryPath();
+
+  try {
+    await access(binaryPath);
+    return binaryPath;
+  } catch {
+    const binaryDir = path.dirname(binaryPath);
+    await mkdir(binaryDir, { recursive: true });
+    try {
+      await access(binaryPath);
+      return binaryPath;
+    } catch {
+      // proceed with download
+    }
+
+    const downloadUrl = `${YT_DLP_DOWNLOAD_BASE_URL}/${getYtDlpDownloadName()}`;
+    console.log(`[yt-dlp] Downloading yt-dlp binary from: ${downloadUrl}`);
+
+    const response = await fetch(downloadUrl);
+    if (!response.ok) {
+      throw new Error(
+        `[yt-dlp] Failed to download yt-dlp binary: ${response.status} ${response.statusText}`,
+      );
+    }
+
+    const buffer = Buffer.from(await response.arrayBuffer());
+    if (buffer.length < 100_000) {
+      throw new Error(
+        `[yt-dlp] Downloaded yt-dlp binary is unexpectedly small (${buffer.length} bytes).`,
+      );
+    }
+
+    const tempPath = `${binaryPath}.download`;
+    await writeFile(tempPath, buffer);
+
+    if (process.platform !== "win32") {
+      try {
+        await chmod(tempPath, 0o755);
+      } catch (error) {
+        await access(binaryPath);
+        await access(tempPath).then(
+          () => {
+            throw error;
+          },
+          () => undefined,
+        );
+      }
+    }
+
+    try {
+      await rename(tempPath, binaryPath);
+    } catch (error) {
+      await access(binaryPath);
+      await access(tempPath).then(
+        () => {
+          throw error;
+        },
+        () => undefined,
+      );
+    }
+    return binaryPath;
+  }
 }
 
 // Parse VTT/SRT subtitle text into TranscriptSegment[]
@@ -207,7 +315,17 @@ async function fetchYoutubeTranscriptFromYtDlp(
   }
 
   const youtubeDlExec = await import("youtube-dl-exec");
-  const ytDlp = youtubeDlExec.default;
+  const ytDlpBinaryPath = await ensureYtDlpBinary();
+  const create =
+    "create" in youtubeDlExec && typeof youtubeDlExec.create === "function"
+      ? youtubeDlExec.create
+      : youtubeDlExec.default.create;
+
+  if (typeof create !== "function") {
+    throw new Error("[yt-dlp] Failed to initialize yt-dlp binary wrapper.");
+  }
+
+  const ytDlp = create(ytDlpBinaryPath);
 
   // Build proxy URL from environment variables
   const zyteApiKey = process.env.ZYTE_API_KEY;
@@ -225,16 +343,21 @@ async function fetchYoutubeTranscriptFromYtDlp(
 
   console.log(`[yt-dlp] Fetching metadata for video: ${videoId}`);
 
-  // Fetch video metadata and subtitle info using yt-dlp
-  const result = await ytDlp(videoUrl, {
+  const ytDlpOptions: Record<string, unknown> = {
     dumpSingleJson: true,
     noWarnings: true,
     skipDownload: true,
     proxy: proxyUrl,
     noCacheDir: true,
-    noCheckCertificates: disableTlsVerify,
     forceIpv4: true,
-  });
+  };
+
+  if (disableTlsVerify) {
+    ytDlpOptions.noCheckCertificates = true;
+  }
+
+  // Fetch video metadata and subtitle info using yt-dlp
+  const result = await ytDlp(videoUrl, ytDlpOptions);
 
   // When using dumpSingleJson, the result is a Payload object, not a string
   if (typeof result === "string") {
