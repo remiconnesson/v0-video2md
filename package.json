@@ -17,6 +17,7 @@
   "dependencies": {
     "@ai-sdk/openai": "^2.0.88",
     "@ai-sdk/react": "latest",
+    "@distube/ytdl-core": "^4.16.12",
     "@edge-runtime/vm": "latest",
     "@neondatabase/serverless": "latest",
     "@opentelemetry/api": "latest",
@@ -92,7 +93,6 @@
     "vaul": "latest",
     "vite": "latest",
     "workflow": "4.0.1-beta.31",
-    "youtube-dl-exec": "^3.0.14",
     "zod": "^4.2.0"
   },
   "devDependencies": {
@@ -117,7 +117,6 @@
     "vitest": "^4.0.15"
   },
   "trustedDependencies": [
-    "pg-native",
-    "youtube-dl-exec"
+    "pg-native"
   ]
 }

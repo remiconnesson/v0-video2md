@@ -5,7 +5,8 @@ Moved the fetch-and-save-transcript logic from the workflow directly into a lib 
 
 Tried to reuse the workflow steps directly but stumbled upon another issue https://github.com/vercel/workflow/issues/630, where you can't call a step function outside of a workflow if that functions uses dependencies not marked with "use step"
 */
-import type { Payload as YtDlpPayload } from "youtube-dl-exec";
+import ytdl from "@distube/ytdl-core";
+import { ProxyAgent, fetch as undiciFetch } from "undici";
 import { z } from "zod";
 import { getVideoWithTranscript } from "@/db/queries";
 import {
@@ -43,24 +44,7 @@ export interface TranscriptData {
 }
 
 // ============================================================================
-// Zod schema for validating yt-dlp subtitle format entries
-// ============================================================================
-
-const SubtitleFormatSchema = z.object({
-  ext: z.string(),
-  url: z.string(),
-  name: z.string().optional(),
-});
-
-const SubtitleMapSchema = z.record(z.string(), z.array(SubtitleFormatSchema));
-
-const YtDlpSubtitlesSchema = z.object({
-  subtitles: SubtitleMapSchema.optional().default({}),
-  automatic_captions: SubtitleMapSchema.optional().default({}),
-});
-
-// ============================================================================
-// yt-dlp Helpers
+// ytdl-core Helpers
 // ============================================================================
 
 function formatDurationFromSeconds(seconds: number): string {
@@ -196,111 +180,116 @@ async function getTranscriptDataFromDb(
 }
 
 // ============================================================================
-// yt-dlp Functions
+// ytdl-core Functions
 // ============================================================================
 
-async function fetchYoutubeTranscriptFromYtDlp(
+type CaptionTrack = {
+  baseUrl: string;
+  languageCode?: string;
+  kind?: string;
+};
+
+function buildProxyUrl(): string | null {
+  const zyteApiKey = process.env.ZYTE_API_KEY;
+  const zyteHost = process.env.ZYTE_HOST;
+
+  if (!zyteApiKey || !zyteHost) {
+    return null;
+  }
+
+  return `http://${zyteApiKey.trim()}:@${zyteHost}:8011`;
+}
+
+function buildSubtitleUrl(baseUrl: string): string {
+  const separator = baseUrl.includes("?") ? "&" : "?";
+  return `${baseUrl}${separator}fmt=vtt`;
+}
+
+function selectCaptionTrack(captionTracks: CaptionTrack[]): CaptionTrack | null {
+  if (captionTracks.length === 0) {
+    return null;
+  }
+
+  const manualTracks = captionTracks.filter((track) => track.kind !== "asr");
+  const autoTracks = captionTracks.filter((track) => track.kind === "asr");
+  const tracks = manualTracks.length > 0 ? manualTracks : autoTracks;
+
+  return (
+    tracks.find((track) =>
+      (track.languageCode ?? "").toLowerCase().startsWith("en"),
+    ) ?? tracks[0] ?? null
+  );
+}
+
+async function fetchSubtitleText(
+  subtitleUrl: string,
+  proxyUrl: string | null,
+): Promise<string> {
+  const headers = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+  };
+
+  if (proxyUrl) {
+    const proxyAgent = new ProxyAgent(proxyUrl);
+    const response = await undiciFetch(subtitleUrl, {
+      dispatcher: proxyAgent,
+      headers,
+    });
+
+    if (!response.ok) {
+      throw new Error(
+        `Failed to fetch subtitles via proxy: ${response.status}`,
+      );
+    }
+
+    return await response.text();
+  }
+
+  const response = await fetch(subtitleUrl, { headers });
+  if (!response.ok) {
+    throw new Error(`Failed to fetch subtitles: ${response.status}`);
+  }
+
+  return await response.text();
+}
+
+async function fetchYoutubeTranscriptFromYtdlCore(
   videoId: string,
 ): Promise<TranscriptResult> {
   if (!isValidYouTubeVideoId(videoId)) {
     throw new Error(`Invalid YouTube video ID format: ${videoId}`);
   }
 
-  const youtubeDlExec = await import("youtube-dl-exec");
-  const ytDlp = youtubeDlExec.default;
-
-  // Build proxy URL from environment variables
-  const zyteApiKey = process.env.ZYTE_API_KEY;
-  const zyteHost = process.env.ZYTE_HOST;
-
-  if (!zyteApiKey || !zyteHost) {
-    throw new Error(
-      "ZYTE_API_KEY and ZYTE_HOST environment variables are required",
-    );
-  }
-
-  const disableTlsVerify = process.env.YTDLP_INSECURE === "true";
-  const proxyUrl = `http://${zyteApiKey.trim()}:@${zyteHost}:8011`;
   const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
+  const proxyUrl = buildProxyUrl();
+  const agent = proxyUrl ? ytdl.createProxyAgent(proxyUrl) : undefined;
 
-  console.log(`[yt-dlp] Fetching metadata for video: ${videoId}`);
+  console.log(`[ytdl-core] Fetching metadata for video: ${videoId}`);
 
-  // Fetch video metadata and subtitle info using yt-dlp
-  const result = await ytDlp(videoUrl, {
-    dumpSingleJson: true,
-    noWarnings: true,
-    skipDownload: true,
-    proxy: proxyUrl,
-    noCacheDir: true,
-    noCheckCertificates: disableTlsVerify,
-    forceIpv4: true,
-  });
+  const info = await ytdl.getInfo(videoUrl, agent ? { agent } : undefined);
 
-  // When using dumpSingleJson, the result is a Payload object, not a string
-  if (typeof result === "string") {
-    throw new Error(`Unexpected string response from yt-dlp: ${result}`);
+  console.log(`[ytdl-core] Got metadata for: ${info.videoDetails.title}`);
+
+  const captionTracks =
+    info.player_response?.captions?.playerCaptionsTracklistRenderer
+      ?.captionTracks ?? [];
+  const selectedTrack = selectCaptionTrack(captionTracks);
+
+  if (!selectedTrack) {
+    throw new Error(`No captions available for video: ${videoId}`);
   }
-  const metadata: YtDlpPayload = result;
 
-  console.log(`[yt-dlp] Got metadata for: ${metadata.title}`);
+  const isAutoGenerated = selectedTrack.kind === "asr";
+  const subtitleUrl = buildSubtitleUrl(selectedTrack.baseUrl);
 
-  // Validate subtitle-related fields with Zod
-  const subtitleData = YtDlpSubtitlesSchema.parse({
-    subtitles: metadata.subtitles,
-    automatic_captions: metadata.automatic_captions,
-  });
+  console.log(
+    `[ytdl-core] Fetching ${isAutoGenerated ? "auto-generated" : "manual"} subtitles (${selectedTrack.languageCode ?? "unknown"})`,
+  );
 
-  const { subtitles, automatic_captions: autoCaptions } = subtitleData;
+  const subtitleText = await fetchSubtitleText(subtitleUrl, proxyUrl);
+  const segments = parseSubtitlesToSegments(subtitleText);
 
-  const hasManualSubs = Object.keys(subtitles).length > 0;
-  const hasAutoCaptions = Object.keys(autoCaptions).length > 0;
-  const subsSource = hasManualSubs ? subtitles : autoCaptions;
-
-  // Prefer English, fall back to first available language
-  const languages = Object.keys(subsSource);
-  const preferredLang =
-    languages.find((l) => l.startsWith("en")) ?? languages[0];
-
-  let segments: TranscriptSegment[] = [];
-  const isAutoGenerated = !hasManualSubs && hasAutoCaptions;
-
-  if (preferredLang && subsSource[preferredLang]) {
-    const subtitleFormats = subsSource[preferredLang];
-    // Prefer vtt format, then srt, then any available
-    const preferredFormat =
-      subtitleFormats.find((f) => f.ext === "vtt" || f.ext === "vtt3") ??
-      subtitleFormats.find((f) => f.ext === "srt") ??
-      subtitleFormats[0];
-
-    if (preferredFormat?.url) {
-      console.log(
-        `[yt-dlp] Fetching ${isAutoGenerated ? "auto-generated" : "manual"} subtitles (${preferredLang}, ${preferredFormat.ext})`,
-      );
-
-      // Fetch subtitle file through the Zyte proxy
-      const { ProxyAgent, fetch: undiFetch } = await import("undici");
-      const proxyAgent = new ProxyAgent(proxyUrl);
-      const subtitleResponse = await undiFetch(preferredFormat.url, {
-        dispatcher: proxyAgent,
-        headers: {
-          "User-Agent":
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-        },
-      });
-
-      if (subtitleResponse.ok) {
-        const subtitleText = await subtitleResponse.text();
-        segments = parseSubtitlesToSegments(subtitleText);
-        console.log(`[yt-dlp] Parsed ${segments.length} subtitle segments`);
-      } else {
-        console.warn(
-          `[yt-dlp] Failed to fetch subtitles: ${subtitleResponse.status}`,
-        );
-      }
-    }
-  } else {
-    console.warn(`[yt-dlp] No subtitles available for video: ${videoId}`);
-  }
+  console.log(`[ytdl-core] Parsed ${segments.length} subtitle segments`);
 
   if (segments.length === 0) {
     throw new Error(
@@ -308,34 +297,29 @@ async function fetchYoutubeTranscriptFromYtDlp(
     );
   }
 
-  // Extract upload date in expected format (YYYY-MM-DD or as available)
-  let publishedDate = "";
-  if (metadata.upload_date) {
-    // yt-dlp returns date as YYYYMMDD, convert to YYYY-MM-DD
-    const d = String(metadata.upload_date);
-    if (d.length === 8) {
-      publishedDate = `${d.slice(0, 4)}-${d.slice(4, 6)}-${d.slice(6, 8)}`;
-    } else {
-      publishedDate = d;
-    }
-  }
+  const videoDetails = info.videoDetails;
+  const author =
+    typeof videoDetails.author === "string" ? null : videoDetails.author;
+
+  const thumbnails = videoDetails.thumbnails ?? [];
+  const thumbnailUrl = thumbnails[thumbnails.length - 1]?.url ?? "";
 
   return {
     videoId,
-    url: String(metadata.webpage_url ?? videoUrl),
-    title: String(metadata.title ?? "Untitled"),
-    date: publishedDate,
-    channelId: String(metadata.channel_id ?? metadata.uploader_id ?? ""),
+    url: String(videoDetails.video_url ?? videoUrl),
+    title: String(videoDetails.title ?? "Untitled"),
+    date: videoDetails.publishDate ?? videoDetails.uploadDate ?? "",
+    channelId: String(author?.id ?? videoDetails.channelId ?? ""),
     channelName: String(
-      metadata.channel ?? metadata.uploader ?? "Unknown Channel",
+      author?.name ?? videoDetails.author ?? "Unknown Channel",
     ),
-    description: metadata.description ? String(metadata.description) : "",
-    numberOfSubscribers: 0, // yt-dlp doesn't reliably provide subscriber count
-    viewCount: Number(metadata.view_count ?? 0),
-    likes: Number(metadata.like_count ?? 0),
-    duration: formatDurationFromSeconds(Number(metadata.duration ?? 0)),
+    description: videoDetails.description ?? videoDetails.shortDescription ?? "",
+    numberOfSubscribers: Number(author?.subscriber_count ?? 0),
+    viewCount: Number(videoDetails.viewCount ?? 0),
+    likes: Number(videoDetails.likes ?? 0),
+    duration: formatDurationFromSeconds(Number(videoDetails.lengthSeconds ?? 0)),
     isAutoGenerated,
-    thumbnailUrl: String(metadata.thumbnail ?? ""),
+    thumbnailUrl,
     transcript: segments,
   };
 }
@@ -346,7 +330,7 @@ async function fetchYoutubeTranscriptFromYtDlp(
 
 /**
  * Fetches transcript data for a YouTube video.
- * First checks the database for cached data, if not found fetches via yt-dlp and saves.
+ * First checks the database for cached data, if not found fetches via ytdl-core and saves.
  *
  * This is a direct implementation that doesn't use the Vercel workflow system,
  * working around the issue where `await run.returnValue` hangs in production RSC.
@@ -370,8 +354,8 @@ export async function fetchAndSaveTranscript(
     );
   }
 
-  console.log("[fetchAndSaveTranscript] 3. Fetching via yt-dlp...");
-  const fetchedResult = await fetchYoutubeTranscriptFromYtDlp(videoId);
+  console.log("[fetchAndSaveTranscript] 3. Fetching via ytdl-core...");
+  const fetchedResult = await fetchYoutubeTranscriptFromYtdlCore(videoId);
   console.log("[fetchAndSaveTranscript] 4. Saving to DB...");
   await saveTranscriptToDb(fetchedResult);
 
