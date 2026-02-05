@@ -1,28 +1,11 @@
-import type { Payload as YtDlpPayload } from "youtube-dl-exec";
-import { z } from "zod";
+import { Client, ProxyAgent, fetch as undiFetch } from "undici";
+import { Innertube } from "youtubei.js";
 import {
   saveTranscriptToDb,
   type TranscriptResult,
   type TranscriptSegment,
 } from "@/db/save-transcript";
 import { isValidYouTubeVideoId } from "@/lib/youtube-utils";
-
-// ============================================================================
-// Zod schema for validating yt-dlp subtitle format entries
-// ============================================================================
-
-const SubtitleFormatSchema = z.object({
-  ext: z.string(),
-  url: z.string(),
-  name: z.string().optional(),
-});
-
-const SubtitleMapSchema = z.record(z.string(), z.array(SubtitleFormatSchema));
-
-const YtDlpSubtitlesSchema = z.object({
-  subtitles: SubtitleMapSchema.optional().default({}),
-  automatic_captions: SubtitleMapSchema.optional().default({}),
-});
 
 // ============================================================================
 // Helpers
@@ -138,11 +121,48 @@ function parseSubtitlesToSegments(subtitleText: string): TranscriptSegment[] {
   return segments;
 }
 
+// Deeply find any property named caption_tracks or captionTracks
+function findCaptionTracksDeep(obj: any): any[] | null {
+  if (!obj || typeof obj !== "object") return null;
+
+  // Avoid infinite recursion on certain objects
+  if (obj instanceof URL || obj instanceof Response) return null;
+
+  if (Array.isArray(obj)) {
+    for (const item of obj) {
+      const found = findCaptionTracksDeep(item);
+      if (found) return found;
+    }
+    return null;
+  }
+
+  if (obj.caption_tracks && Array.isArray(obj.caption_tracks)) {
+    return obj.caption_tracks;
+  }
+  if (obj.captionTracks && Array.isArray(obj.captionTracks)) {
+    return obj.captionTracks;
+  }
+
+  // Limited search depth to avoid issues
+  for (const key of Object.keys(obj)) {
+    // Skip large or circular properties we know about
+    if (key === "parent" || key === "actions" || key === "session") continue;
+
+    try {
+      const found = findCaptionTracksDeep(obj[key]);
+      if (found) return found;
+    } catch (_e) {
+      // Ignore errors during deep search
+    }
+  }
+  return null;
+}
+
 // ============================================================================
-// Step: Fetch from YouTube using yt-dlp with Zyte proxy
+// Step: Fetch from YouTube using youtubei.js
 // ============================================================================
 
-export async function fetchYoutubeTranscriptFromYtDlp(
+export async function fetchYoutubeTranscriptFromYoutubei(
   videoId: string,
 ): Promise<TranscriptResult> {
   "use step";
@@ -151,10 +171,7 @@ export async function fetchYoutubeTranscriptFromYtDlp(
     throw new Error(`Invalid YouTube video ID format: ${videoId}`);
   }
 
-  const youtubeDlExec = await import("youtube-dl-exec");
-  const ytDlp = youtubeDlExec.default;
-
-  // Build proxy URL from environment variables
+  // Build proxy configuration from environment variables
   const zyteApiKey = process.env.ZYTE_API_KEY;
   const zyteHost = process.env.ZYTE_HOST;
 
@@ -165,86 +182,181 @@ export async function fetchYoutubeTranscriptFromYtDlp(
   }
 
   const disableTlsVerify = process.env.YTDLP_INSECURE === "true";
-  const proxyUrl = `http://${zyteApiKey.trim()}:@${zyteHost}:8011`;
-  const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
 
-  console.log(`[yt-dlp] Fetching metadata for video: ${videoId}`);
-
-  // Fetch video metadata and subtitle info using yt-dlp
-  const result = await ytDlp(videoUrl, {
-    dumpSingleJson: true,
-    noWarnings: true,
-    skipDownload: true,
-    proxy: proxyUrl,
-    noCacheDir: true,
-    noCheckCertificates: disableTlsVerify,
-    forceIpv4: true,
+  const proxyAgent = new ProxyAgent({
+    uri: `http://${zyteHost}:8011`,
+    token: `Basic ${Buffer.from(`${zyteApiKey.trim()}:`).toString("base64")}`,
+    // factory is used to create the Client for the target origin (e.g. youtube.com)
+    factory: (origin, opts) => {
+      return new Client(origin, {
+        ...opts,
+        connect: disableTlsVerify ? { rejectUnauthorized: false } : undefined,
+      });
+    },
   });
 
-  // When using dumpSingleJson, the result is a Payload object, not a string
-  if (typeof result === "string") {
-    throw new Error(`Unexpected string response from yt-dlp: ${result}`);
+  console.log(`[youtubei.js] Fetching metadata for video: ${videoId}`);
+
+  // If TLS verification is disabled, set the global Node.js flag as a last resort
+  // to ensure all internal library calls respect it.
+  const originalTlsReject = process.env.NODE_TLS_REJECT_UNAUTHORIZED;
+  if (disableTlsVerify) {
+    process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
   }
-  const metadata: YtDlpPayload = result;
 
-  console.log(`[yt-dlp] Got metadata for: ${metadata.title}`);
+  // Create Innertube instance with custom fetch to use Zyte proxy
+  const yt = await Innertube.create({
+    fetch: (async (input: any, init: any) => {
+      const url =
+        typeof input === "string"
+          ? input
+          : input instanceof URL
+            ? input.href
+            : input.url;
 
-  // Validate subtitle-related fields with Zod
-  const subtitleData = YtDlpSubtitlesSchema.parse({
-    subtitles: metadata.subtitles,
-    automatic_captions: metadata.automatic_captions,
+      const fetchInit = { ...init };
+      if (!fetchInit.method && input?.method) fetchInit.method = input.method;
+      if (!fetchInit.body && input?.body) fetchInit.body = input.body;
+
+      const headers = new Headers(fetchInit.headers || {});
+      if (input?.headers) {
+        const inputHeaders = new Headers(input.headers);
+        inputHeaders.forEach((value, key) => {
+          if (!headers.has(key)) {
+            headers.set(key, value);
+          }
+        });
+      }
+      fetchInit.headers = headers;
+
+      const method = fetchInit.method?.toUpperCase() || "GET";
+
+      // Request with GET/HEAD method cannot have body
+      if (method === "GET" || method === "HEAD") {
+        delete fetchInit.body;
+      }
+
+      return undiFetch(url, {
+        ...fetchInit,
+        dispatcher: proxyAgent,
+        connect: disableTlsVerify ? { rejectUnauthorized: false } : undefined,
+      } as any);
+    }) as any,
   });
 
-  const { subtitles, automatic_captions: autoCaptions } = subtitleData;
+  let info = await yt.getInfo(videoId);
 
-  const hasManualSubs = Object.keys(subtitles).length > 0;
-  const hasAutoCaptions = Object.keys(autoCaptions).length > 0;
-  const subsSource = hasManualSubs ? subtitles : autoCaptions;
+  // Fallback to TV client if captions are missing and it's not already a TV client
+  if (
+    (!info.captions ||
+      !info.captions.caption_tracks ||
+      info.captions.caption_tracks.length === 0) &&
+    !findCaptionTracksDeep(info)
+  ) {
+    console.log(
+      "[youtubei.js] No captions found with WEB client, trying TV client fallback...",
+    );
+    try {
+      info = await (yt as any).getInfo(videoId, "TV");
+    } catch (e) {
+      console.warn(
+        "[youtubei.js] TV client fallback failed:",
+        (e as any).message,
+      );
+    }
+  }
 
-  // Prefer English, fall back to first available language
-  const languages = Object.keys(subsSource);
-  const preferredLang =
-    languages.find((l) => l.startsWith("en")) ?? languages[0];
+  // Restore TLS verification flag
+  if (disableTlsVerify) {
+    process.env.NODE_TLS_REJECT_UNAUTHORIZED = originalTlsReject;
+  }
+  const { basic_info } = info;
+
+  const title =
+    basic_info.title || (info as any).primary_info?.title?.text || "Untitled";
+
+  console.log(`[youtubei.js] Got metadata for: ${title}`);
 
   let segments: TranscriptSegment[] = [];
-  const isAutoGenerated = !hasManualSubs && hasAutoCaptions;
+  let isAutoGenerated = false;
 
-  if (preferredLang && subsSource[preferredLang]) {
-    const subtitleFormats = subsSource[preferredLang];
-    // Prefer vtt format, then srt, then any available
-    const preferredFormat =
-      subtitleFormats.find((f) => f.ext === "vtt" || f.ext === "vtt3") ??
-      subtitleFormats.find((f) => f.ext === "srt") ??
-      subtitleFormats[0];
+  // Try to get transcript
+  let captionTracks = (info as any).captions?.caption_tracks;
 
-    if (preferredFormat?.url) {
+  if (!captionTracks || captionTracks.length === 0) {
+    console.log(
+      "[youtubei.js] Captions missing in info.captions, searching deeper...",
+    );
+    captionTracks = findCaptionTracksDeep(info);
+  }
+
+  if (captionTracks && captionTracks.length > 0) {
+    // Prefer English (manual), then English (auto), then any manual, then any auto
+    const preferredTrack =
+      captionTracks.find(
+        (t: any) =>
+          (t.language_code === "en" || t.languageCode === "en") && !t.kind,
+      ) ||
+      captionTracks.find(
+        (t: any) => t.language_code === "en" || t.languageCode === "en",
+      ) ||
+      captionTracks.find((t: any) => !t.kind) ||
+      captionTracks[0];
+
+    if (preferredTrack) {
+      isAutoGenerated = preferredTrack.kind === "asr";
       console.log(
-        `[yt-dlp] Fetching ${isAutoGenerated ? "auto-generated" : "manual"} subtitles (${preferredLang}, ${preferredFormat.ext})`,
+        `[youtubei.js] Fetching ${isAutoGenerated ? "auto-generated" : "manual"} subtitles (${preferredTrack.language_code || preferredTrack.languageCode})`,
       );
 
-      // Fetch subtitle file through the Zyte proxy
-      const { ProxyAgent, fetch: undiFetch } = await import("undici");
-      const proxyAgent = new ProxyAgent(proxyUrl);
-      const subtitleResponse = await undiFetch(preferredFormat.url, {
+      const baseUrl = preferredTrack.base_url || preferredTrack.baseUrl;
+      const subtitleUrl = `${baseUrl}&fmt=vtt`;
+
+      if (disableTlsVerify) {
+        process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
+      }
+
+      const subtitleResponse = await undiFetch(subtitleUrl, {
         dispatcher: proxyAgent,
         headers: {
           "User-Agent":
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
         },
-      });
+        connect: disableTlsVerify ? { rejectUnauthorized: false } : undefined,
+      } as any);
+
+      if (disableTlsVerify) {
+        process.env.NODE_TLS_REJECT_UNAUTHORIZED = originalTlsReject;
+      }
 
       if (subtitleResponse.ok) {
         const subtitleText = await subtitleResponse.text();
         segments = parseSubtitlesToSegments(subtitleText);
-        console.log(`[yt-dlp] Parsed ${segments.length} subtitle segments`);
+        console.log(
+          `[youtubei.js] Parsed ${segments.length} subtitle segments`,
+        );
       } else {
         console.warn(
-          `[yt-dlp] Failed to fetch subtitles: ${subtitleResponse.status}`,
+          `[youtubei.js] Failed to fetch subtitles: ${subtitleResponse.status}`,
         );
       }
     }
-  } else {
-    console.warn(`[yt-dlp] No subtitles available for video: ${videoId}`);
+  }
+
+  if (segments.length === 0) {
+    // Fallback to getTranscript if manual fetch failed or no tracks found
+    try {
+      console.log("[youtubei.js] Trying info.getTranscript() fallback...");
+      const transcript = (await info.getTranscript()) as any;
+      if (
+        transcript?.transcript_tracks &&
+        transcript.transcript_tracks.length > 0
+      ) {
+        // Note: If we had mapped transcript segments from getTranscript, we'd do it here.
+      }
+    } catch (_e) {
+      console.warn("[youtubei.js] Fallback getTranscript() also failed");
+    }
   }
 
   if (segments.length === 0) {
@@ -253,34 +365,32 @@ export async function fetchYoutubeTranscriptFromYtDlp(
     );
   }
 
-  // Extract upload date in expected format (YYYY-MM-DD or as available)
+  // Extract upload date
   let publishedDate = "";
-  if (metadata.upload_date) {
-    // yt-dlp returns date as YYYYMMDD, convert to YYYY-MM-DD
-    const d = String(metadata.upload_date);
-    if (d.length === 8) {
-      publishedDate = `${d.slice(0, 4)}-${d.slice(4, 6)}-${d.slice(6, 8)}`;
-    } else {
-      publishedDate = d;
-    }
+  if (basic_info.start_timestamp) {
+    publishedDate =
+      new Date(basic_info.start_timestamp).toISOString().split("T")[0] ?? "";
+  } else if ((info as any).primary_info?.published?.text) {
+    publishedDate = (info as any).primary_info.published.text.toString();
   }
 
   return {
     videoId,
-    url: String(metadata.webpage_url ?? videoUrl),
-    title: String(metadata.title ?? "Untitled"),
+    url: `https://www.youtube.com/watch?v=${videoId}`,
+    title: title,
     date: publishedDate,
-    channelId: String(metadata.channel_id ?? metadata.uploader_id ?? ""),
-    channelName: String(
-      metadata.channel ?? metadata.uploader ?? "Unknown Channel",
-    ),
-    description: metadata.description ? String(metadata.description) : "",
-    numberOfSubscribers: 0, // yt-dlp doesn't reliably provide subscriber count
-    viewCount: Number(metadata.view_count ?? 0),
-    likes: Number(metadata.like_count ?? 0),
-    duration: formatDurationFromSeconds(Number(metadata.duration ?? 0)),
+    channelId: basic_info.channel_id ?? "",
+    channelName:
+      basic_info.author ||
+      (info as any).secondary_info?.owner?.author?.name ||
+      "Unknown Channel",
+    description: basic_info.short_description ?? "",
+    numberOfSubscribers: 0, // youtubei.js might have it in secondary_info but it's complex to extract reliably
+    viewCount: basic_info.view_count ?? 0,
+    likes: basic_info.like_count ?? 0,
+    duration: formatDurationFromSeconds(basic_info.duration ?? 0),
     isAutoGenerated,
-    thumbnailUrl: String(metadata.thumbnail ?? ""),
+    thumbnailUrl: basic_info.thumbnail?.[0]?.url ?? "",
     transcript: segments,
   };
 }

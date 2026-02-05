@@ -92,7 +92,7 @@
     "vaul": "latest",
     "vite": "latest",
     "workflow": "4.0.1-beta.31",
-    "youtube-dl-exec": "^3.0.14",
+    "youtubei.js": "^16.0.1",
     "zod": "^4.2.0"
   },
   "devDependencies": {
@@ -117,7 +117,6 @@
     "vitest": "^4.0.15"
   },
   "trustedDependencies": [
-    "pg-native",
-    "youtube-dl-exec"
+    "pg-native"
   ]
 }
