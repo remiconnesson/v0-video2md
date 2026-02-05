@@ -6,7 +6,7 @@ Moved the fetch-and-save-transcript logic from the workflow directly into a lib 
 Tried to reuse the workflow steps directly but stumbled upon another issue https://github.com/vercel/workflow/issues/630, where you can't call a step function outside of a workflow if that functions uses dependencies not marked with "use step"
 */
 
-import { access, chmod, mkdir, writeFile } from "node:fs/promises";
+import { access, chmod, mkdir, rename, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import type { Payload as YtDlpPayload } from "youtube-dl-exec";
@@ -114,6 +114,22 @@ function getYtDlpBinaryName(): string {
   return process.platform === "win32" ? "yt-dlp.exe" : "yt-dlp";
 }
 
+function getYtDlpDownloadName(): string {
+  if (process.env.YOUTUBE_DL_FILENAME?.trim()) {
+    return process.env.YOUTUBE_DL_FILENAME.trim();
+  }
+
+  if (process.platform === "win32") {
+    return "yt-dlp.exe";
+  }
+
+  if (process.platform === "darwin") {
+    return "yt-dlp_macos";
+  }
+
+  return "yt-dlp_linux";
+}
+
 function getYtDlpBinaryPath(): string {
   if (process.env.YOUTUBE_DL_PATH?.trim()) {
     return process.env.YOUTUBE_DL_PATH.trim();
@@ -136,7 +152,7 @@ async function ensureYtDlpBinary(): Promise<string> {
     const binaryDir = path.dirname(binaryPath);
     await mkdir(binaryDir, { recursive: true });
 
-    const downloadUrl = `${YT_DLP_DOWNLOAD_BASE_URL}/${getYtDlpBinaryName()}`;
+    const downloadUrl = `${YT_DLP_DOWNLOAD_BASE_URL}/${getYtDlpDownloadName()}`;
     console.log(`[yt-dlp] Downloading yt-dlp binary from: ${downloadUrl}`);
 
     const response = await fetch(downloadUrl);
@@ -147,12 +163,30 @@ async function ensureYtDlpBinary(): Promise<string> {
     }
 
     const buffer = Buffer.from(await response.arrayBuffer());
-    await writeFile(binaryPath, buffer);
-
-    if (process.platform !== "win32") {
-      await chmod(binaryPath, 0o755);
+    if (buffer.length < 100_000) {
+      throw new Error(
+        `[yt-dlp] Downloaded yt-dlp binary is unexpectedly small (${buffer.length} bytes).`,
+      );
     }
 
+    const tempPath = `${binaryPath}.download`;
+    await writeFile(tempPath, buffer);
+
+    if (process.platform !== "win32") {
+      await chmod(tempPath, 0o755);
+    }
+
+    try {
+      await rename(tempPath, binaryPath);
+    } catch (error) {
+      await access(binaryPath);
+      await access(tempPath).then(
+        () => {
+          throw error;
+        },
+        () => undefined,
+      );
+    }
     return binaryPath;
   }
 }
