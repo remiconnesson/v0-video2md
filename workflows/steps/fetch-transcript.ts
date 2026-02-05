@@ -144,9 +144,12 @@ export async function fetchYoutubeTranscriptFromYoutubei(
     );
   }
 
+  const disableTlsVerify = process.env.YTDLP_INSECURE === "true";
+
   const proxyAgent = new ProxyAgent({
     uri: `http://${zyteHost}:8011`,
     token: `Basic ${Buffer.from(`${zyteApiKey.trim()}:`).toString("base64")}`,
+    connect: disableTlsVerify ? { rejectUnauthorized: false } : undefined,
   });
 
   console.log(`[youtubei.js] Fetching metadata for video: ${videoId}`);
@@ -154,8 +157,23 @@ export async function fetchYoutubeTranscriptFromYoutubei(
   // Create Innertube instance with custom fetch to use Zyte proxy
   const yt = await Innertube.create({
     fetch: (async (input: any, init: any) => {
-      return undiFetch(input, {
-        ...init,
+      const url =
+        typeof input === "string"
+          ? input
+          : input instanceof URL
+            ? input.href
+            : input.url;
+      const fetchInit = { ...init };
+      if (!fetchInit.method && input?.method) fetchInit.method = input.method;
+      if (!fetchInit.body && input?.body) fetchInit.body = input.body;
+
+      // Request with GET/HEAD method cannot have body
+      if (fetchInit.method === "GET" || fetchInit.method === "HEAD") {
+        delete fetchInit.body;
+      }
+
+      return undiFetch(url, {
+        ...fetchInit,
         dispatcher: proxyAgent,
       });
     }) as any,
