@@ -73,7 +73,7 @@ Added query functions:
 - `hasAnalysisSections()` - check if video uses new format
 - `deleteAnalysisSections()` - clear sections for re-analysis
 - `getAnalysisStatus()` / `upsertAnalysisStatus()` - status management
-- `incrementCompletedSections()` - increment section counter
+- `updateCompletedSectionsCount()` - update completed sections count (idempotent)
 - `markAnalysisCompleted()` / `markAnalysisFailed()` - finalize status
 
 ### AI Module (`ai/streamed-section-analysis.ts`)
@@ -88,7 +88,7 @@ export async function emitSectionStep(videoId: string, args: EmitSectionInput) {
   "use step";  // Makes this a durable workflow step!
 
   await saveAnalysisSection(videoId, args);
-  await incrementCompletedSections(videoId);
+  await updateCompletedSectionsCount(videoId);
   return { success: true, sectionKey: args.sectionKey };
 }
 
