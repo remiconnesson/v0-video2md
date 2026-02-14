@@ -7,6 +7,7 @@ import { fetchAndSaveTranscript } from "@/lib/fetch-and-save-transcript";
 import { isValidYouTubeVideoId } from "@/lib/youtube-utils";
 import { AnalyzeLayoutSidebar } from "./_components/analyze-layout-sidebar";
 import { AnalyzeNav } from "./_components/analyze-nav";
+import { EagerSlideExtraction } from "./_components/eager-slide-extraction";
 
 interface AnalyzeLayoutProps {
   children: React.ReactNode;
@@ -72,6 +73,7 @@ export default async function AnalyzeLayout({
             </div>
           </header>
 
+          <EagerSlideExtraction videoId={youtubeId} />
           <main className="flex-1">
             <div className="mx-auto max-w-5xl px-4 py-6 md:px-6">
               {children}

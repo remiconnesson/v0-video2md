@@ -1,7 +1,7 @@
 "use client";
 
-import type { PromptInputMessage } from "@/components/ai-elements/prompt-input";
-
+import { CheckIcon, GlobeIcon } from "lucide-react";
+import { memo, useCallback, useState } from "react";
 import {
   Attachment,
   AttachmentPreview,
@@ -21,6 +21,7 @@ import {
   ModelSelectorName,
   ModelSelectorTrigger,
 } from "@/components/ai-elements/model-selector";
+import type { PromptInputMessage } from "@/components/ai-elements/prompt-input";
 import {
   PromptInput,
   PromptInputActionAddAttachments,
@@ -36,8 +37,6 @@ import {
   PromptInputTools,
   usePromptInputAttachments,
 } from "@/components/ai-elements/prompt-input";
-import { CheckIcon, GlobeIcon } from "lucide-react";
-import { memo, useCallback, useState } from "react";
 
 const models = [
   {
@@ -94,7 +93,7 @@ interface AttachmentItemProps {
 const AttachmentItem = memo(({ attachment, onRemove }: AttachmentItemProps) => {
   const handleRemove = useCallback(
     () => onRemove(attachment.id),
-    [onRemove, attachment.id]
+    [onRemove, attachment.id],
   );
   return (
     <Attachment data={attachment} key={attachment.id} onRemove={handleRemove}>
@@ -139,7 +138,7 @@ const PromptInputAttachmentsDisplay = () => {
 
   const handleRemove = useCallback(
     (id: string) => attachments.remove(id),
-    [attachments]
+    [attachments],
   );
 
   if (attachments.files.length === 0) {
