@@ -108,6 +108,31 @@ export function createWorkflowRouteHandler<TCompletedResult, TWorkflowRecord>(
         });
         throw err;
       }
+
+      // Auto-restart failed or cancelled workflows
+      if (status === "failed" || status === "cancelled") {
+        logger.info("Workflow failed or cancelled, attempting to restart", {
+          videoId,
+          workflowId,
+          status,
+        });
+
+        try {
+          const response = await options.startWorkflow(videoId);
+          logger.info("Workflow restart succeeded after failure", {
+            videoId,
+            workflowId,
+          });
+          return response;
+        } catch (restartError) {
+          logger.error("Workflow restart after failure failed", restartError, {
+            videoId,
+            workflowId,
+          });
+          throw restartError;
+        }
+      }
+
       const readable = run.readable;
 
       // Allow custom status handling (e.g., for restarting failed workflows)
