@@ -8,6 +8,8 @@ import type {
 } from "./api-types";
 import type { SlideAnalysisTarget } from "./slides-types";
 
+const SLIDES_POLL_INTERVAL_MS = 3000;
+
 export function useSlidesQuery(videoId: string) {
   return useQuery<SlidesResponse>({
     queryKey: ["slides", videoId],
@@ -17,6 +19,15 @@ export function useSlidesQuery(videoId: string) {
       return response.json();
     },
     staleTime: Number.POSITIVE_INFINITY, // Slides never change once extracted
+    // Poll while extraction is in progress so we pick up completion from the
+    // eagerly-started workflow (which runs independently of any SSE stream).
+    refetchInterval: (query) => {
+      const status = query.state.data?.status;
+      if (status === "in_progress" || status === "pending") {
+        return SLIDES_POLL_INTERVAL_MS;
+      }
+      return false;
+    },
   });
 }
 
