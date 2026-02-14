@@ -31,10 +31,10 @@ Reference these guidelines when:
 | Make It Instance-Proof | HIGH | `instance-proof.md` |
 | Make It Concurrent-Proof | HIGH | `concurrent-proof.md` |
 | Make It Composition-Proof | HIGH | `composition-proof.md` |
+| Make It Leak-Proof | HIGH | `leak-proof.md` |
 | Make It Portal-Proof | MEDIUM | `portal-proof.md` |
 | Make It Transition-Proof | MEDIUM | `transition-proof.md` |
 | Make It Activity-Proof | MEDIUM | `activity-proof.md` |
-| Make It Leak-Proof | HIGH | `leak-proof.md` |
 | Make It Future-Proof | LOW | `future-proof.md` |
 
 ## Key Principles
