@@ -1,7 +1,8 @@
 "use client";
 
+import { ArrowUp, Trash2 } from "lucide-react";
+import { memo, useCallback, useState } from "react";
 import type { QueueMessage, QueueTodo } from "@/components/ai-elements/queue";
-
 import {
   Queue,
   QueueItem,
@@ -19,8 +20,6 @@ import {
   QueueSectionLabel,
   QueueSectionTrigger,
 } from "@/components/ai-elements/queue";
-import { ArrowUp, Trash2 } from "lucide-react";
-import { memo, useCallback, useState } from "react";
 
 const sampleMessages: QueueMessage[] = [
   {
@@ -103,11 +102,11 @@ const MessageActions = memo(
   ({ messageId, onRemove, onSend }: MessageActionsProps) => {
     const handleRemove = useCallback(
       (e: React.MouseEvent) => onRemove(e, messageId),
-      [onRemove, messageId]
+      [onRemove, messageId],
     );
     const handleSend = useCallback(
       (e: React.MouseEvent) => onSend(e, messageId),
-      [onSend, messageId]
+      [onSend, messageId],
     );
     return (
       <QueueItemActions>
@@ -123,7 +122,7 @@ const MessageActions = memo(
         </QueueItemAction>
       </QueueItemActions>
     );
-  }
+  },
 );
 
 MessageActions.displayName = "MessageActions";
@@ -137,7 +136,7 @@ const TodoItem = memo(({ todo, onRemove }: TodoItemProps) => {
   const isCompleted = todo.status === "completed";
   const handleRemove = useCallback(
     () => onRemove(todo.id),
-    [onRemove, todo.id]
+    [onRemove, todo.id],
   );
 
   return (
@@ -187,7 +186,7 @@ const Example = () => {
       e.stopPropagation();
       handleRemoveMessage(id);
     },
-    [handleRemoveMessage]
+    [handleRemoveMessage],
   );
 
   const handleMessageSend = useCallback(
@@ -196,7 +195,7 @@ const Example = () => {
       e.stopPropagation();
       handleSendNow(id);
     },
-    [handleSendNow]
+    [handleSendNow],
   );
 
   if (messages.length === 0 && todos.length === 0) {
@@ -215,7 +214,7 @@ const Example = () => {
               {messages.map((message) => {
                 const summary = (() => {
                   const textParts = message.parts.filter(
-                    (p) => p.type === "text"
+                    (p) => p.type === "text",
                   );
                   const text = textParts
                     .map((p) => p.text)
@@ -225,7 +224,7 @@ const Example = () => {
                 })();
 
                 const hasFiles = message.parts.some(
-                  (p) => p.type === "file" && p.url
+                  (p) => p.type === "file" && p.url,
                 );
 
                 return (

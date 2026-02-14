@@ -1,12 +1,11 @@
 "use client";
 
 import type { Experimental_TranscriptionResult as TranscriptionResult } from "ai";
-
+import { useCallback, useRef, useState } from "react";
 import {
   Transcription,
   TranscriptionSegment,
 } from "@/components/ai-elements/transcription";
-import { useCallback, useRef, useState } from "react";
 
 const segments: TranscriptionResult["segments"] = [
   {
