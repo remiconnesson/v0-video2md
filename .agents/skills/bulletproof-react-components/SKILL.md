@@ -44,8 +44,8 @@ Reference these guidelines when:
 3. **Use `useId` for uniqueness** — Never hardcode element IDs in reusable components.
 4. **Use `React.cache` for deduplication** — Wrap async calls in Server Components to avoid duplicate requests.
 5. **Prefer context over cloneElement** — Context works with Server Components, lazy, and async children.
-6. **Use `ownerDocument.defaultView`** — Don't assume `window` is the correct global in portal/iframe contexts.
-7. **Wrap state updates in `startTransition`** — Required for ViewTransition animations.
-8. **Clean up DOM side effects** — Use `useLayoutEffect` to disable styles when Activity hides components.
-9. **Taint sensitive values** — Use `experimental_taintUniqueValue` to prevent tokens from leaking to the client.
+6. **Taint sensitive values** — Use `experimental_taintUniqueValue` to prevent tokens from leaking to the client.
+7. **Use `ownerDocument.defaultView`** — Don't assume `window` is the correct global in portal/iframe contexts.
+8. **Wrap state updates in `startTransition`** — Required for ViewTransition animations.
+9. **Clean up DOM side effects** — Use `useLayoutEffect` to disable styles when Activity hides components.
 10. **Use `useState` for semantic persistence** — `useMemo` is a performance hint, not a correctness guarantee.
