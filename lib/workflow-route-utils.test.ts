@@ -115,6 +115,74 @@ describe("createWorkflowRouteHandler", () => {
     );
   });
 
+  it("should restart workflow if status is failed", async () => {
+    const videoId = "videoFail1" as YouTubeVideoId;
+    const workflowId = "wrun_fail1";
+
+    mockGetWorkflowRecord.mockResolvedValue({ workflowId });
+
+    const mockRun = {
+      status: Promise.resolve("failed"),
+      readable: new ReadableStream(),
+    };
+
+    // biome-ignore lint/suspicious/noExplicitAny: Mocking internal workflow type
+    vi.mocked(workflowApi.getRun).mockReturnValue(mockRun as any);
+
+    const handler = createWorkflowRouteHandler({
+      getCompletedResult: mockGetCompletedResult,
+      getWorkflowRecord: mockGetWorkflowRecord,
+      startWorkflow: mockStartWorkflow,
+      extractWorkflowId: mockExtractWorkflowId,
+      logger: mockLogger,
+    });
+
+    const response = await handler(videoId);
+
+    expect(mockStartWorkflow).toHaveBeenCalledWith(videoId);
+    expect(response).toBeDefined();
+    expect(mockLogger.info).toHaveBeenCalledWith(
+      "Workflow failed or cancelled, attempting to restart",
+      { videoId, workflowId, status: "failed" },
+    );
+    expect(mockLogger.info).toHaveBeenCalledWith(
+      "Workflow restart succeeded after failure",
+      { videoId, workflowId },
+    );
+  });
+
+  it("should restart workflow if status is cancelled", async () => {
+    const videoId = "videoCncl1" as YouTubeVideoId;
+    const workflowId = "wrun_cncl1";
+
+    mockGetWorkflowRecord.mockResolvedValue({ workflowId });
+
+    const mockRun = {
+      status: Promise.resolve("cancelled"),
+      readable: new ReadableStream(),
+    };
+
+    // biome-ignore lint/suspicious/noExplicitAny: Mocking internal workflow type
+    vi.mocked(workflowApi.getRun).mockReturnValue(mockRun as any);
+
+    const handler = createWorkflowRouteHandler({
+      getCompletedResult: mockGetCompletedResult,
+      getWorkflowRecord: mockGetWorkflowRecord,
+      startWorkflow: mockStartWorkflow,
+      extractWorkflowId: mockExtractWorkflowId,
+      logger: mockLogger,
+    });
+
+    const response = await handler(videoId);
+
+    expect(mockStartWorkflow).toHaveBeenCalledWith(videoId);
+    expect(response).toBeDefined();
+    expect(mockLogger.info).toHaveBeenCalledWith(
+      "Workflow failed or cancelled, attempting to restart",
+      { videoId, workflowId, status: "cancelled" },
+    );
+  });
+
   it("should log error when unexpected error occurs", async () => {
     const videoId = "video789" as YouTubeVideoId;
     const workflowId = "wrun_789";
