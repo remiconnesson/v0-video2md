@@ -30,7 +30,7 @@ const getPreferences = cache(
   (userId: string) => db.preferences.get(userId)
 )
 
-async function ThemeProvider({ children }: { children: ReactNode }) {
+async function ThemeProvider({ userId, children }: { userId: string, children: ReactNode }) {
   const prefs = await getPreferences(userId)
 
   return <div className={prefs.theme}>{children}</div>
