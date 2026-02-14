@@ -31,7 +31,7 @@ The component first renders with `light`, then updates after hydration, causing 
 function ThemeProvider({ children }: { children: ReactNode }) {
   return (
     <>
-      <div id="theme">{children}</div>
+      <div id="theme" suppressHydrationWarning>{children}</div>
       <script dangerouslySetInnerHTML={{ __html: `
         try {
           const theme = localStorage.getItem('theme') || 'light'
@@ -43,4 +43,24 @@ function ThemeProvider({ children }: { children: ReactNode }) {
 }
 ```
 
-The inline script executes synchronously before the browser paints, so the DOM already has the correct class when React takes over. No mismatch, no flash.
+The inline script executes synchronously before the browser paints, setting the class before React hydrates. The `suppressHydrationWarning` prop tells React to expect the DOM to differ from the server HTML for this element, preventing hydration mismatch warnings.
+
+**Alternative (mutate element outside React tree):**
+
+```tsx
+function ThemeProvider({ children }: { children: ReactNode }) {
+  return (
+    <>
+      <script dangerouslySetInnerHTML={{ __html: `
+        try {
+          const theme = localStorage.getItem('theme') || 'light'
+          document.documentElement.classList.add(theme)
+        } catch (e) {}
+      `}} />
+      <div>{children}</div>
+    </>
+  )
+}
+```
+
+This alternative mutates `document.documentElement` (the `<html>` element), which is not part of the React-controlled tree, avoiding hydration concerns entirely.
