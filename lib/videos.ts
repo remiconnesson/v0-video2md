@@ -1,0 +1,27 @@
+import "server-only";
+
+import type { VideoData } from "@/components/processed-videos-list";
+import { getProcessedVideosWithStatus } from "@/db/queries";
+import { formatDuration } from "@/lib/time-utils";
+
+export async function getProcessedVideos(): Promise<VideoData[]> {
+  const results = await getProcessedVideosWithStatus();
+
+  return results.map((row) => ({
+    videoId: row.videoId,
+    videoData: {
+      title: row.title,
+      description: row.description ?? "",
+      duration: row.durationSeconds
+        ? formatDuration(row.durationSeconds)
+        : "N/A",
+      thumbnail: row.thumbnail ?? "",
+      channelName: row.channelName,
+    },
+    hasSlides: row.hasSlides,
+    hasAnalysis: row.hasAnalysis,
+    hasSuperAnalysis: row.hasSuperAnalysis,
+    hasSlideAnalysis: row.hasSlideAnalysis,
+    completedAt: row.createdAt?.toISOString(),
+  }));
+}
