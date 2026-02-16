@@ -1,5 +1,14 @@
 import { streamDynamicAnalysis } from "@/ai/dynamic-analysis";
-import { getVideoWithTranscript, saveTranscriptAnalysis } from "@/db/queries";
+import type { SectionEmitArgs } from "@/ai/streamed-section-analysis";
+import {
+  deleteAnalysisSections,
+  deleteAnalysisStatus,
+  getVideoWithTranscript,
+  markAnalysisCompleted,
+  markAnalysisFailed,
+  saveTranscriptAnalysis,
+  upsertAnalysisStatus,
+} from "@/db/queries";
 import { emit } from "@/lib/stream-utils";
 import {
   formatTranscriptForLLM,
@@ -90,3 +99,52 @@ export type AnalysisStreamEvent =
   | { type: "result"; data: unknown }
   | { type: "complete"; runId: number }
   | { type: "error"; message: string };
+
+// ============================================================================
+// Streamed Section Analysis Steps (DurableAgent Approach)
+// ============================================================================
+
+/**
+ * Event type for streamed section analysis
+ */
+export type SectionAnalysisStreamEvent =
+  | { type: "progress"; phase: string; message: string }
+  | { type: "section"; data: SectionEmitArgs }
+  | { type: "complete" }
+  | { type: "error"; message: string };
+
+/**
+ * Initialize streamed section analysis by clearing any previous data
+ * and setting status to "streaming"
+ */
+export async function initializeStreamedAnalysis(videoId: string) {
+  "use step";
+
+  // Clear any previous sections and status (for re-analysis)
+  await deleteAnalysisSections(videoId);
+  await deleteAnalysisStatus(videoId);
+
+  // Initialize status as streaming
+  await upsertAnalysisStatus(videoId, "streaming", 0);
+}
+
+/**
+ * Mark the analysis as completed
+ */
+export async function finalizeStreamedAnalysis(videoId: string) {
+  "use step";
+
+  await markAnalysisCompleted(videoId);
+}
+
+/**
+ * Mark the analysis as failed with an error message
+ */
+export async function failStreamedAnalysis(
+  videoId: string,
+  errorMessage: string,
+) {
+  "use step";
+
+  await markAnalysisFailed(videoId, errorMessage);
+}
