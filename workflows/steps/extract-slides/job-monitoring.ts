@@ -89,23 +89,12 @@ export async function triggerExtraction(
   }
 }
 
-export async function checkJobStatus(
-  videoId: YouTubeVideoId,
-  writable: WritableStream<SlideStreamEvent>,
-): Promise<{
-  manifestUri: string | null;
-  jobFailed: boolean;
-  failureReason: string;
-}> {
-  "use step";
+// ============================================================================
+// Step: Check Job Status Helpers
+// ============================================================================
 
-  // TODO: clean this function
-
+async function fetchJobStream(videoId: YouTubeVideoId) {
   const jobStatusUrl = `${CONFIG.SLIDES_EXTRACTOR_URL}/jobs/${videoId}/stream`;
-  let manifestUri: string | null = null;
-  let jobFailed = false;
-  let failureReason = "";
-
   console.log(`🔍 checkJobStatus: Checking job status for video ${videoId}`);
 
   const response = await fetch(jobStatusUrl, {
@@ -160,90 +149,133 @@ export async function checkJobStatus(
     );
   }
 
-  if (response.ok && response.body) {
-    let eventCount = 0;
-    const parser = createParser({
-      onEvent: (event) => {
-        console.dir(event);
-        if (event.data) {
-          eventCount++;
-          try {
-            const jobUpdate: JobUpdate = JSON.parse(event.data);
+  return response;
+}
 
-            console.dir(jobUpdate, { depth: null });
+async function processJobStream(
+  response: Response,
+  videoId: YouTubeVideoId,
+  writable: WritableStream<SlideStreamEvent>,
+): Promise<{ manifestUri: string | null; error?: string }> {
+  if (!response.body) {
+    throw new Error(`Job stream response for video ${videoId} has no body`);
+  }
 
+  let manifestUri: string | null = null;
+  let jobError: string | null = null;
+  let eventCount = 0;
+
+  const parser = createParser({
+    onEvent: (event) => {
+      console.dir(event);
+      if (event.data) {
+        eventCount++;
+        try {
+          const jobUpdate: JobUpdate = JSON.parse(event.data);
+
+          console.dir(jobUpdate, { depth: null });
+
+          console.log(
+            `🔍️ checkJobStatus: Job event ${eventCount} for video ${videoId}:`,
+            {
+              status: jobUpdate.status,
+              progress: jobUpdate.progress,
+              message: jobUpdate.message,
+              hasMetadataUri: !!jobUpdate.metadata_uri,
+              metadataUri: jobUpdate.metadata_uri,
+            },
+          );
+
+          // Capture state
+          if (
+            jobUpdate.status === JobStatus.COMPLETED &&
+            jobUpdate.metadata_uri
+          ) {
+            manifestUri = jobUpdate.metadata_uri;
             console.log(
-              `🔍️ checkJobStatus: Job event ${eventCount} for video ${videoId}:`,
+              `🔍 checkJobStatus: Job completed for video ${videoId}, manifest URI: ${manifestUri}`,
+            );
+          } else if (jobUpdate.status === JobStatus.FAILED) {
+            jobError = jobUpdate.error ?? "Extraction failed";
+            console.error(
+              `🔍 checkJobStatus: Job failed for video ${videoId}:`,
               {
-                status: jobUpdate.status,
-                progress: jobUpdate.progress,
-                message: jobUpdate.message,
-                hasMetadataUri: !!jobUpdate.metadata_uri,
-                metadataUri: jobUpdate.metadata_uri,
+                error: jobUpdate.error,
+                fullUpdate: jobUpdate,
               },
             );
+          }
 
-            // Capture state
-            if (
-              jobUpdate.status === JobStatus.COMPLETED &&
-              jobUpdate.metadata_uri
-            ) {
-              manifestUri = jobUpdate.metadata_uri;
-              console.log(
-                `🔍 checkJobStatus: Job completed for video ${videoId}, manifest URI: ${manifestUri}`,
-              );
-            }
-            if (jobUpdate.status === JobStatus.FAILED) {
-              jobFailed = true;
-              failureReason = jobUpdate.error ?? "Extraction failed";
-              console.error(
-                `🔍 checkJobStatus: Job failed for video ${videoId}:`,
-                {
-                  error: jobUpdate.error,
-                  fullUpdate: jobUpdate,
-                },
-              );
-            }
-
-            // Emit progress (fire and forget inside sync callback is safer in loop)
-            if (!jobFailed && !manifestUri) {
-              emit<SlideStreamEvent>(
-                {
-                  type: "progress",
-                  status: jobUpdate.status,
-                  step: resolveJobStep(jobUpdate.status),
-                  totalSteps: TOTAL_STEPS,
-                  message: jobUpdate.message,
-                },
-                writable,
-              );
-            }
-          } catch (parseError) {
-            console.warn(
-              `🔍 checkJobStatus: Failed to parse job event for video ${videoId}:`,
-              parseError,
+          // Emit progress (fire and forget inside sync callback is safer in loop)
+          if (!jobError && !manifestUri) {
+            emit<SlideStreamEvent>(
+              {
+                type: "progress",
+                status: jobUpdate.status,
+                step: resolveJobStep(jobUpdate.status),
+                totalSteps: TOTAL_STEPS,
+                message: jobUpdate.message,
+              },
+              writable,
             );
           }
+        } catch (parseError) {
+          console.warn(
+            `🔍 checkJobStatus: Failed to parse job event for video ${videoId}:`,
+            parseError,
+          );
         }
-      },
-    });
+      }
+    },
+  });
 
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
 
+  try {
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
       parser.feed(decoder.decode(value));
-      if (manifestUri || jobFailed) break;
+      if (manifestUri || jobError) break;
     }
-
-    console.log(
-      `🔍 checkJobStatus: Stream processing complete for video ${videoId}: ${eventCount} events processed`,
-    );
+  } finally {
+    reader.releaseLock();
   }
 
-  return { manifestUri, jobFailed, failureReason };
+  console.log(
+    `🔍 checkJobStatus: Stream processing complete for video ${videoId}: ${eventCount} events processed`,
+  );
+
+  if (jobError) {
+    return { manifestUri: null, error: jobError };
+  }
+
+  return { manifestUri };
+}
+
+export async function checkJobStatus(
+  videoId: YouTubeVideoId,
+  writable: WritableStream<SlideStreamEvent>,
+): Promise<{
+  manifestUri: string | null;
+  jobFailed: boolean;
+  failureReason: string;
+}> {
+  "use step";
+
+  const response = await fetchJobStream(videoId);
+  const { manifestUri, error } = await processJobStream(
+    response,
+    videoId,
+    writable,
+  );
+
+  if (error) {
+    return { manifestUri: null, jobFailed: true, failureReason: error };
+  }
+
+  return { manifestUri, jobFailed: false, failureReason: "" };
 }
 
 checkJobStatus.maxRetries = 1;
